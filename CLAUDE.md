@@ -49,7 +49,8 @@ pnpm api-client:generate # regenerate typed client after any API change
    `invitations`, `login_attempts`); `venueos_app` cannot read them.
 2. **Every endpoint declares access.** Staff endpoints use `@RequirePermission('<permission>')`
    with names from `packages/shared/src/permissions.ts` (mirrors `docs/04-security.md`). Public
-   endpoints are marked `@Public()` explicitly and reviewed. No endpoint without one of the two.
+   endpoints are marked `@Public()` explicitly and reviewed. Endpoints that need a login but no tenant
+   (`/me`, tenant switch, logout) use `@AuthenticatedOnly()`. Exactly one of the three per endpoint.
 3. **Validate all input** with a Zod schema from `packages/shared`. Never trust client totals,
    prices, statuses or IDs of other tenants; recompute prices on the server.
 4. **Money** is `Decimal(18,3)` (Prisma) / `decimal.js` in code, never JS `number`. Round only at

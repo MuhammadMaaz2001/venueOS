@@ -44,13 +44,46 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
 - Mobile/public API (later): short-lived access tokens + rotating refresh tokens on
   `api.venueos.app`; never cookies there.
 
+### Implementation notes (P0-4)
+
+- **Enumeration safety.** Signup, resend-verification and password/forgot always answer the same 202 body, whether
+  or not the address has an account; login answers one generic 401 (unknown address, wrong password and locked
+  account alike) and always runs a real argon2 verification (a dummy hash for unknown or locked accounts), so the
+  response time does not tell either. The only distinguishable answer comes after the CORRECT password: an
+  unverified address gets 403 `FORBIDDEN` with `details.reason = EMAIL_NOT_VERIFIED`.
+- **Abuse limits of the mail endpoints** (signup, resend-verification, password/forgot): at most 3 emails per
+  address per hour and 20 requests per IP per 15 minutes, counted in `auth_requests` (email hash and IP, never the
+  address). Over the limit: the same generic answer, nothing sent, a log line. Refused requests count toward the
+  IP limit only, so hammering an address cannot extend the lock on it. Accepted trade-off: someone who sends 3
+  requests for an address can delay a real reset mail for that address for up to an hour.
+- **Signup of an address that exists.** Verified: an "account exists" mail, nothing else. Unverified: the latest
+  signup wins (name and password are replaced, earlier tokens die, a fresh verification mail goes out, still one
+  workspace), so someone who pre-registered another person's address cannot keep the account: only the mailbox
+  owner can verify, and verifying binds the account to whoever signed up last.
+- **Account mail** (verification, "account exists", password reset) is sent under the product name "venueOS"
+  (template metadata), never a tenant's name. The log row belongs to the user's oldest membership's tenant (RLS);
+  a user without any workspace gets nothing and the same generic answer. Verification tokens last 24 h, reset
+  tokens 30 min, invitations 72 h; starting a new one invalidates the unused earlier ones of that purpose.
+- **Sessions** are revoked by timestamp, never deleted. Login always creates a new token and revokes the session
+  it was called with; tenant switch replaces the token of the same row. `__Host-vos_session` is `Secure`, which
+  Chrome and Firefox also accept on `http://localhost` in development.
+- **Invitations** are `invitations` rows (hash of the token only). At most one pending invitation per tenant
+  and address (partial unique index); an expired one is revoked when a new one is issued. Pending invitations
+  count toward the plan's `maxUsers` (checked under an advisory lock). A new person accepts with name and
+  password (the token proves the mailbox); an address that already has an account gets 409 and accepts while
+  logged in (`POST /v1/me/invitations/accept`, the session's verified email must match).
+- **Staff changes** never grant more than the caller holds and never touch a member whose role or venue scope is
+  wider than the caller's. A tenant always keeps one active Owner: the check locks the tenant row, then counts the
+  other active members of the system "Owner" role.
+
 ## 2. Authorization
 
 - Permissions are strings like `booking.confirm`, defined once in
   `packages/shared/src/permissions.ts`, which mirrors the table below (**this doc is the source
   of truth**). Roles are sets of permissions plus limits (`maxDiscountPct`). Default roles are
   seeded per tenant (`is_system`); tenants may copy and edit them.
-- Every controller method has `@RequirePermission(...)` or `@Public()`. A test scans all routes
+- Every controller method has exactly one of `@RequirePermission(...)`, `@AuthenticatedOnly()` (a login but no
+  tenant: `/me`, tenant switch, logout) or `@Public()`. A test scans all routes
   and fails if any has neither.
 - Venue scoping: a membership with `venueIds` set may only touch data of those venues. Services
   filter by `venueIds` from CLS; list endpoints never trust a `venueId` query param alone.
@@ -151,7 +184,7 @@ item inside that tenant's context. Resource IDs from another tenant return **404
     Unauthenticated requests (login, signup) are not exempt: login CSRF is a real attack.
   - **Not enabled yet:** the exemption lives in one function, `isBearerAuthenticated()`
     (`apps/api/src/common/security/auth-kind.ts`), which returns `false` until bearer auth exists
-    (TODO P0-4 / the API-token work). It must accept only a *validated* token, never just the header,
+    (there is still no bearer auth: P0-4 did not add it; it belongs to the API-token work). It must accept only a *validated* token, never just the header,
     and must never exempt a request that also carries the session cookie.
   - `APP_ORIGIN` is a single origin. Public booking pages on tenant (sub)domains will POST from
     other origins; they are handled with the public endpoints (`@Public()` + `resolve_tenant`), not
@@ -178,6 +211,14 @@ item inside that tenant's context. Resource IDs from another tenant return **404
 - Never put PII in URLs, logs, analytics events, error messages or Sentry. The pino redaction
   list covers `password`, `token`, `cookie`, `authorization`, `cnic`, `phone`, `email`, `body`.
   `login_attempts` stores a hash of the email, not the email.
+- **Sealed secrets.** A value that must travel through the database but must not be readable there (the
+  link of a verification, reset or invitation email, which carries a token) is sealed with AES-256-GCM using the
+  `FIELD_ENCRYPTION_KEYS` keyring and stored as `v1.<keyId>.<iv>.<ciphertext>.<tag>`. The key id travels with
+  the value, so keys rotate by adding a key and making it `active`; old keys keep opening old values until they
+  are retired. **The AAD is `${tenantId}:${messageKey}`**, so a sealed blob copied onto another row, or into
+  another tenant, fails to open; the email worker then dead-letters the message as `INVALID_PAYLOAD`. The API
+  seals (`EmailOutbox` with `secretVars`), the worker opens just before rendering; neither stores or logs the
+  plain value. Both refuse to boot when a key is not exactly 32 bytes.
 - Files: private S3 bucket, server-side encryption, keys `tenants/{tenantId}/...` (the
   database stores the key only), uploads via pre-signed PUT with content-type and size limits
   (images/PDF ≤ 10 MB), downloads via pre-signed GET valid 5 minutes. The API checks the

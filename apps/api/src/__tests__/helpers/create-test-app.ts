@@ -25,11 +25,16 @@ for (const file of ['.env', '.env.example']) {
 
 export const APP_ORIGIN = 'http://localhost:3000';
 
+/** Test-only keyring (32 bytes of 7), shared with the worker's tests. Never a real key. */
+export const TEST_KEYRING = { active: 'k1', keys: { k1: Buffer.alloc(32, 7).toString('base64') } };
+
 /** Valid test configuration; `overrides` replace single variables (e.g. THROTTLE_LIMIT). */
 export function testConfig(overrides: Record<string, string> = {}): AppConfig {
   return loadEnv({
     NODE_ENV: 'test',
     DATABASE_URL: process.env.DATABASE_URL,
+    AUTH_DATABASE_URL: process.env.AUTH_DATABASE_URL,
+    FIELD_ENCRYPTION_KEYS: JSON.stringify(TEST_KEYRING),
     APP_ORIGIN,
     LOG_LEVEL: 'info',
     ...overrides,

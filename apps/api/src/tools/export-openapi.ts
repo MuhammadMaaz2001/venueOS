@@ -11,6 +11,11 @@ import { buildOpenApiDocument, configureApp } from '../configure-app';
 // config schema; they are never used to connect anywhere.
 process.env.NODE_ENV = 'development';
 process.env.DATABASE_URL ??= 'postgresql://openapi:openapi@localhost:5432/openapi';
+process.env.AUTH_DATABASE_URL ??= 'postgresql://openapi:openapi@localhost:5432/openapi';
+process.env.FIELD_ENCRYPTION_KEYS ??= JSON.stringify({
+  active: 'openapi',
+  keys: { openapi: Buffer.alloc(32).toString('base64') },
+});
 process.env.APP_ORIGIN ??= 'http://localhost:3000';
 process.env.LOG_LEVEL = 'silent';
 

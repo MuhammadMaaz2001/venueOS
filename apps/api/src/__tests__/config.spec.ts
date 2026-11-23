@@ -4,6 +4,8 @@ import { swaggerEnabled } from '../config/env.schema';
 
 const valid = {
   DATABASE_URL: 'postgresql://venueos_app:super-secret-pw@localhost:5433/venueos',
+  AUTH_DATABASE_URL: 'postgresql://venueos_auth:super-secret-auth@localhost:5433/venueos',
+  FIELD_ENCRYPTION_KEYS: '{"active":"k1","keys":{"k1":"abc"}}',
   APP_ORIGIN: 'http://localhost:3000',
 };
 
@@ -39,6 +41,8 @@ describe('loadEnv', () => {
     expect(() => loadEnv({})).toThrow(ConfigError);
     const issues = issuesFor({});
     expect(issues).toContain('DATABASE_URL: is required');
+    expect(issues).toContain('AUTH_DATABASE_URL: is required');
+    expect(issues).toContain('FIELD_ENCRYPTION_KEYS: is required');
     expect(issues).toContain('APP_ORIGIN: is required');
   });
 
@@ -55,6 +59,7 @@ describe('loadEnv', () => {
     ['APP_ORIGIN', 'http://localhost:3000/'],
     ['APP_ORIGIN', 'localhost:3000'],
     ['DATABASE_URL', 'mysql://u:p@h/db'],
+    ['AUTH_DATABASE_URL', 'mysql://u:p@h/db'],
     ['TRUST_PROXY', '-1'],
     ['LOG_LEVEL', 'loud'],
     ['SWAGGER_ENABLED', 'maybe'],
@@ -66,19 +71,24 @@ describe('loadEnv', () => {
   });
 
   it('accepts a well-formed keyring', () => {
-    const env = loadEnv({ ...valid, FIELD_ENCRYPTION_KEYS: '{"active":"k1","keys":{"k1":"abc"}}' });
-    expect(env.FIELD_ENCRYPTION_KEYS?.active).toBe('k1');
+    const env = loadEnv({
+      ...valid,
+      FIELD_ENCRYPTION_KEYS: '{"active":"k2","keys":{"k1":"abc","k2":"def"}}',
+    });
+    expect(env.FIELD_ENCRYPTION_KEYS.active).toBe('k2');
   });
 
   it('never puts a variable value in the error', () => {
     const issues = issuesFor({
       DATABASE_URL: 'mysql://venueos_app:super-secret-pw@localhost/x',
+      AUTH_DATABASE_URL: 'mysql://venueos_auth:super-secret-auth@localhost/x',
       APP_ORIGIN: 'http://localhost:3000/with/path',
       FIELD_ENCRYPTION_KEYS: 'super-secret-key-material',
     });
     expect(issues.length).toBeGreaterThan(0);
     const text = issues.join('\n');
     expect(text).not.toContain('super-secret');
+    expect(text).not.toContain('super-secret-auth');
     expect(text).not.toContain('with/path');
   });
 });

@@ -20,6 +20,9 @@ export type {
   JobQueueOptions,
   RetryPolicy,
 } from './jobs/job-queue.js';
+export { SealError, createSealer } from './crypto/seal.js';
+export type { Sealer } from './crypto/seal.js';
+export { openTemplateVars, sealedVarsAad } from './jobs/sealed-vars.js';
 export { expectedPgBossSchemaVersion } from './jobs/schema-version.js';
 
 // Enums (value + type) and row/input types for the schema's models. `Prisma` is the type-only

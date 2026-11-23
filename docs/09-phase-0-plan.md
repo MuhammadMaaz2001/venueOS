@@ -108,10 +108,21 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       off), the dead-letter runbook/redrive (P0-6b). **Note:** the SQL comment in
       `prisma/sql/001_constraints_and_rls.sql` (and the init migration) that says the pg-boss grants
       arrive "with the worker, task P0-6" is left as is: an applied migration is never edited.
-- [ ] **P0-4 Auth**: signup, email verification, login/logout, sessions (hashed tokens,
-      `__Host-` cookie), lockout via `login_attempts`, password reset, "log out everywhere",
-      tenant list + switch, staff invitation create/revoke/accept (moved here from P0-5). Transaction
-      patterns (see below). **What P0-4 must wire up** is listed in "Handoff from P0-5" below.
+- [x] **P0-4 Auth** (done): the real `SessionAuthContextProvider` (cookie hash lookup through `AuthDb`;
+      `NoAuthContextProvider` is gone), `@AuthenticatedOnly()` (route-scan: exactly one of three markers),
+      sessions (`__Host-vos_session`, 12 h idle / 30 d absolute, rotation on login and tenant switch, logout,
+      logout-all, revocation on password change/reset), signup (user + tenant + 5 roles + owner + TRIAL 14 days
+      on the `starter` plan + audit, one 202 answer), email verification, login (argon2id PHC, rehash, lockout
+      5/15 min per address, 20/15 min per IP, one generic 401), password reset (30 min, single use), staff
+      invitations (create/list/revoke/accept for new and existing users, plan limit counts pending ones, partial
+      unique index), staff list/patch with the last-owner rule, escalation checks, abuse limits for the mail
+      endpoints (`auth_requests`), sealed secret email variables (AES-256-GCM, AAD `tenant:messageKey`),
+      templates `auth.verify-email`, `auth.account-exists`, `auth.password-reset`, `staff.invite` (en + ur),
+      breached-password check (SecLists top 10k, MIT, see `modules/auth/data/NOTICE.md`). Migration
+      `auth_requests_and_pending_invitations`. Checked in a real browser: `__Host-` cookie set and sent over
+      `http://localhost` through a Next `/api` rewrite (signup, mail via the worker into Mailpit, verify, login,
+      `/me`, switch, logout). **Not built:** bearer auth (`isBearerAuthenticated()` is still a stub), phone OTP,
+      platform admin, the `auth.purge` job (P0-6b), the audit-log viewer.
 - [ ] **P0-6b Worker foundation (part 2)**: `pdf.render` skeleton with Playwright and bundled
       Urdu font, `auth.purge` job, dead-letter handling and runbook.
 - [ ] **P0-7 Web foundation**: layout shell (sidebar, tenant switcher, user menu), auth pages,
@@ -189,6 +200,23 @@ invitation) and the audit row; finally `AuthDb` sets `accepted_at`.
 
 **Login / session:** everything through `AuthDb` (`login_attempts`, `user_credentials`,
 `auth_sessions`); `TenantGuard` then reads the membership and role with `TenantDb`.
+
+### Handoff from P0-4
+
+**To P0-7 (web):** the pages the emails link to are `/verify-email?token=`, `/reset-password?token=`,
+`/accept-invite?token=` and `/login`, `/forgot-password` (built from `APP_ORIGIN`). Each token page should POST the token
+to the API and strip it from the URL (`history.replaceState`); `Referrer-Policy` is already strict-origin. Login answers
+`activeTenantId = null` when the user has several workspaces: show the workspace picker (`GET /v1/me/tenants`,
+`POST /v1/me/switch-tenant`). `GET /v1/me` gives the permissions the UI needs. Map `details.reason = EMAIL_NOT_VERIFIED`
+(403 on login) to the "confirm your email" screen with a resend button. Signup, resend and forgot always show the
+same "check your inbox" message. Every state-changing call sends `X-Requested-With: venueos`.
+
+**To P0-6b (`auth.purge`):** delete expired or revoked `auth_sessions`, used or expired `auth_tokens`, accepted,
+revoked or long-expired `invitations`, and `login_attempts` / `auth_requests` older than a day (it is the only
+worker code that uses `AuthDb`). Also: users who signed up, never verified and have no activity.
+
+**To the later modules:** a password-protected action that needs an email uses `EmailOutbox`; anything secret in a
+link goes in `secretVars`. Staff-facing listings of members use `GET /v1/staff`.
 
 ## MVP module order (after Phase 0)
 

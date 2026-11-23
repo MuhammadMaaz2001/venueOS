@@ -1,6 +1,6 @@
 import { Inject, Injectable } from '@nestjs/common';
-import { TenantDb } from '@venueos/db';
-import type { DbTx } from '@venueos/db';
+import { SealError, TenantDb, openTemplateVars } from '@venueos/db';
+import type { DbTx, Sealer } from '@venueos/db';
 import {
   JOB_NAMES,
   MESSAGE_STATUS,
@@ -9,13 +9,13 @@ import {
   maskEmail,
 } from '@venueos/shared';
 import type { EmailFailureCode, EmailSendPayload } from '@venueos/shared';
-import { TemplateError, UnknownTemplateError, renderEmail } from '@venueos/templates';
+import { PRODUCT_NAME, TemplateError, UnknownTemplateError, renderEmail } from '@venueos/templates';
 import type { RenderedEmail } from '@venueos/templates';
 import { WORKER_CONFIG } from '../config/config.module';
 import type { WorkerConfig } from '../config/config.module';
 import { PermanentJobError, RetryableJobError, TenantJob, describeError } from '../jobs/tenant-job';
 import type { InvalidPayloadInfo, JobContext } from '../jobs/tenant-job';
-import { EMAIL_PROVIDER, EmailProviderError, sanitizeDisplayName } from './email-provider';
+import { EMAIL_PROVIDER, EmailProviderError, SEALER, sanitizeDisplayName } from './email-provider';
 import type { EmailProvider } from './email-provider';
 
 /** The recipient of a failure row when no queued row could be read. `message_logs.to` is NOT NULL. */
@@ -72,6 +72,7 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
     @Inject(TenantDb) tenantDb: TenantDb,
     @Inject(EMAIL_PROVIDER) private readonly provider: EmailProvider,
     @Inject(WORKER_CONFIG) private readonly config: WorkerConfig,
+    @Inject(SEALER) private readonly sealer: Sealer,
   ) {
     super(tenantDb);
   }
@@ -133,7 +134,11 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
     let providerRef: string;
     try {
       ({ providerRef } = await this.provider.send({
-        from: { name: sanitizeDisplayName(tenantName), address: this.config.EMAIL_FROM_ADDRESS },
+        from: {
+          // Account mails go out under the product name, not a tenant's (a tenant's name would look like phishing).
+          name: rendered.sender === 'product' ? PRODUCT_NAME : sanitizeDisplayName(tenantName),
+          address: this.config.EMAIL_FROM_ADDRESS,
+        },
         to: message.to,
         ...(message.replyTo ? { replyTo: message.replyTo } : {}),
         subject: rendered.subject,
@@ -217,12 +222,26 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
       entityType: queued.entityType,
       entityId: queued.entityId,
     };
+    // Secret variables are sealed for exactly this row (AAD = tenant:messageKey); a blob that was copied from
+    // another row, tampered with or sealed with an unknown key does not open: permanent failure.
+    let vars: Record<string, unknown>;
+    try {
+      vars = openTemplateVars(
+        this.sealer,
+        ctx.tenantId,
+        ctx.payload.messageKey,
+        queued.templateVars,
+      );
+    } catch (error) {
+      if (error instanceof SealError) return { kind: 'invalid', message: base };
+      throw error;
+    }
     const parsed = enqueueEmailInputSchema.safeParse({
       to: queued.to,
       replyTo: queued.replyTo ?? undefined,
       template: queued.template,
       locale: queued.locale,
-      vars: queued.templateVars ?? {},
+      vars,
     });
     if (!parsed.success) return { kind: 'invalid', message: base };
 

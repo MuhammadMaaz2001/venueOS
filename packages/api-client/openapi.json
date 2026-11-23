@@ -53,6 +53,460 @@
         ]
       }
     },
+    "/v1/auth/signup": {
+      "post": {
+        "description": "Always answers 202 with the same body, whether or not the address already has an account. A verification email follows.",
+        "operationId": "AuthController_signup",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SignupDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create an account and a workspace",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/verify-email": {
+      "post": {
+        "operationId": "AuthController_verifyEmail",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/VerifyEmailDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Confirm an email address with the token from the email",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/resend-verification": {
+      "post": {
+        "operationId": "AuthController_resendVerification",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailOnlyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send the verification email again (generic answer)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/login": {
+      "post": {
+        "description": "Sets the __Host-vos_session cookie. Wrong email, wrong password and a locked account answer identically.",
+        "operationId": "AuthController_login",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LoginResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Log in with email and password",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout": {
+      "post": {
+        "operationId": "AuthController_logout",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "End this session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/logout-all": {
+      "post": {
+        "operationId": "AuthController_logoutAll",
+        "parameters": [],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "End every session of this user (\"log out everywhere\")",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/forgot": {
+      "post": {
+        "operationId": "AuthController_forgotPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EmailOnlyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "202": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptedResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Ask for a password reset email (generic answer)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/reset": {
+      "post": {
+        "operationId": "AuthController_resetPassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResetPasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Set a new password with the token from the email; ends every session",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/auth/password/change": {
+      "post": {
+        "operationId": "AuthController_changePassword",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ChangePasswordDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Change the password; ends the other sessions",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
+    "/v1/me": {
+      "get": {
+        "operationId": "MeController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Who am I, and what may I do in the active workspace",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/tenants": {
+      "get": {
+        "operationId": "MeController_tenants",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeTenantsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "The workspaces I am an active member of",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/switch-tenant": {
+      "post": {
+        "description": "Rotates the session token (a new cookie is set). A workspace I am not a member of is 404.",
+        "operationId": "MeController_switchTenant",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SwitchTenantDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/MeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Work in another of my workspaces",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/me/invitations/accept": {
+      "post": {
+        "operationId": "MeController_accept",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInvitationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Accept a staff invitation with my existing account",
+        "tags": [
+          "me"
+        ]
+      }
+    },
+    "/v1/staff/invitations": {
+      "post": {
+        "operationId": "InvitationsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvitationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Invite a person by email with a role",
+        "tags": [
+          "staff"
+        ]
+      },
+      "get": {
+        "operationId": "InvitationsController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/InvitationListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Pending invitations",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/v1/staff/invitations/{id}": {
+      "delete": {
+        "operationId": "InvitationsController_revoke",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          }
+        },
+        "summary": "Revoke an invitation",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/v1/auth/invitations/accept": {
+      "post": {
+        "description": "An address that already has an account gets 409: log in and use POST /v1/me/invitations/accept.",
+        "operationId": "InvitationAcceptController_accept",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvitationNewUserDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AcceptInvitationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Accept an invitation as a NEW user (name and password)",
+        "tags": [
+          "auth"
+        ]
+      }
+    },
     "/v1/roles": {
       "get": {
         "operationId": "RolesController_list",
@@ -175,6 +629,71 @@
           "roles"
         ]
       }
+    },
+    "/v1/staff": {
+      "get": {
+        "operationId": "StaffController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the members of the current tenant",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
+    "/v1/staff/{membershipId}": {
+      "patch": {
+        "description": "A workspace always keeps at least one active Owner (422 otherwise).",
+        "operationId": "StaffController_update",
+        "parameters": [
+          {
+            "name": "membershipId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateStaffDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/StaffMemberResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change a member: role, venues, active",
+        "tags": [
+          "staff"
+        ]
+      }
     }
   },
   "info": {
@@ -238,6 +757,540 @@
         "required": [
           "status",
           "checks"
+        ]
+      },
+      "SignupDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128
+          },
+          "tenantName": {
+            "type": "string",
+            "minLength": 2,
+            "maxLength": 100
+          },
+          "country": {
+            "type": "string",
+            "pattern": "^[A-Z]{2}$"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "defaultLocale": {
+            "default": "en",
+            "type": "string",
+            "pattern": "^[a-z]{2,3}$"
+          }
+        },
+        "required": [
+          "name",
+          "email",
+          "password",
+          "tenantName",
+          "country",
+          "currency",
+          "timezone"
+        ]
+      },
+      "AcceptedResponseDto": {
+        "type": "object",
+        "properties": {
+          "message": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "message"
+        ]
+      },
+      "VerifyEmailDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{20,128}$"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "EmailOnlyDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "email"
+        ]
+      },
+      "LoginDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          }
+        },
+        "required": [
+          "email",
+          "password"
+        ]
+      },
+      "LoginResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "emailVerified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "emailVerified"
+            ]
+          },
+          "activeTenantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "tenants": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "TRIAL",
+                    "ACTIVE",
+                    "PAST_DUE",
+                    "SUSPENDED",
+                    "CANCELLED"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "slug",
+                "status"
+              ]
+            }
+          }
+        },
+        "required": [
+          "user",
+          "activeTenantId",
+          "tenants"
+        ]
+      },
+      "ResetPasswordDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{20,128}$"
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "token",
+          "newPassword"
+        ]
+      },
+      "ChangePasswordDto": {
+        "type": "object",
+        "properties": {
+          "currentPassword": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 1024
+          },
+          "newPassword": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "currentPassword",
+          "newPassword"
+        ]
+      },
+      "MeResponseDto": {
+        "type": "object",
+        "properties": {
+          "user": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "emailVerified": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "email",
+              "emailVerified"
+            ]
+          },
+          "activeTenantId": {
+            "type": "string",
+            "nullable": true
+          },
+          "access": {
+            "type": "object",
+            "properties": {
+              "tenantId": {
+                "type": "string"
+              },
+              "roleName": {
+                "type": "string"
+              },
+              "permissions": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "venueIds": {
+                "type": "array",
+                "items": {
+                  "type": "string"
+                }
+              },
+              "limits": {
+                "type": "object",
+                "properties": {
+                  "maxDiscountPct": {
+                    "type": "number"
+                  }
+                },
+                "required": [
+                  "maxDiscountPct"
+                ]
+              }
+            },
+            "required": [
+              "tenantId",
+              "roleName",
+              "permissions",
+              "venueIds",
+              "limits"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "user",
+          "activeTenantId",
+          "access"
+        ]
+      },
+      "MeTenantsResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "slug": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "TRIAL",
+                    "ACTIVE",
+                    "PAST_DUE",
+                    "SUSPENDED",
+                    "CANCELLED"
+                  ]
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "slug",
+                "status"
+              ]
+            }
+          },
+          "activeTenantId": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "data",
+          "activeTenantId"
+        ]
+      },
+      "SwitchTenantDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "tenantId"
+        ]
+      },
+      "AcceptInvitationDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{20,128}$"
+          }
+        },
+        "required": [
+          "token"
+        ]
+      },
+      "AcceptInvitationResponseDto": {
+        "type": "object",
+        "properties": {
+          "tenantId": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "tenantId"
+        ]
+      },
+      "CreateInvitationDto": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "venueIds": {
+            "default": [],
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          }
+        },
+        "required": [
+          "email",
+          "roleId"
+        ]
+      },
+      "InvitationResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string"
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string",
+            "nullable": true
+          },
+          "venueIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "pending",
+              "expired"
+            ]
+          },
+          "expiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "email",
+          "roleId",
+          "roleName",
+          "venueIds",
+          "status",
+          "expiresAt",
+          "createdAt"
+        ]
+      },
+      "InvitationListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string"
+                },
+                "roleId": {
+                  "type": "string"
+                },
+                "roleName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "venueIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "pending",
+                    "expired"
+                  ]
+                },
+                "expiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "email",
+                "roleId",
+                "roleName",
+                "venueIds",
+                "status",
+                "expiresAt",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "AcceptInvitationNewUserDto": {
+        "type": "object",
+        "properties": {
+          "token": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{20,128}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "password": {
+            "type": "string",
+            "minLength": 10,
+            "maxLength": 128
+          }
+        },
+        "required": [
+          "token",
+          "name",
+          "password"
         ]
       },
       "RoleListResponseDto": {
@@ -555,6 +1608,147 @@
           }
         },
         "required": [
+          "rev"
+        ]
+      },
+      "StaffListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "membershipId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "roleId": {
+                  "type": "string"
+                },
+                "roleName": {
+                  "type": "string"
+                },
+                "venueIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                }
+              },
+              "required": [
+                "membershipId",
+                "userId",
+                "name",
+                "email",
+                "roleId",
+                "roleName",
+                "venueIds",
+                "active",
+                "rev"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "UpdateStaffDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "roleId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "venueIds": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "StaffMemberResponseDto": {
+        "type": "object",
+        "properties": {
+          "membershipId": {
+            "type": "string"
+          },
+          "userId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "roleId": {
+            "type": "string"
+          },
+          "roleName": {
+            "type": "string"
+          },
+          "venueIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "membershipId",
+          "userId",
+          "name",
+          "email",
+          "roleId",
+          "roleName",
+          "venueIds",
+          "active",
           "rev"
         ]
       }

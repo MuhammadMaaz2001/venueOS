@@ -8,6 +8,19 @@ export interface EmailTemplateSource {
   text: string;
 }
 
+/**
+ * Whose name the mail is sent under. `product`: the product name (account mails: verification, password
+ * reset, "account exists"; a tenant's name on those would look like phishing). `tenant`: the name of the
+ * tenant the message belongs to (invitations, booking mails).
+ */
+export type EmailSender = 'product' | 'tenant';
+
+export interface EmailTemplateDefinition {
+  sender: EmailSender;
+  /** By language code (`en`, `ur`); `en` is the fallback for every other locale. */
+  locales: Readonly<Record<string, EmailTemplateSource>>;
+}
+
 export interface RenderedEmail {
   subject: string;
   /** A complete HTML document with `lang` and `dir` set for the locale. */
@@ -15,4 +28,5 @@ export interface RenderedEmail {
   text: string;
   /** The locale that was actually used (after fallback). */
   locale: string;
+  sender: EmailSender;
 }

@@ -538,3 +538,25 @@ test('message_logs: the email pipeline columns are insertable, the table stays a
   await rejects(sql(app, T1, `UPDATE message_logs SET is_final = false WHERE id = 'ml-f'`), /permission denied/);
   await rejects(sql(app, T1, `DELETE FROM message_logs WHERE id = 'ml-q'`), /permission denied/);
 });
+
+// ───────────────────────────── P0-4: auth_requests, pending invitations ─────────────────────────────
+
+test('auth_requests: auth-only (venueos_app cannot touch it), venueos_auth has full DML', async () => {
+  await sql(auth, {}, `INSERT INTO auth_requests (id, kind, email_hash, ip) VALUES ('ar1','signup','h1','10.0.0.1')`);
+  await sql(auth, {}, `DELETE FROM auth_requests WHERE id = 'ar1'`);
+  await rejects(sql(app, T1, `SELECT 1 FROM auth_requests`), /permission denied/);
+  await rejects(sql(app, T1, `INSERT INTO auth_requests (id, kind, email_hash) VALUES ('x','signup','h')`), /permission denied/);
+  await rejects(jobs.query(`SELECT 1 FROM auth_requests`), /permission denied/);
+});
+
+test('invitations: one pending invitation per tenant and email; accepted or revoked ones do not count', async () => {
+  const ins = (id, hash) => sql(auth, {}, `
+    INSERT INTO invitations (id, tenant_id, email, role_id, venue_ids, token_hash, expires_at)
+    VALUES ('${id}','t1','pending-index@example.test','r1','{}','${hash}', now() + interval '72 hours')`);
+  await ins('pinv1', 'pth1');
+  await rejects(ins('pinv2', 'pth2'), /invitations_pending_email_key/);
+  await sql(auth, {}, `UPDATE invitations SET revoked_at = now() WHERE id = 'pinv1'`);
+  await ins('pinv3', 'pth3'); // allowed again once the first is revoked
+  await sql(auth, {}, `UPDATE invitations SET accepted_at = now() WHERE id = 'pinv3'`);
+  await ins('pinv4', 'pth4');
+});

@@ -1,3 +1,6 @@
+/** Injection token for the Sealer that opens secret email variables (built from FIELD_ENCRYPTION_KEYS). */
+export const SEALER = Symbol('SEALER');
+
 /** Injection token for the configured provider (EMAIL_PROVIDER=smtp|ses). Tests override it. */
 export const EMAIL_PROVIDER = Symbol('EMAIL_PROVIDER');
 

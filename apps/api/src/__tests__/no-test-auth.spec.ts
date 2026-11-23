@@ -1,7 +1,8 @@
 import { readdirSync, readFileSync } from 'node:fs';
 import path from 'node:path';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
-import { AuthContextProvider, NoAuthContextProvider } from '../common/access/auth-context.provider';
+import { AuthContextProvider } from '../common/access/auth-context.provider';
+import { SessionAuthContextProvider } from '../modules/auth/session-auth-context.provider';
 import { createTestApp } from './helpers/create-test-app';
 import type { TestApp } from './helpers/create-test-app';
 import { TEST_AUTH_HEADER, TestAuthContextProvider, authHeader } from './helpers/test-auth';
@@ -21,9 +22,9 @@ describe('the test auth stub is test-only', () => {
     await world.close();
   });
 
-  it('the production AppModule registers NoAuthContextProvider, not the stub', () => {
+  it('the production AppModule registers the session provider, not the stub', () => {
     const provider = t.app.get(AuthContextProvider);
-    expect(provider).toBeInstanceOf(NoAuthContextProvider);
+    expect(provider).toBeInstanceOf(SessionAuthContextProvider);
     expect(provider).not.toBeInstanceOf(TestAuthContextProvider);
   });
 

@@ -25,6 +25,9 @@ export const JOB_RETRY = {
 /** How long a worker may hold one `email.send` job before pg-boss gives it to another worker. */
 export const EMAIL_SEND_EXPIRE_SECONDS = 300;
 
+/** Where the sealed secret variables live inside `message_logs.template_vars`. */
+export const SEALED_VARS_KEY = '__sealed';
+
 const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/, 'must be a plain identifier');
 
 /**
@@ -68,7 +71,22 @@ export const enqueueEmailInputSchema = z.object({
     .max(35),
   vars: templateVarsSchema
     .default({})
-    .refine((v) => JSON.stringify(v).length <= 20_000, 'template variables are too large'),
+    .refine((v) => JSON.stringify(v).length <= 20_000, 'template variables are too large')
+    .refine((v) => !(SEALED_VARS_KEY in v), `${SEALED_VARS_KEY} is reserved`),
+  /**
+   * Variables that are secrets (a verification, reset or invitation link). They are sealed with AES-256-GCM
+   * before they are stored and opened by the worker just before rendering; they never appear in plain text in
+   * `message_logs` or `pgboss.job` (docs/04-security.md section 6).
+   */
+  secretVars: z
+    .record(
+      z
+        .string()
+        .regex(/^[A-Za-z_][A-Za-z0-9_]*$/)
+        .max(64),
+      z.string().min(1).max(2000),
+    )
+    .optional(),
   /** Business event the message belongs to (`booking.confirmed`), for the delivery log. */
   event: z.string().max(100).optional(),
   entityType: z.string().max(50).optional(),

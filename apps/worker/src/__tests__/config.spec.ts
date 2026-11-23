@@ -4,6 +4,8 @@ import { ConfigError, loadEnv } from '../config/load-env';
 const valid = {
   DATABASE_URL: 'postgresql://venueos_app:secret-app@localhost:5432/venueos',
   JOBS_DATABASE_URL: 'postgresql://venueos_jobs:secret-jobs@localhost:5432/venueos',
+  FIELD_ENCRYPTION_KEYS:
+    '{"active":"k1","keys":{"k1":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}}',
   EMAIL_PROVIDER: 'smtp',
   SMTP_URL: 'smtp://localhost:1025',
   EMAIL_FROM_ADDRESS: 'bookings@venueos.app',
@@ -38,6 +40,7 @@ describe('worker configuration', () => {
 
   it('requires an explicit provider, both database URLs and a sender address', () => {
     for (const name of [
+      'FIELD_ENCRYPTION_KEYS',
       'EMAIL_PROVIDER',
       'DATABASE_URL',
       'JOBS_DATABASE_URL',

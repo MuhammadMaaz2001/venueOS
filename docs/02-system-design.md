@@ -75,9 +75,12 @@ dev over HTTPS.
 1. Browser calls `app.venueos.app/api/v1/bookings` with the `__Host-vos_session` cookie.
 2. Next.js rewrites to the API's internal URL, forwarding cookie and client IP.
 3. `AuthGuard` asks the `AuthContextProvider` who is calling and stores `AuthContext
-   { userId, sessionId, activeTenantId }` in CLS. The real provider (P0-4, through `AuthDb`) hashes the
-   cookie token, loads a non-revoked, non-expired `auth_sessions` row and slides `last_seen_at`.
-   Fail → 401.
+   { userId, sessionId, activeTenantId }` in CLS. The real provider (`SessionAuthContextProvider`, through
+   `AuthDb`) hashes the cookie token, loads a non-revoked `auth_sessions` row, enforces the 12 h idle and 30 day
+   absolute limits and slides `last_seen_at` (at most once a minute). No cookie or a revoked token → 401
+   `UNAUTHENTICATED`; expired → 401 `SESSION_EXPIRED`.
+   Routes marked `@AuthenticatedOnly()` (`/me`, tenant switch, logout, accepting an invitation as an existing
+   user) stop here: steps 4 and 5 are skipped because there may be no active tenant yet.
 4. `TenantGuard`: read `active_tenant_id` from the session, then in a short `TenantDb` read
    with `app.user_id` and `app.tenant_id` set, load the membership + role for that user and
    tenant, check the membership is active and the tenant status. Store

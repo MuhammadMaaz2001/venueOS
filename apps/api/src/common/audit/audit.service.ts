@@ -18,6 +18,12 @@ export interface AuditEntry {
    */
   actor?: 'USER' | 'SYSTEM';
   tenantId?: string;
+  /**
+   * For a USER entry written outside an authenticated request (signup, accepting an invitation: the actor
+   * has no session yet). The id must come from server-side data, never from the request. Without it the
+   * user comes from the request context.
+   */
+  actorUserId?: string;
 }
 
 /**
@@ -39,7 +45,7 @@ export class AuditService {
 
     let actorUserId: string | null = null;
     if (actorType === 'USER') {
-      const userId = this.cls.get('userId');
+      const userId = entry.actorUserId ?? this.cls.get('userId');
       if (!userId) throw new Error('AuditService.record: USER entry without an authenticated user');
       actorUserId = userId;
     }

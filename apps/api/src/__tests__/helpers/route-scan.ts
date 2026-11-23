@@ -1,6 +1,10 @@
 import { METHOD_METADATA, PATH_METADATA } from '@nestjs/common/constants';
 import type { ModulesContainer } from '@nestjs/core';
-import { IS_PUBLIC_KEY, PERMISSION_KEY } from '../../common/access/access.decorators';
+import {
+  IS_AUTHENTICATED_ONLY_KEY,
+  IS_PUBLIC_KEY,
+  PERMISSION_KEY,
+} from '../../common/access/access.decorators';
 
 const HTTP_METHODS = ['GET', 'POST', 'PUT', 'DELETE', 'PATCH', 'ALL', 'OPTIONS', 'HEAD', 'SEARCH'];
 
@@ -9,6 +13,7 @@ export interface ScannedRoute {
   handler: string;
   httpMethod: string;
   isPublic: boolean;
+  isAuthenticatedOnly: boolean;
   permission: unknown;
 }
 
@@ -23,11 +28,14 @@ export function scanRoutes(modules: ModulesContainer): ScannedRoute[] {
       seen.add(controller);
 
       const classPublic = Reflect.getMetadata(IS_PUBLIC_KEY, controller) === true;
+      const classAuthOnly = Reflect.getMetadata(IS_AUTHENTICATED_ONLY_KEY, controller) === true;
       const classPermission = Reflect.getMetadata(PERMISSION_KEY, controller) as unknown;
 
       for (const name of Object.getOwnPropertyNames(controller.prototype)) {
         if (name === 'constructor') continue;
-        const handler = (controller.prototype as Record<string, unknown>)[name];
+        // Read the descriptor: touching a getter on the prototype (a controller's private accessor) would run it.
+        const handler = Object.getOwnPropertyDescriptor(controller.prototype, name)
+          ?.value as unknown;
         if (typeof handler !== 'function') continue;
         // Only methods mapped to a route (@Get, @Post, ...) are endpoints.
         if (Reflect.getMetadata(PATH_METADATA, handler) === undefined) continue;
@@ -38,6 +46,8 @@ export function scanRoutes(modules: ModulesContainer): ScannedRoute[] {
           handler: name,
           httpMethod: method === undefined ? '?' : (HTTP_METHODS[method] ?? '?'),
           isPublic: classPublic || Reflect.getMetadata(IS_PUBLIC_KEY, handler) === true,
+          isAuthenticatedOnly:
+            classAuthOnly || Reflect.getMetadata(IS_AUTHENTICATED_ONLY_KEY, handler) === true,
           permission: (Reflect.getMetadata(PERMISSION_KEY, handler) as unknown) ?? classPermission,
         });
       }
@@ -46,14 +56,22 @@ export function scanRoutes(modules: ModulesContainer): ScannedRoute[] {
   return routes;
 }
 
-/** Routes that break CLAUDE.md rule 2: exactly one of `@Public()` and `@RequirePermission()` is required. */
+/**
+ * Routes that break CLAUDE.md rule 2: exactly one of `@Public()`, `@AuthenticatedOnly()` and
+ * `@RequirePermission()` is required.
+ */
 export function findAccessViolations(routes: readonly ScannedRoute[]): string[] {
   return routes.flatMap((r) => {
     const where = `${r.controller}.${r.handler} (${r.httpMethod})`;
-    const hasPermission = r.permission !== undefined;
-    if (!r.isPublic && !hasPermission)
-      return [`${where}: neither @Public() nor @RequirePermission()`];
-    if (r.isPublic && hasPermission) return [`${where}: both @Public() and @RequirePermission()`];
+    const markers = [
+      r.isPublic ? '@Public()' : null,
+      r.isAuthenticatedOnly ? '@AuthenticatedOnly()' : null,
+      r.permission !== undefined ? '@RequirePermission()' : null,
+    ].filter((m): m is string => m !== null);
+    if (markers.length === 0) {
+      return [`${where}: none of @Public(), @AuthenticatedOnly(), @RequirePermission()`];
+    }
+    if (markers.length > 1) return [`${where}: more than one of ${markers.join(', ')}`];
     return [];
   });
 }

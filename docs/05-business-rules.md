@@ -269,3 +269,12 @@ the defaults below, so code never reads raw keys or hard-codes these numbers.
 | `reminderDays` | 3 | Payment-due reminder lead time |
 | `eventReminderDays` | 2 | Event reminder lead time |
 | `minHours` | 2 | Default minimum hours for HOURLY slots |
+
+## 16. Signup and trial (P0-4)
+
+- Signup creates the tenant in status `TRIAL` for **14 days** (`trial_ends_at`) on the `starter` plan (a
+  `subscription` with status `active` until the trial ends, so the plan limits of `starter` apply from day one),
+  the five default roles, and the signing user as Owner. Country, currency, time zone and default language come
+  from the signup form; nothing is assumed.
+- The workspace is usable after the owner confirms the email address (login is refused before that).
+- Staff invitations count toward `maxUsers` while they are pending (72 h); an expired or revoked one frees the seat.

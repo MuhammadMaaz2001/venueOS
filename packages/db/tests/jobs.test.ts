@@ -5,7 +5,15 @@
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 import pg from 'pg';
-import { JobQueue, TenantDb, enqueueEmail, expectedPgBossSchemaVersion } from '../src/index.js';
+import {
+  JobQueue,
+  SealError,
+  TenantDb,
+  createSealer,
+  enqueueEmail,
+  expectedPgBossSchemaVersion,
+  openTemplateVars,
+} from '../src/index.js';
 import { createTestDatabase, dropTestDatabase, seedAs, urlFor } from './helpers/test-db.mjs';
 
 let admin: pg.Client;
@@ -155,6 +163,44 @@ describe('enqueueEmail', () => {
       tx.messageLog.count({ where: { messageKey } }),
     );
     assert.equal(seen, 0);
+  });
+});
+
+describe('enqueueEmail with secret variables', () => {
+  const sealer = createSealer({ active: 'k1', keys: { k1: Buffer.alloc(32, 7).toString('base64') } });
+  const secret = 'https://app.example.test/verify-email?token=SECRET-TOKEN-123';
+
+  test('stores them sealed (never in plain text) and opens them only for the same row', async () => {
+    const { messageKey } = await tenantDb.tx({ tenantId: 't1' }, (tx) =>
+      enqueueEmail(queue, tx, 't1', { ...input, secretVars: { verifyUrl: secret } }, { sealer }),
+    );
+    const [row] = await tenantDb.tx({ tenantId: 't1' }, (tx) => tx.messageLog.findMany({ where: { messageKey } }));
+    const stored = row?.templateVars as Record<string, unknown>;
+    assert.equal(stored.name, 'Ali Khan'); // plain variables stay plain
+    assert.equal(typeof stored.__sealed, 'string');
+    assert.ok(!JSON.stringify(row).includes('SECRET-TOKEN-123'));
+    assert.ok(!JSON.stringify(await jobRows()).includes('SECRET-TOKEN-123'));
+
+    assert.deepEqual(openTemplateVars(sealer, 't1', messageKey, stored).verifyUrl, secret);
+    // A sealed blob moved to another message or tenant does not open.
+    assert.throws(() => openTemplateVars(sealer, 't1', 'another-message', stored), SealError);
+    assert.throws(() => openTemplateVars(sealer, 't2', messageKey, stored), SealError);
+  });
+
+  test('refuses secret variables without a sealer, and a reserved variable name, before writing anything', async () => {
+    const beforeJobs = (await jobRows()).length;
+    await assert.rejects(
+      tenantDb.tx({ tenantId: 't1' }, (tx) =>
+        enqueueEmail(queue, tx, 't1', { ...input, secretVars: { verifyUrl: secret } }),
+      ),
+      /need a sealer/,
+    );
+    await assert.rejects(
+      tenantDb.tx({ tenantId: 't1' }, (tx) =>
+        enqueueEmail(queue, tx, 't1', { ...input, vars: { __sealed: 'forged' } }, { sealer }),
+      ),
+    );
+    assert.equal((await jobRows()).length, beforeJobs);
   });
 });
 

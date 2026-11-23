@@ -1,3 +1,4 @@
+import { fieldKeyringEnvSchema } from '@venueos/shared';
 import { z } from 'zod';
 
 // Messages never contain the offending value: config errors are printed at boot and may end up in
@@ -17,6 +18,12 @@ export const EnvSchema = z
     JOBS_DATABASE_URL: postgresUrl,
     /** auth.purge only (P0-6b); validated when present. */
     AUTH_DATABASE_URL: postgresUrl.optional(),
+
+    /**
+     * Keyring that opens the secret variables of queued emails (verification, reset and invitation links are
+     * sealed by the API, docs/04-security.md section 6). The same keyring as the API's.
+     */
+    FIELD_ENCRYPTION_KEYS: fieldKeyringEnvSchema,
 
     EMAIL_PROVIDER: z.enum(['smtp', 'ses']),
     /** Required for `smtp`, e.g. smtp://localhost:1025 (Mailpit). */

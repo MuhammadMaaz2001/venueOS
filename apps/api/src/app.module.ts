@@ -17,7 +17,9 @@ import { CsrfGuard } from './common/security/csrf.guard';
 import { APP_CONFIG, ConfigModule } from './config/config.module';
 import type { AppConfig } from './config/config.module';
 import { HealthModule } from './health/health.module';
+import { AuthModule } from './modules/auth/auth.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { StaffModule } from './modules/staff/staff.module';
 @Module({
   imports: [
     ConfigModule,
@@ -36,7 +38,9 @@ import { RolesModule } from './modules/roles/roles.module';
       }),
     }),
     HealthModule,
+    AuthModule,
     RolesModule,
+    StaffModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

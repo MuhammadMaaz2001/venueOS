@@ -16,12 +16,12 @@ import type {
 } from '@venueos/shared';
 import { ClsService } from 'nestjs-cls';
 import type { TenantAccess } from '../../common/access/access-context';
+import { assertNoEscalation } from '../../common/access/escalation';
 import { AuditService } from '../../common/audit/audit.service';
 import type { RequestContext } from '../../common/context/request-context';
 import { isUniqueViolation } from '../../common/errors/db-errors';
 import {
   DuplicateError,
-  ForbiddenError,
   InvalidStateTransitionError,
   NotFoundError,
   UnauthenticatedError,
@@ -97,7 +97,7 @@ export class RolesService {
         const permissions = normalizePermissions(source.permissions);
         const limits = parseRoleLimits(source.limits);
         // Copying must not hand out more than the caller holds (same rule as editing).
-        this.assertNoEscalation(access, permissions, [], limits.maxDiscountPct, 0);
+        assertNoEscalation(access, permissions, [], limits.maxDiscountPct, 0);
 
         await this.assertNameFree(tx, input.name);
         const created = await tx.role.create({
@@ -154,7 +154,7 @@ export class RolesService {
         }
 
         // Escalation guard: a caller can only add what they hold themselves.
-        this.assertNoEscalation(
+        assertNoEscalation(
           access,
           nextPermissions,
           before.permissions,
@@ -206,28 +206,5 @@ export class RolesService {
       select: { id: true },
     });
     if (clash) throw new DuplicateError('A role with this name already exists.');
-  }
-
-  /**
-   * Privilege-escalation guard (docs/04-security.md section 2): holding `role.manage` does not let a
-   * caller grant anything they lack. Permissions already on the role may stay; new ones must be held by
-   * the caller, and the discount limit may not rise above the caller's own.
-   */
-  private assertNoEscalation(
-    access: TenantAccess,
-    nextPermissions: readonly Permission[],
-    currentPermissions: readonly Permission[],
-    nextMaxDiscount: number,
-    currentMaxDiscount: number,
-  ): void {
-    const notHeld = nextPermissions.filter(
-      (p) => !currentPermissions.includes(p) && !access.permissions.includes(p),
-    );
-    if (notHeld.length > 0) {
-      throw new ForbiddenError('You cannot grant permissions you do not have yourself.');
-    }
-    if (nextMaxDiscount > currentMaxDiscount && nextMaxDiscount > access.limits.maxDiscountPct) {
-      throw new ForbiddenError('You cannot grant a higher discount limit than your own.');
-    }
   }
 }

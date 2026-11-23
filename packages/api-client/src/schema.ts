@@ -36,6 +36,291 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/auth/signup": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Create an account and a workspace
+         * @description Always answers 202 with the same body, whether or not the address already has an account. A verification email follows.
+         */
+        post: operations["AuthController_signup"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/verify-email": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Confirm an email address with the token from the email */
+        post: operations["AuthController_verifyEmail"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/resend-verification": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Send the verification email again (generic answer) */
+        post: operations["AuthController_resendVerification"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/login": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Log in with email and password
+         * @description Sets the __Host-vos_session cookie. Wrong email, wrong password and a locked account answer identically.
+         */
+        post: operations["AuthController_login"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/logout": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End this session */
+        post: operations["AuthController_logout"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/logout-all": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** End every session of this user ("log out everywhere") */
+        post: operations["AuthController_logoutAll"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/password/forgot": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Ask for a password reset email (generic answer) */
+        post: operations["AuthController_forgotPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/password/reset": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Set a new password with the token from the email; ends every session */
+        post: operations["AuthController_resetPassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/password/change": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Change the password; ends the other sessions */
+        post: operations["AuthController_changePassword"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Who am I, and what may I do in the active workspace */
+        get: operations["MeController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/tenants": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** The workspaces I am an active member of */
+        get: operations["MeController_tenants"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/switch-tenant": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Work in another of my workspaces
+         * @description Rotates the session token (a new cookie is set). A workspace I am not a member of is 404.
+         */
+        post: operations["MeController_switchTenant"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/me/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Accept a staff invitation with my existing account */
+        post: operations["MeController_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/staff/invitations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Pending invitations */
+        get: operations["InvitationsController_list"];
+        put?: never;
+        /** Invite a person by email with a role */
+        post: operations["InvitationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/staff/invitations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        /** Revoke an invitation */
+        delete: operations["InvitationsController_revoke"];
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/auth/invitations/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Accept an invitation as a NEW user (name and password)
+         * @description An address that already has an account gets 409: log in and use POST /v1/me/invitations/accept.
+         */
+        post: operations["InvitationAcceptController_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/roles": {
         parameters: {
             query?: never;
@@ -71,6 +356,43 @@ export interface paths {
         patch: operations["RolesController_update"];
         trace?: never;
     };
+    "/v1/staff": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the members of the current tenant */
+        get: operations["StaffController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/staff/{membershipId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a member: role, venues, active
+         * @description A workspace always keeps at least one active Owner (422 otherwise).
+         */
+        patch: operations["StaffController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -88,6 +410,131 @@ export interface components {
                 /** @enum {string} */
                 queue: "up" | "down";
             };
+        };
+        SignupDto: {
+            name: string;
+            email: string;
+            password: string;
+            tenantName: string;
+            country: string;
+            currency: string;
+            timezone: string;
+            /** @default en */
+            defaultLocale: string;
+        };
+        AcceptedResponseDto: {
+            message: string;
+        };
+        VerifyEmailDto: {
+            token: string;
+        };
+        EmailOnlyDto: {
+            email: string;
+        };
+        LoginDto: {
+            email: string;
+            password: string;
+        };
+        LoginResponseDto: {
+            user: {
+                id: string;
+                name: string;
+                email: string | null;
+                emailVerified: boolean;
+            };
+            activeTenantId: string | null;
+            tenants: {
+                id: string;
+                name: string;
+                slug: string;
+                /** @enum {string} */
+                status: "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
+            }[];
+        };
+        ResetPasswordDto: {
+            token: string;
+            newPassword: string;
+        };
+        ChangePasswordDto: {
+            currentPassword: string;
+            newPassword: string;
+        };
+        MeResponseDto: {
+            user: {
+                id: string;
+                name: string;
+                email: string | null;
+                emailVerified: boolean;
+            };
+            activeTenantId: string | null;
+            access: {
+                tenantId: string;
+                roleName: string;
+                permissions: string[];
+                venueIds: string[];
+                limits: {
+                    maxDiscountPct: number;
+                };
+            } | null;
+        };
+        MeTenantsResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                slug: string;
+                /** @enum {string} */
+                status: "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
+            }[];
+            activeTenantId: string | null;
+        };
+        SwitchTenantDto: {
+            tenantId: string;
+        };
+        AcceptInvitationDto: {
+            token: string;
+        };
+        AcceptInvitationResponseDto: {
+            tenantId: string;
+        };
+        CreateInvitationDto: {
+            email: string;
+            roleId: string;
+            /** @default [] */
+            venueIds: string[];
+        };
+        InvitationResponseDto: {
+            id: string;
+            email: string;
+            roleId: string;
+            roleName: string | null;
+            venueIds: string[];
+            /** @enum {string} */
+            status: "pending" | "expired";
+            /** Format: date-time */
+            expiresAt: string;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        InvitationListResponseDto: {
+            data: {
+                id: string;
+                email: string;
+                roleId: string;
+                roleName: string | null;
+                venueIds: string[];
+                /** @enum {string} */
+                status: "pending" | "expired";
+                /** Format: date-time */
+                expiresAt: string;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: null;
+        };
+        AcceptInvitationNewUserDto: {
+            token: string;
+            name: string;
+            password: string;
         };
         RoleListResponseDto: {
             data: {
@@ -131,6 +578,37 @@ export interface components {
             limits?: {
                 maxDiscountPct: number;
             };
+        };
+        StaffListResponseDto: {
+            data: {
+                membershipId: string;
+                userId: string;
+                name: string;
+                email: string | null;
+                roleId: string;
+                roleName: string;
+                venueIds: string[];
+                active: boolean;
+                rev: number;
+            }[];
+            nextCursor: null;
+        };
+        UpdateStaffDto: {
+            rev: number;
+            roleId?: string;
+            venueIds?: string[];
+            active?: boolean;
+        };
+        StaffMemberResponseDto: {
+            membershipId: string;
+            userId: string;
+            name: string;
+            email: string | null;
+            roleId: string;
+            roleName: string;
+            venueIds: string[];
+            active: boolean;
+            rev: number;
         };
     };
     responses: never;
@@ -186,6 +664,363 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadyResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_signup: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SignupDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_verifyEmail: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["VerifyEmailDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_resendVerification: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailOnlyDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_login: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["LoginDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LoginResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_logout: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_logoutAll: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_forgotPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["EmailOnlyDto"];
+            };
+        };
+        responses: {
+            202: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptedResponseDto"];
+                };
+            };
+        };
+    };
+    AuthController_resetPassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResetPasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    AuthController_changePassword: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ChangePasswordDto"];
+            };
+        };
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    MeController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponseDto"];
+                };
+            };
+        };
+    };
+    MeController_tenants: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeTenantsResponseDto"];
+                };
+            };
+        };
+    };
+    MeController_switchTenant: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SwitchTenantDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MeResponseDto"];
+                };
+            };
+        };
+    };
+    MeController_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvitationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptInvitationResponseDto"];
+                };
+            };
+        };
+    };
+    InvitationsController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationListResponseDto"];
+                };
+            };
+        };
+    };
+    InvitationsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateInvitationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["InvitationResponseDto"];
+                };
+            };
+        };
+    };
+    InvitationsController_revoke: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            204: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content?: never;
+            };
+        };
+    };
+    InvitationAcceptController_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AcceptInvitationNewUserDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AcceptInvitationResponseDto"];
                 };
             };
         };
@@ -274,6 +1109,50 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+        };
+    };
+    StaffController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffListResponseDto"];
+                };
+            };
+        };
+    };
+    StaffController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                membershipId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateStaffDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["StaffMemberResponseDto"];
                 };
             };
         };

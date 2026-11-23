@@ -12,7 +12,7 @@ import {
   UnauthenticatedError,
 } from '../errors/domain-errors';
 import type { TenantAccess } from './access-context';
-import { isPublicRoute } from './route-metadata';
+import { isAuthenticatedOnlyRoute, isPublicRoute } from './route-metadata';
 
 const SAFE_METHODS = new Set(['GET', 'HEAD', 'OPTIONS']);
 
@@ -38,6 +38,8 @@ export class TenantGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     if (isPublicRoute(this.reflector, context)) return true;
+    // A login is enough (AuthGuard checked it); there may be no active tenant, so there is nothing to resolve.
+    if (isAuthenticatedOnlyRoute(this.reflector, context)) return true;
 
     // AuthGuard runs first; if it did not fill this the guard chain is broken: fail closed.
     const auth = this.cls.get('auth');

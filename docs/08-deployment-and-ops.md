@@ -122,8 +122,13 @@ There is no `SESSION_SECRET`: sessions are random tokens stored hashed in the da
 
 The API validates its environment with Zod at startup (`apps/api/src/config`) and **refuses to boot**
 (exit code 1, variable names and reasons only, never values) when a required variable is missing or
-malformed. Required today: `DATABASE_URL`, `APP_ORIGIN`. `AUTH_DATABASE_URL` and
-`FIELD_ENCRYPTION_KEYS` are validated when present and become required with the modules that use them.
+malformed. Required: `DATABASE_URL`, `AUTH_DATABASE_URL`, `APP_ORIGIN` and `FIELD_ENCRYPTION_KEYS` (the worker
+needs the same keyring and refuses to boot without it).
+
+`FIELD_ENCRYPTION_KEYS` is `{"active":"k1","keys":{"k1":"<base64 of 32 random bytes>"}}`. Generate a key with
+`node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"`. **Rotation:** add a new key id to
+`keys` in the API AND the worker, deploy, then make it `active`; keep the old key until no stored value still
+names it (sealed email secrets are short-lived, so a few days). A key that is not 32 bytes stops the process at boot.
 
 ### `TRUST_PROXY` must equal the real number of proxies
 

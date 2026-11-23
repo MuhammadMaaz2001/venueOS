@@ -278,6 +278,22 @@ model LoginAttempt {
   @@map("login_attempts")
 }
 
+// AUTH-ONLY. One row per request to a public endpoint that sends an email (signup, resend-verification,
+// password/forgot). Backs the abuse limits: max 3 emails per email hash per hour and 20 requests per IP
+// per 15 minutes, counted in the database so they hold across instances. Email stored as a hash only.
+// Old rows are purged by a job.
+model AuthRequest {
+  id        String   @id @default(cuid())
+  kind      String   // signup, resend_verification, password_forgot
+  emailHash String   @map("email_hash")
+  ip        String?
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([emailHash, createdAt])
+  @@index([ip, createdAt])
+  @@map("auth_requests")
+}
+
 model Role {
   id          String       @id @default(cuid())
   tenantId    String       @map("tenant_id")

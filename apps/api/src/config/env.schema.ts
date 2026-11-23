@@ -1,3 +1,4 @@
+import { fieldKeyringEnvSchema } from '@venueos/shared';
 import { z } from 'zod';
 
 // Messages below never contain the offending value: config errors are printed at boot and may end
@@ -15,30 +16,6 @@ const origin = z.string().refine((v) => {
   }
 }, 'must be a bare origin such as https://app.example.com (no path, no trailing slash)');
 
-// `{"active":"k1","keys":{"k1":"<base64 32-byte key>"}}`. Only the shape is checked here; the key
-// material is validated by the encryption service when it exists.
-const keyring = z.string().transform((raw, ctx) => {
-  let parsed: unknown;
-  try {
-    parsed = JSON.parse(raw);
-  } catch {
-    ctx.addIssue({ code: 'custom', message: 'must be valid JSON' });
-    return z.NEVER;
-  }
-  const result = z
-    .object({ active: z.string().min(1), keys: z.record(z.string(), z.string().min(1)) })
-    .refine((k) => k.active in k.keys, 'active must name a key in keys')
-    .safeParse(parsed);
-  if (!result.success) {
-    ctx.addIssue({
-      code: 'custom',
-      message: 'must be {"active": "<id>", "keys": {"<id>": "<key>"}}',
-    });
-    return z.NEVER;
-  }
-  return result.data;
-});
-
 export const EnvSchema = z.object({
   NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
   PORT: z.coerce.number().int().min(1).max(65535).default(4000),
@@ -47,9 +24,15 @@ export const EnvSchema = z.object({
   DATABASE_URL: postgresUrl,
   APP_ORIGIN: origin,
 
-  // Validated when present, required by the modules that use them (P0-4 auth, field encryption).
-  AUTH_DATABASE_URL: postgresUrl.optional(),
-  FIELD_ENCRYPTION_KEYS: keyring.optional(),
+  /** Role venueos_auth: used by the AuthModule alone (sessions, credentials, tokens, invitations). */
+  AUTH_DATABASE_URL: postgresUrl,
+  /**
+   * Keyring for AES-256-GCM sealing (docs/04-security.md section 6): secret email variables (verification,
+   * reset and invitation links) now, sensitive customer fields later. The worker needs the same keyring.
+   */
+  FIELD_ENCRYPTION_KEYS: fieldKeyringEnvSchema,
+
+  // Validated when present, required by the modules that use them.
   S3_BUCKET: z.string().min(1).optional(),
   AWS_REGION: z.string().min(1).optional(),
   SENTRY_DSN: z.string().min(1).optional(),

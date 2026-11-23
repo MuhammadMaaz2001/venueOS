@@ -1,7 +1,8 @@
 # apps/api — NestJS API rules
 
 - Module per feature in `src/modules/<module>/`; layout in `docs/07-coding-standards.md`.
-- Every controller method: `@RequirePermission('<name>')` or `@Public()`; Zod DTOs from
+- Every controller method: `@RequirePermission('<name>')`, `@AuthenticatedOnly()` (login, no tenant) or
+  `@Public()` (exactly one); Zod DTOs from
   `@venueos/shared`; Swagger decorators generated from the Zod schema.
 - Database access only via `TenantDb.tx(fn)` from `@venueos/db`. Never `new PrismaClient()`.
   Only `AuthModule` uses `AuthDb` (role `venueos_auth`) for the auth tables.
@@ -73,6 +74,19 @@
   jobs. Template names must exist in `@venueos/templates`; an unknown one fails permanently in the worker (dead letter).
   `/health/ready` reports `queue: down` when the `pgboss` schema is missing or at another version than the installed library.
   Tests: `email-outbox.int-spec.ts` (probe controller in `helpers/email-probe.controller.ts`) proves commit/rollback.
+- **Auth (P0-4)** (`modules/auth`, the ONLY module with `AuthDb`): the `SessionAuthContextProvider` turns the
+  `__Host-vos_session` cookie into an `AuthContext` (nothing else decides identity). Public endpoints that send
+  email (signup, resend-verification, password/forgot) answer the SAME generic 202 whether or not the address has
+  an account and are limited in the database (`AbuseLimitsService`); login answers one generic 401 and always
+  runs a real hash check. Tokens (session, verify, reset, invitation) are 32 random bytes, only the SHA-256 hash is
+  stored, single use is a conditional UPDATE. Mail with a secret link goes through `EmailOutbox` with
+  `secretVars` (sealed; see Jobs). Pre-session mail is owned by the user's oldest membership's tenant
+  (`enqueueForTenant`, the id from the database, never from the request). `@AuthenticatedOnly()` handlers
+  read through `TenantDb.asUser()` and never assume a tenant in the context. Staff changes keep one active
+  Owner (`StaffService`, lock on the tenant row) and never grant more than the caller holds
+  (`common/access/escalation.ts`). Tests: `auth-*.int-spec.ts`, `staff*.int-spec.ts` use `realAuth: true` and
+  `helpers/auth-harness.ts` (logins, cookies, sealed mails opened with the test keyring, a client IP per test
+  through `X-Forwarded-For`).
 - Changing endpoints or schemas: run `pnpm api-client:generate` and commit
   `packages/api-client/openapi.json` and `src/schema.ts`.
 - Never run git commit/push/merge/rebase/branch commands; list changed files and suggest a

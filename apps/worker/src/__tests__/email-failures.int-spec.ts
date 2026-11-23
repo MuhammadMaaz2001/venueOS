@@ -179,6 +179,68 @@ describe('email.send failures', () => {
     });
   });
 
+  it('a sealed secret that does not open for its row (copied or tampered) is permanent (INVALID_PAYLOAD)', async () => {
+    const link = 'https://app.example.test/reset-password?token=TAMPER-TEST-TOKEN-0123456789';
+    const sealed = (to: string) =>
+      fx.tenantDb.tx({ tenantId }, (tx) =>
+        enqueueEmail(
+          fx.queue,
+          tx,
+          tenantId,
+          {
+            ...base,
+            template: 'auth.password-reset',
+            to,
+            vars: { name: 'Ali', minutes: 30 },
+            secretVars: { resetUrl: link },
+          },
+          { sealer: fx.sealer },
+        ),
+      );
+    const toFirst = uniqueRecipient();
+    const toSecond = uniqueRecipient();
+    const first = await sealed(toFirst);
+    const second = await sealed(toSecond);
+
+    // Copy the first row's sealed blob onto the second row (the migrator owns the table; RLS still applies).
+    await fx.admin.query('BEGIN');
+    try {
+      await fx.admin.query("SELECT set_config('app.tenant_id', $1, true)", [tenantId]);
+      await fx.admin.query(
+        `UPDATE message_logs SET template_vars = jsonb_set(template_vars, '{__sealed}', (
+           SELECT template_vars->'__sealed' FROM message_logs WHERE message_key = $1 AND status = 'queued')
+         ) WHERE message_key = $2 AND status = 'queued'`,
+        [first.messageKey, second.messageKey],
+      );
+      await fx.admin.query('COMMIT');
+    } catch (error) {
+      await fx.admin.query('ROLLBACK');
+      throw error;
+    }
+
+    const provider = new ScriptedProvider(() => null);
+    await withWorker(provider, async () => {
+      const jobs = await deadLettered(second.messageKey);
+      const rows = await messageLog(fx.admin, tenantId, second.messageKey);
+      expect(rows.at(-1)).toMatchObject({
+        status: 'failed',
+        error: 'INVALID_PAYLOAD',
+        is_final: true,
+      });
+      expect(jobs.find((j) => j.name === 'email.send')?.retry_count).toBe(0);
+      // The untouched first row still sends.
+      await eventually(
+        async () =>
+          (await messageLog(fx.admin, tenantId, first.messageKey)).some((r) => r.status === 'sent'),
+        {
+          what: 'the untouched message to be sent',
+        },
+      );
+    });
+    expect(provider.calls.map((c) => c.to)).toContain(toFirst);
+    expect(provider.calls.map((c) => c.to)).not.toContain(toSecond);
+  });
+
   it('a job payload that fails validation is dead-lettered at once and the final failed row is written', async () => {
     const messageKey = `bad-${uniqueRecipient().slice(6, 14)}`;
     await withWorker(new ScriptedProvider(() => null), async () => {

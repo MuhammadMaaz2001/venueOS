@@ -72,7 +72,7 @@ erDiagram
 | Append-only, one column exception | `payments` | SELECT, INSERT, and `UPDATE (status, cleared_at)` for cheque clearing |
 | No delete | `tenants`, `users`, `bookings`, `booking_sessions`, `quotations`, `refund_requests` | SELECT, INSERT, UPDATE |
 | Read-only | `plans` | SELECT |
-| Auth-only | `user_credentials`, `auth_sessions`, `auth_tokens`, `invitations`, `login_attempts` | nothing; `venueos_auth` has full DML. `users`: `venueos_auth` has SELECT/INSERT/UPDATE |
+| Auth-only | `user_credentials`, `auth_sessions`, `auth_tokens`, `invitations`, `login_attempts`, `auth_requests` | nothing; `venueos_auth` has full DML. `users`: `venueos_auth` has SELECT/INSERT/UPDATE |
 | Scanner | `tenants`, `venues`, `bookings`, `booking_sessions`, `payment_schedule_items`, `leads`, `inventory_items` | `venueos_jobs` has SELECT only (and BYPASSRLS) |
 | Job queue | the `pgboss` schema (pg-boss 12; created by the migration `pgboss_jobs_and_email_queue`, owned by the migrator) | `venueos_app`: SELECT `queue`, `version`; SELECT + INSERT `job`, `job_common` (enqueue only). `venueos_jobs`: SELECT, INSERT, UPDATE, DELETE on every `pgboss` table (the worker's connection). `venueos_auth`: no access. Nobody but the migrator can create or alter objects in it |
 

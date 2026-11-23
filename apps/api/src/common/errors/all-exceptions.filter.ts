@@ -5,6 +5,7 @@ import type { Response } from 'express';
 import { PinoLogger } from 'nestjs-pino';
 import { REQUEST_ID_HEADER, resolveRequestId } from '../request-id/request-id';
 import type { RequestWithId } from '../request-id/request-id';
+import { RateLimitedError } from './domain-errors';
 import { toErrorResponse } from './to-error-response';
 
 /**
@@ -42,6 +43,9 @@ export class AllExceptionsFilter implements ExceptionFilter {
 
     if (res.headersSent) return;
     res.setHeader(REQUEST_ID_HEADER, requestId);
+    if (exception instanceof RateLimitedError) {
+      res.setHeader('Retry-After', String(exception.retryAfterSeconds));
+    }
     res.status(mapped.status).json(body);
   }
 }

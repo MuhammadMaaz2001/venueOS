@@ -16,3 +16,6 @@ docs
 packages/db/prisma
 packages/db/docker
 packages/db/tests
+
+# Generated from the SecLists word list next to it (apps/api/scripts/generate-breached-passwords.mjs).
+apps/api/src/modules/auth/data/breached-passwords.ts

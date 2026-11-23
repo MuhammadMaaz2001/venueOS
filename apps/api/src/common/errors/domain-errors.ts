@@ -36,8 +36,8 @@ export class PlanLimitReachedError extends AppError {
 }
 
 export class ForbiddenError extends AppError {
-  constructor(message = 'You do not have access to this resource.') {
-    super(403, 'FORBIDDEN', message);
+  constructor(message = 'You do not have access to this resource.', details?: unknown) {
+    super(403, 'FORBIDDEN', message, details);
   }
 }
 
@@ -93,5 +93,28 @@ export class InsufficientStockError extends AppError {
 export class InvalidStateTransitionError extends AppError {
   constructor(message = 'This action is not allowed in the current state.', details?: unknown) {
     super(422, 'INVALID_STATE_TRANSITION', message, details);
+  }
+}
+
+export class BadRequestError extends AppError {
+  constructor(message = 'The request could not be understood.', details?: unknown) {
+    super(400, 'BAD_REQUEST', message, details);
+  }
+}
+
+/** A 400 VALIDATION_ERROR raised by the server (a rule Zod cannot express, e.g. a breached password). */
+export class FieldValidationError extends AppError {
+  constructor(path: string, message: string) {
+    super(400, 'VALIDATION_ERROR', 'Some fields are invalid.', [{ path, code: 'custom', message }]);
+  }
+}
+
+export class RateLimitedError extends AppError {
+  constructor(
+    message = 'Too many attempts. Please try again later.',
+    /** Sent as the `Retry-After` header. */
+    readonly retryAfterSeconds = 900,
+  ) {
+    super(429, 'RATE_LIMITED', message);
   }
 }

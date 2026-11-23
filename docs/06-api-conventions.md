@@ -49,11 +49,11 @@ Always this shape, with a stable machine `code`:
 | 400 | `VALIDATION_ERROR` (details = field errors) |
 | 401 | `UNAUTHENTICATED`, `SESSION_EXPIRED` |
 | 402 | `PLAN_LIMIT_REACHED` |
-| 403 | `FORBIDDEN`, `CSRF_REJECTED` (missing `X-Requested-With` / wrong `Origin`), `DISCOUNT_LIMIT`, `TENANT_SUSPENDED` (writes on a read-only tenant) |
+| 403 | `FORBIDDEN` (login with an unverified address: `details.reason = EMAIL_NOT_VERIFIED`), `CSRF_REJECTED` (missing `X-Requested-With` / wrong `Origin`), `DISCOUNT_LIMIT`, `TENANT_SUSPENDED` (writes on a read-only tenant) |
 | 404 | `NOT_FOUND` (also for other tenants' resources) |
 | 409 | `SLOT_TAKEN`, `VERSION_CONFLICT`, `DUPLICATE`, `IDEMPOTENCY_CONFLICT` (same key, different body) |
 | 422 | `ADVANCE_REQUIRED`, `LOCAL_RULE`, `INSUFFICIENT_STOCK`, `INVALID_STATE_TRANSITION` |
-| 429 | `RATE_LIMITED` (with `Retry-After`) |
+| 429 | `RATE_LIMITED` (with `Retry-After`; login from an IP with 20 attempts in 15 minutes) |
 | 500 | `INTERNAL` (no internals in message) |
 
 Other 4xx from the framework (malformed JSON, oversized body, unknown route) use `BAD_REQUEST`,
@@ -62,6 +62,25 @@ one endpoint that is not an error envelope: it answers `503 {"status":"unavailab
 for load balancers.
 
 Messages are user-safe English; the web app maps `code` to translated text.
+
+## Auth endpoints (P0-4)
+
+| Endpoint | Access | Notes |
+| --- | --- | --- |
+| `POST /v1/auth/signup` | public | always `202 { message }` (same for existing addresses) |
+| `POST /v1/auth/verify-email` | public | `{ token }` → 204; invalid/expired/used → 400 |
+| `POST /v1/auth/resend-verification` | public | `{ email }` → 202 generic |
+| `POST /v1/auth/login` | public | sets the cookie; `{ user, activeTenantId, tenants }`; one generic 401 |
+| `POST /v1/auth/password/forgot` | public | `{ email }` → 202 generic |
+| `POST /v1/auth/password/reset` | public | `{ token, newPassword }` → 204; ends every session |
+| `POST /v1/auth/invitations/accept` | public | `{ token, name, password }` for a NEW user; existing address → 409 |
+| `POST /v1/auth/logout`, `/logout-all` | login | 204, clears the cookie |
+| `POST /v1/auth/password/change` | login | `{ currentPassword, newPassword }` → 204; ends the other sessions |
+| `GET /v1/me`, `GET /v1/me/tenants` | login | identity, permissions of the active workspace; active memberships |
+| `POST /v1/me/switch-tenant` | login | `{ tenantId }`; rotates the cookie; not a member → 404 |
+| `POST /v1/me/invitations/accept` | login | `{ token }` for an existing account |
+| `GET/POST /v1/staff/invitations`, `DELETE /v1/staff/invitations/{id}` | `staff.manage` | create also needs room in the plan |
+| `GET /v1/staff`, `PATCH /v1/staff/{membershipId}` | `staff.manage` | `rev`; one active Owner always remains (422) |
 
 ## Lists
 

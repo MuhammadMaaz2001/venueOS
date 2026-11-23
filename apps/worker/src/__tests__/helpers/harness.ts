@@ -2,8 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { JobQueue, TenantDb } from '@venueos/db';
-import type { JobQueueOptions } from '@venueos/db';
+import { JobQueue, TenantDb, createSealer } from '@venueos/db';
+import type { JobQueueOptions, Sealer } from '@venueos/db';
 import pg from 'pg';
 import { WORKER_CONFIG } from '../../config/config.module';
 import type { WorkerConfig } from '../../config/config.module';
@@ -22,6 +22,9 @@ for (const file of ['.env', '.env.example']) {
   }
 }
 
+/** Test-only keyring (32 bytes of 7). The worker under test and the enqueue side share it, like in production. */
+export const TEST_KEYRING = { active: 'k1', keys: { k1: Buffer.alloc(32, 7).toString('base64') } };
+
 export const MAILPIT_API = process.env.MAILPIT_API_URL ?? 'http://localhost:8025';
 
 /** Valid test configuration; `overrides` replace single variables. */
@@ -30,6 +33,7 @@ export function testConfig(overrides: Record<string, string> = {}): WorkerConfig
     NODE_ENV: 'test',
     DATABASE_URL: process.env.DATABASE_URL,
     JOBS_DATABASE_URL: process.env.JOBS_DATABASE_URL,
+    FIELD_ENCRYPTION_KEYS: JSON.stringify(TEST_KEYRING),
     EMAIL_PROVIDER: 'smtp',
     SMTP_URL: process.env.SMTP_URL ?? 'smtp://localhost:1025',
     EMAIL_FROM_ADDRESS: 'bookings@venueos.test',
@@ -82,6 +86,8 @@ export async function startWorker(
 
 export interface Fixture {
   tenantDb: TenantDb;
+  /** Seals secret variables the way the API does. */
+  sealer: Sealer;
   queue: JobQueue;
   /** Reads pgboss.* and message_logs directly (table owner; for assertions only). */
   admin: pg.Client;
@@ -99,6 +105,7 @@ export async function createFixture(retry?: JobQueueOptions['retry']): Promise<F
   await admin.connect();
   return {
     tenantDb,
+    sealer: createSealer(TEST_KEYRING),
     queue,
     admin,
     close: async () => {

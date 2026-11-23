@@ -7,7 +7,7 @@ import { PinoLogger } from 'nestjs-pino';
 import type { RequestContext } from '../context/request-context';
 import { ForbiddenError, UnauthenticatedError } from '../errors/domain-errors';
 import { PERMISSION_KEY } from './access.decorators';
-import { isPublicRoute } from './route-metadata';
+import { isAuthenticatedOnlyRoute, isPublicRoute } from './route-metadata';
 
 /**
  * Step 5 of the request lifecycle (docs/02): the handler's `@RequirePermission()` must be in the
@@ -26,6 +26,7 @@ export class PermissionGuard implements CanActivate {
 
   canActivate(context: ExecutionContext): boolean {
     if (isPublicRoute(this.reflector, context)) return true;
+    if (isAuthenticatedOnlyRoute(this.reflector, context)) return true;
 
     const required = this.reflector.getAllAndOverride<Permission | undefined>(PERMISSION_KEY, [
       context.getHandler(),
@@ -34,7 +35,7 @@ export class PermissionGuard implements CanActivate {
     if (required === undefined) {
       this.logger.error(
         { handler: `${context.getClass().name}.${context.getHandler().name}` },
-        'Route declares neither @Public() nor @RequirePermission(); denying',
+        'Route declares none of @Public(), @AuthenticatedOnly(), @RequirePermission(); denying',
       );
       throw new ForbiddenError();
     }

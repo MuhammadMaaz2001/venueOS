@@ -1,6 +1,7 @@
 export * from './currency.js';
 export * from './errors.js';
 export * from './jobs.js';
+export * from './keyring.js';
 export * from './mask.js';
 export * from './money.js';
 export * from './permissions.js';

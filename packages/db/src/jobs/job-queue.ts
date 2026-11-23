@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import {
   EMAIL_SEND_EXPIRE_SECONDS,
+  SEALED_VARS_KEY,
   JOB_NAMES,
   JOB_RETRY,
   emailSendPayloadSchema,
@@ -10,7 +11,9 @@ import type { EmailSendPayload, EnqueueEmailInput } from '@venueos/shared';
 import { PgBoss } from 'pg-boss';
 import pg from 'pg';
 import type { DbTx } from '../client.js';
+import type { Sealer } from '../crypto/seal.js';
 import { pgBossDb } from '../pgboss-adapter.js';
+import { sealedVarsAad } from './sealed-vars.js';
 
 /** Job name -> payload type. A job whose payload is not listed here cannot be enqueued. */
 export interface JobPayloads {
@@ -143,9 +146,26 @@ export async function enqueueEmail(
   tx: DbTx,
   tenantId: string,
   input: EnqueueEmailInput,
+  options: { sealer?: Sealer } = {},
 ): Promise<EnqueuedEmail> {
   const data = enqueueEmailInputSchema.parse(input);
   const messageKey = randomUUID();
+  // Secret variables (links with tokens) are sealed, bound to this exact row by the AAD, and stored inside
+  // template_vars; they are never written in plain text anywhere (docs/04-security.md section 6).
+  const secrets =
+    data.secretVars && Object.keys(data.secretVars).length > 0 ? data.secretVars : null;
+  if (secrets && !options.sealer) {
+    throw new Error('enqueueEmail: secretVars need a sealer (FIELD_ENCRYPTION_KEYS)');
+  }
+  const templateVars = secrets
+    ? {
+        ...data.vars,
+        [SEALED_VARS_KEY]: (options.sealer as Sealer).seal(
+          JSON.stringify(secrets),
+          sealedVarsAad(tenantId, messageKey),
+        ),
+      }
+    : data.vars;
   await tx.messageLog.create({
     data: {
       tenantId,
@@ -159,7 +179,7 @@ export async function enqueueEmail(
       status: 'queued',
       template: data.template,
       locale: data.locale,
-      templateVars: data.vars,
+      templateVars,
     },
   });
   const jobId = await queue.send(

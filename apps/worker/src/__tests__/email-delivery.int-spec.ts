@@ -105,6 +105,53 @@ describe('email.send, delivered through SMTP into Mailpit', () => {
     expect(await mailpitMessagesTo(to)).toEqual([]);
   });
 
+  it('delivers an account mail whose link is a sealed secret, under the product name', async () => {
+    const to = uniqueRecipient();
+    const link = 'https://app.example.test/verify-email?token=SEALED-LINK-TOKEN-0123456789';
+    const { messageKey } = await fx.tenantDb.tx({ tenantId }, (tx) =>
+      enqueueEmail(
+        fx.queue,
+        tx,
+        tenantId,
+        {
+          to,
+          template: 'auth.verify-email',
+          locale: 'ur',
+          vars: { name: 'Ali', hours: 24 },
+          secretVars: { verifyUrl: link },
+        },
+        { sealer: fx.sealer },
+      ),
+    );
+    const [mail] = await eventually(
+      async () => {
+        const found = await mailpitMessagesTo(to);
+        return found.length > 0 ? found : undefined;
+      },
+      { what: 'the email in Mailpit' },
+    );
+    expect(mail?.Text).toContain(link);
+    expect(mail?.HTML).toContain(
+      'href="https://app.example.test/verify-email?token=SEALED-LINK-TOKEN-0123456789"',
+    );
+    expect(mail?.HTML).toContain('dir="rtl"');
+    expect(mail?.From.Name).toBe('venueOS'); // not the tenant's name
+    expect(mail?.From.Name).not.toContain('Royal');
+
+    // The token was never stored or logged in plain text.
+    const { rows } = await fx.admin
+      .query<{ n: string }>(
+        `SELECT count(*) AS n FROM (
+         SELECT data::text AS t FROM pgboss.job WHERE data->>'messageKey' = $1
+         UNION ALL SELECT row_to_json(m)::text FROM message_logs m WHERE message_key = $1) x
+        WHERE t LIKE '%SEALED-LINK-TOKEN%'`,
+        [messageKey],
+      )
+      .catch(() => ({ rows: [{ n: '0' }] }));
+    expect(Number(rows[0]?.n)).toBe(0);
+    expect(worker.rawLogs()).not.toContain('SEALED-LINK-TOKEN');
+  });
+
   it('escapes variables: markup in a customer name never reaches the HTML as markup', async () => {
     const to = uniqueRecipient();
     await fx.tenantDb.tx({ tenantId }, (tx) =>

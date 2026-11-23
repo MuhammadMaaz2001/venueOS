@@ -66,6 +66,13 @@ export async function setup() {
   }
 
   process.env.DATABASE_URL = urlFor('venueos_app', dbName);
+  // The AuthModule's connection (sessions, credentials, tokens, invitations): role venueos_auth.
+  process.env.AUTH_DATABASE_URL = urlFor('venueos_auth', dbName);
+  // The cluster superuser on the test database (bypasses RLS): tests read message_logs of tenants they
+  // cannot name in advance (a signup creates its own). Assertions only; the code under test never uses it.
+  const superuser = new URL(helpers.adminUrl);
+  superuser.pathname = `/${dbName}`;
+  process.env.VENUEOS_TEST_SUPERUSER_URL = superuser.toString();
 }
 
 export async function teardown() {
