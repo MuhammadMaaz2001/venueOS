@@ -1,8 +1,8 @@
 {
+  // Typecheck (source, specs, vitest config). Emit uses tsconfig.build.json.
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
-    "rootDir": "src",
-    "outDir": "dist"
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src", "vitest.config.ts"]
 }

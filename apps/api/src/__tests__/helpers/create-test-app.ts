@@ -58,6 +58,8 @@ export async function createTestApp(
      * of the test stub. Used to prove that no header can authenticate a real request.
      */
     realAuth?: boolean;
+    /** Replace providers (`overrideProvider(token).useValue(value)`), e.g. a failing health check. */
+    overrides?: { provide: unknown; useValue: unknown }[];
   } = {},
 ): Promise<TestApp> {
   let output = '';
@@ -78,6 +80,9 @@ export async function createTestApp(
     .useValue(stream);
   if (!options.realAuth) {
     builder = builder.overrideProvider(AuthContextProvider).useClass(TestAuthContextProvider);
+  }
+  for (const { provide, useValue } of options.overrides ?? []) {
+    builder = builder.overrideProvider(provide).useValue(useValue);
   }
   const moduleRef = await builder.compile();
 

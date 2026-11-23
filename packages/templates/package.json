@@ -2,7 +2,7 @@
   "name": "@venueos/templates",
   "version": "0.0.0",
   "private": true,
-  "description": "Email and PDF HTML templates (quotation, receipt, event sheet); filled in by later tasks",
+  "description": "Email and PDF HTML templates (quotation, receipt, event sheet); email rendering lives here",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -15,12 +15,14 @@
     "dist"
   ],
   "scripts": {
-    "build": "tsc",
-    "dev": "tsc --watch --preserveWatchOutput",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "3.2.7"
   }
 }

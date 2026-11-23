@@ -19,6 +19,30 @@
     },
     "test": {
       "dependsOn": ["^build"]
+    },
+
+    // The Prisma client of @venueos/db is generated ONCE per run by this task. build, typecheck, dev and
+    // test of the package depend on it, so no two tasks run `prisma generate` into src/generated at the
+    // same time (they raced and failed intermittently on Windows). The db scripts themselves do not
+    // generate; `pnpm --filter @venueos/db generate` does it by hand for direct script runs.
+    "@venueos/db#generate": {
+      "inputs": ["prisma/schema.prisma", "prisma.config.ts"],
+      "outputs": ["src/generated/**"]
+    },
+    "@venueos/db#build": {
+      "dependsOn": ["@venueos/db#generate", "^build"],
+      "outputs": ["dist/**"]
+    },
+    "@venueos/db#typecheck": {
+      "dependsOn": ["@venueos/db#generate", "^build"]
+    },
+    "@venueos/db#test": {
+      "dependsOn": ["@venueos/db#generate", "^build"]
+    },
+    "@venueos/db#dev": {
+      "dependsOn": ["@venueos/db#generate", "^build"],
+      "cache": false,
+      "persistent": true
     }
   }
 }

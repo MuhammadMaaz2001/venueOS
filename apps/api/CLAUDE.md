@@ -10,7 +10,8 @@
 - `TenantGuard`: `SUSPENDED` tenants are read-only (GET allowed, other methods `403 TENANT_SUSPENDED`).
 - Any client-supplied ID not covered by a composite FK (venue, package, add-on, vendor, role…)
   is loaded through `TenantDb` first; not found → 404.
-- Slow work (email, PDF) → enqueue a pg-boss job inside the same transaction.
+- Slow work (email, PDF) → enqueue a pg-boss job inside the same transaction. Email: `EmailOutbox.enqueue(tx, { to, template,
+  locale, vars })` (see Jobs below); never send mail from a request.
 - Map `space_occupancies_no_overlap` violations to `SlotTakenError` → 409 `SLOT_TAKEN`, and
   `inventory_items_on_hand_nonneg` to 422 `INSUFFICIENT_STOCK`. Never write
   `space_occupancies.active`; triggers derive it.
@@ -64,6 +65,14 @@
   a user with `t.as(authHeader(userId, tenantId))`. The identity stub (`helpers/test-auth.ts`) is test-only:
   it must never be imported by application code (`no-test-auth.spec.ts` enforces it).
   Controllers with constructor injection need no `@Inject` because vitest compiles with SWC.
+- **Jobs (P0-6a):** `JobsModule` (global) provides `JobQueue` and `EmailOutbox`. Call `emailOutbox.enqueue(tx, input)` inside the
+  same `TenantDb.tx` as the business change: it appends the `queued` row to `message_logs` (recipient, template, locale,
+  variables, reply-to: all customer data stays there, under RLS) and sends the `email.send` job with `{ tenantId, messageKey }`
+  only. A rollback removes both. The tenant comes from CLS, never from a parameter. Never put customer data into any
+  job payload (docs/04 section 4). The API can only enqueue (`venueos_app` has no UPDATE/DELETE on `pgboss.*`); the worker runs
+  jobs. Template names must exist in `@venueos/templates`; an unknown one fails permanently in the worker (dead letter).
+  `/health/ready` reports `queue: down` when the `pgboss` schema is missing or at another version than the installed library.
+  Tests: `email-outbox.int-spec.ts` (probe controller in `helpers/email-probe.controller.ts`) proves commit/rollback.
 - Changing endpoints or schemas: run `pnpm api-client:generate` and commit
   `packages/api-client/openapi.json` and `src/schema.ts`.
 - Never run git commit/push/merge/rebase/branch commands; list changed files and suggest a

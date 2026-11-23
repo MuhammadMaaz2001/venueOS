@@ -11,6 +11,7 @@ import { AuditModule } from './common/audit/audit.module';
 import { contextModule } from './common/context/context.module';
 import { AllExceptionsFilter } from './common/errors/all-exceptions.filter';
 import { DbModule } from './common/db/db.module';
+import { JobsModule } from './common/jobs/jobs.module';
 import { loggingModule } from './common/logging/logging.module';
 import { CsrfGuard } from './common/security/csrf.guard';
 import { APP_CONFIG, ConfigModule } from './config/config.module';
@@ -23,6 +24,7 @@ import { RolesModule } from './modules/roles/roles.module';
     contextModule,
     loggingModule,
     DbModule,
+    JobsModule,
     AccessModule,
     AuditModule,
     // In-memory, per API instance, keyed by client IP (req.ip, so TRUST_PROXY must be right).

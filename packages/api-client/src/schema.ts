@@ -85,6 +85,8 @@ export interface components {
             checks: {
                 /** @enum {string} */
                 database: "up" | "down";
+                /** @enum {string} */
+                queue: "up" | "down";
             };
         };
         RoleListResponseDto: {

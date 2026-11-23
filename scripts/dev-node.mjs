@@ -5,7 +5,7 @@
 // It runs two things side by side:
 //   1. `tsc --watch` on the app's own sources (tsconfig.build.json), writing to dist/.
 //   2. `node --watch` on dist/main.js that restarts when the app's own dist OR the compiled dist of
-//      a workspace package it consumes (packages/shared, packages/db) changes.
+//      a workspace package it consumes (packages/shared, packages/db, packages/templates) changes.
 //
 // Why not `nest start --watch`: it only recompiles when a .ts/.d.ts file in the TypeScript program
 // changes, so a change that only alters a library's emitted JavaScript never restarts the app; and
@@ -22,7 +22,7 @@ const entry = resolve(appDir, 'dist/main.js');
 const nodeFlags = process.argv.slice(2);
 
 // Workspace packages the apps import as compiled `dist` (see turbo.json: dev depends on ^build).
-const watchedPackages = ['shared', 'db'];
+const watchedPackages = ['shared', 'db', 'templates'];
 const watchPaths = [
   resolve(appDir, 'dist'),
   ...watchedPackages

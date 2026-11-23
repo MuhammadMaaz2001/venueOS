@@ -93,7 +93,9 @@ dev over HTTPS.
    RLS now applies to every statement.
 9. Audit rows are written in the same transaction. Jobs are enqueued in the same transaction
    (pg-boss uses the same database, through `packages/db/src/pgboss-adapter.ts`), so a
-   rolled-back booking never sends an email.
+   rolled-back booking never sends an email. Modules do this with `EmailOutbox.enqueue(tx, ...)`
+   (API) / `enqueueEmail` (`@venueos/db`): it appends the `queued` row to `message_logs` and sends
+   the job `{ tenantId, messageKey }` in that same transaction.
 10. Errors are mapped to the standard error format (see `06-api-conventions.md`).
 
 ## Multi-tenancy
@@ -122,7 +124,11 @@ dev over HTTPS.
   - `venueos_jobs`: `BYPASSRLS`, **SELECT only** on the few tables the scanners need
     (tenants, venues, bookings, booking_sessions, payment_schedule_items, leads,
     inventory_items). The scanner reads IDs only and enqueues one job per tenant item; the job
-    itself runs as `venueos_app` inside that tenant's context.
+    itself runs as `venueos_app` inside that tenant's context. It is also the worker's
+    pg-boss connection, so it has read/write on the `pgboss` schema (and nothing else
+    beyond the scanner SELECTs); `venueos_app` can only enqueue into it (see `03-data-model.md`). It is also the worker's
+    pg-boss connection, so it has read/write on the `pgboss` schema (and nothing else
+    beyond the scanner SELECTs); `venueos_app` can only enqueue into it (see `03-data-model.md`).
 - Signup, invitation acceptance, login: see `09-phase-0-plan.md` (P0-4) for the exact
   transaction pattern (pre-generated tenant id, `set_config`, then insert).
 
@@ -148,23 +154,48 @@ dev over HTTPS.
 | `reminders.payment-due` | Daily 09:00 venue time | Emails customers with unpaid schedule items (FIFO allocation of received payments) due in N days; marks `reminded` |
 | `reminders.event` | Daily | Event reminder to customer N days before; event sheet email to ops staff the day before |
 | `leads.follow-up` | Every 15 min | Internal email to assignee when `nextFollowUpAt` passes |
-| `email.send` | Enqueued by API | Renders template in the customer's `preferred_locale`, sends via SES, appends `message_logs` events |
+| `email.send` | Enqueued by API (same transaction as the business change), payload `{ tenantId, messageKey }` only | Loads the `queued` `message_logs` row (recipient, template, locale, variables, reply-to), renders the template in its locale, sends via the configured provider (SES, or SMTP/Mailpit in development), appends `sent` / `failed` rows. Unknown template or invalid payload: final `failed` row and dead-letter at once |
 | `pdf.render` | Enqueued by API | Renders quotation / receipt / event sheet HTML to PDF (headless Chromium), stores in S3 and records the key (`pdf_key`) |
 | `inventory.low-stock` | Daily | Internal email when `on_hand` < `reorderLevel` |
 | `inventory.reconcile` | Nightly | Scanner (`venueos_jobs`, tenants only) enqueues one job per tenant; the job (as `venueos_app` in that tenant) compares each item's `on_hand` with `SUM(stock_delta)` and emails the venue's branch manager(s) on any mismatch, plus a SYSTEM audit entry. Report only, never auto-corrects |
 | `auth.purge` | Daily | Deletes expired sessions/tokens and old `login_attempts` (runs through `AuthDb`) |
 
 Rules: jobs are idempotent (safe to run twice), carry `tenantId` in the payload, retry with
-backoff (max 5), and failures land in a dead-letter queue (inspected via SQL/ops tooling until
-the platform admin app exists).
+exponential backoff (30 s, doubling, capped at 1 h; max 5 retries, so 6 attempts), and failures land
+in a dead-letter queue (`<queue>.dead`, inspected via SQL/ops tooling until the platform admin app
+exists). A failure no retry can fix (invalid payload, unknown template) is dead-lettered immediately,
+without retries.
+
+- **The payload never holds customer data.** `pgboss.job` has no Row Level Security, so a job carries
+  identifiers only (`tenantId`, `messageKey`). Everything customer-related (recipient, template
+  variables, names, amounts) lives on the RLS-protected `message_logs` row (docs/04, section 4).
+- **Short transactions.** A job body does its database work in short `TenantDb.tx` calls for the
+  payload's tenant (role `venueos_app`) and does slow external work (SMTP/SES, S3) between them, never
+  inside a transaction. `email.send` is: (1) a transaction that loads the queued row and skips when the
+  message was already sent, (2) render and send with no transaction open, (3) a transaction that appends
+  the result row.
+- **At-least-once delivery.** Enqueue is idempotent (the singleton key is the `messageKey`) and the job
+  checks for a `sent` row first, so redeliveries do not send twice. The one remaining window: the
+  process dies after the provider accepted the message and before the `sent` row is written; the retry
+  then sends it again. A provider cannot take part in our transaction, so this is accepted.
+- **`message_logs` is an append-only event stream.** One row per event with the same `message_key`:
+  `queued` (API), then `sent`, or `failed` per attempt (`attempt`, a short `error` code, and
+  `is_final = true` on the row written when no retries remain or the failure is permanent). Error
+  codes are fixed (`INVALID_PAYLOAD`, `UNKNOWN_TEMPLATE`, `PROVIDER_UNAVAILABLE`, `PROVIDER_REJECTED`,
+  `UNEXPECTED`), never raw provider text.
 
 ## Documents and email
 
 - PDFs: HTML templates in `packages/templates`, rendered by headless Chromium (Playwright) in
   the worker. Chromium shapes Urdu (Nastaliq/Naskh fonts) and RTL correctly; bundle the fonts.
-- Email: `EmailProvider` interface with an SES implementation (Mailpit SMTP in development;
-  `EMAIL_PROVIDER=smtp|ses`). Sender is `bookings@venueos.app` with the tenant name as display
-  name and the tenant's email as `Reply-To` until custom sending domains exist.
+- Email: `EmailProvider` interface with SES and SMTP implementations (`EMAIL_PROVIDER=smtp|ses`;
+  Mailpit in development). Sender is `EMAIL_FROM_ADDRESS` (`bookings@venueos.app`) with the tenant
+  name as display name (sanitized for the header) and an optional per-message `Reply-To` (the tenant
+  contact email once it exists) until custom sending domains exist.
+- Templates: `packages/templates` renders email (subject, HTML document, text) from `{{ a.b }}`
+  templates. Every value is escaped for where it lands (HTML, Subject header, plain text); `{{{ }}}`,
+  unknown variables and prototype keys are errors. Tenant-editable templates (`message_templates`) and
+  PDFs come later.
 - Language: customer emails and receipts use `customers.preferred_locale`, falling back to the
   tenant's `default_locale`.
 - Files (venue photos, expense bill photos, generated PDFs) go to a private S3 bucket under

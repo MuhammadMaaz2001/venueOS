@@ -74,6 +74,7 @@ erDiagram
 | Read-only | `plans` | SELECT |
 | Auth-only | `user_credentials`, `auth_sessions`, `auth_tokens`, `invitations`, `login_attempts` | nothing; `venueos_auth` has full DML. `users`: `venueos_auth` has SELECT/INSERT/UPDATE |
 | Scanner | `tenants`, `venues`, `bookings`, `booking_sessions`, `payment_schedule_items`, `leads`, `inventory_items` | `venueos_jobs` has SELECT only (and BYPASSRLS) |
+| Job queue | the `pgboss` schema (pg-boss 12; created by the migration `pgboss_jobs_and_email_queue`, owned by the migrator) | `venueos_app`: SELECT `queue`, `version`; SELECT + INSERT `job`, `job_common` (enqueue only). `venueos_jobs`: SELECT, INSERT, UPDATE, DELETE on every `pgboss` table (the worker's connection). `venueos_auth`: no access. Nobody but the migrator can create or alter objects in it |
 
 Because roles are declared in the migration SQL, the same behaviour applies in a throwaway CI
 database, staging and production. A mistake is fixed with a reversing entry, never an edit.
@@ -124,8 +125,9 @@ It runs in CI on every change to `packages/db`.
   the same `prisma.$transaction(async tx => …)` with the adapter and is gone for the next
   transaction on the pooled connection. Proved by `packages/db/tests/gate-set-config.test.ts`
   (`pnpm --filter @venueos/db test:gate`); re-run it after any Prisma or adapter upgrade.
-- `@venueos/db` is built to `dist` (`prisma generate && tsc`) and exports `TenantDb`, `AuthDb`,
-  `pgBossDb`, enums and model types; `PrismaClient` itself is not exported.
+- `@venueos/db` is built to `dist` (`tsc`; the Prisma client is generated once per run by the turbo task `@venueos/db#generate`, which build, typecheck, dev and test depend on) and exports `TenantDb`, `AuthDb`,
+  `pgBossDb`, `JobQueue` + `enqueueEmail` (enqueue in the caller's transaction),
+  `expectedPgBossSchemaVersion`, enums and model types; `PrismaClient` itself is not exported.
 - `pnpm db:migrate` = `prisma migrate dev` (local; needs the migrator's `CREATEDB` for the shadow
   database), `pnpm --filter @venueos/db db:deploy` = `prisma migrate deploy` (staging/production).
 

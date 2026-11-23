@@ -106,7 +106,8 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
 Database roles and what each can touch are listed in `02-system-design.md` and
 `03-data-model.md`. In short: `venueos_app` cannot read credentials, sessions, tokens,
 invitations or login attempts, cannot delete bookings, and cannot update or delete ledgers;
-`venueos_jobs` is SELECT-only on seven scanner tables; the migrator is not a superuser;
+`venueos_jobs` is SELECT-only on seven scanner tables plus read/write on the `pgboss` schema (the
+worker's queue connection); `venueos_app` can only enqueue into `pgboss`; the migrator is not a superuser;
 `resolve_tenant()` is owned by a `NOLOGIN BYPASSRLS` role that owns nothing else.
 
 Cross-tenant work (job scanners) uses `venueos_jobs` only to find IDs, then processes each
@@ -124,6 +125,13 @@ item inside that tenant's context. Resource IDs from another tenant return **404
   is atomic with the business change. The exception is lint-allowed for that single file only;
   nothing user-controlled may reach it.
 - React escapes output by default; `dangerouslySetInnerHTML` is banned (lint rule).
+- **Nothing customer-related ever goes into `pgboss.job`.** The queue's tables have no Row Level
+  Security and are readable by the worker's role and (for enqueue) the app role, so a job payload carries
+  identifiers only: `email.send` is `{ tenantId, messageKey }` (a `.strict()` Zod schema in
+  `packages/shared` rejects any extra key, and `JobQueue.send` validates before inserting). The
+  recipient, template name, locale, variables (customer names, amounts, booking details) and reply-to
+  live on the RLS-protected `queued` row of `message_logs`, which the worker reads inside the tenant's
+  transaction. Job outputs and logs hold fixed failure codes only, never provider or driver text.
 - Email/PDF templates escape every variable (`{{ }}` escapes; triple-stash is banned). Tenant
   template bodies are text with placeholders, not raw HTML.
 - CSV/Excel exports: prefix cells starting with `= + - @` with `'` to stop formula injection.

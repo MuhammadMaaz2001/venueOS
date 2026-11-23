@@ -1257,20 +1257,29 @@ model MessageTemplate {
 // APPEND-ONLY event log (UPDATE/DELETE revoked from venueos_app). One row per delivery event;
 // all rows of one message share message_key (generated when the job is enqueued). The current
 // status of a message is the newest row for its key: queued → sent → delivered / bounced / failed.
+// The `queued` row (written by the API in the same transaction as the email.send job) carries everything
+// customer-related: recipient, template, locale, template_vars, reply_to. The pg-boss job payload is only
+// { tenantId, messageKey } (docs/04-security.md section 4). Later rows (sent, failed, ...) repeat none of it.
 model MessageLog {
-  id          String   @id @default(cuid())
-  tenantId    String   @map("tenant_id")
-  tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  messageKey  String   @map("message_key")
-  channel     String
-  to          String
-  event       String?
-  entityType  String?  @map("entity_type") // booking, lead, payment
-  entityId    String?  @map("entity_id")
-  status      String   // queued, sent, delivered, bounced, failed
-  providerRef String?  @map("provider_ref")
-  error       String?
-  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  id           String   @id @default(cuid())
+  tenantId     String   @map("tenant_id")
+  tenant       Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messageKey   String   @map("message_key")
+  channel      String
+  to           String
+  event        String?
+  entityType   String?  @map("entity_type") // booking, lead, payment
+  entityId     String?  @map("entity_id")
+  status       String   // queued, sent, delivered, bounced, failed
+  providerRef  String?  @map("provider_ref")
+  error        String?  // short failure code (EMAIL_FAILURE_CODES), never raw provider text
+  template     String?  // queued row only: template name, e.g. sample.hello
+  locale       String?  // queued row only
+  templateVars Json?    @map("template_vars") // queued row only; personal data, RLS-protected
+  replyTo      String?  @map("reply_to") // queued row only
+  attempt      Int?     // failed/sent rows: which delivery attempt (1-based)
+  isFinal      Boolean  @default(false) @map("is_final") // failed row: no more retries (dead-lettered)
+  createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([tenantId, createdAt])
   @@index([tenantId, messageKey])

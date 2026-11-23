@@ -489,3 +489,52 @@ test('venueos_jobs: sees all tenants on the scanner tables, SELECT only, nothing
     await rejects(jobs.query(`SELECT 1 FROM ${t} LIMIT 1`), /permission denied/);
   }
 });
+
+// ───────────────────────────── pg-boss schema ─────────────────────────────
+
+test('pgboss: venueos_app can only enqueue and read readiness facts; no DDL, no update/delete of jobs', async () => {
+  // Enqueue: SELECT queue (cache lookup), INSERT + SELECT on job (INSERT ... RETURNING).
+  await sql(app, T1, `SELECT name FROM pgboss.queue`);
+  await sql(app, T1, `SELECT version FROM pgboss.version`);
+  const ins = await sql(app, T1, `
+    INSERT INTO pgboss.job (name, data, singleton_key) VALUES ('email.send', '{"tenantId":"t1","messageKey":"mk-grant"}', 'mk-grant') RETURNING id`);
+  assert.equal(ins.rowCount, 1);
+  await rejects(sql(app, T1, `UPDATE pgboss.job SET state = 'cancelled'`), /permission denied/);
+  await rejects(sql(app, T1, `DELETE FROM pgboss.job`), /permission denied/);
+  await rejects(sql(app, T1, `UPDATE pgboss.queue SET retry_limit = 99`), /permission denied/);
+  await rejects(sql(app, T1, `INSERT INTO pgboss.queue (name, policy, retry_limit, retry_delay, retry_backoff, expire_seconds, retention_seconds, deletion_seconds, partition, table_name) VALUES ('x','standard',1,1,false,1,1,1,false,'job_common')`), /permission denied/);
+  await rejects(sql(app, T1, `SELECT * FROM pgboss.schedule`), /permission denied/);
+  await rejects(sql(app, T1, `CREATE TABLE pgboss.evil (a int)`), /permission denied/);
+  await rejects(sql(app, T1, `DROP TABLE pgboss.job`), /must be owner|permission denied/);
+});
+
+test('pgboss: venueos_jobs has read/write on pgboss only; still no new reach into tenant data; no DDL', async () => {
+  const r = await jobs.query(`SELECT id FROM pgboss.job WHERE singleton_key = 'mk-grant'`);
+  assert.equal(r.rowCount, 1);
+  await jobs.query(`UPDATE pgboss.job SET state = 'cancelled' WHERE singleton_key = 'mk-grant'`);
+  await jobs.query(`DELETE FROM pgboss.job WHERE singleton_key = 'mk-grant'`);
+  await rejects(jobs.query(`CREATE TABLE pgboss.evil (a int)`), /permission denied/);
+  await rejects(jobs.query(`SELECT 1 FROM message_logs LIMIT 1`), /permission denied/);
+  await rejects(jobs.query(`INSERT INTO message_logs (id, tenant_id, message_key, channel, "to", status) VALUES ('x','t1','x','email','a@b.test','queued')`), /permission denied/);
+});
+
+test('pgboss: venueos_auth cannot use the schema at all', async () => {
+  await rejects(auth.query(`SELECT 1 FROM pgboss.job LIMIT 1`), /permission denied for schema pgboss/);
+});
+
+test('pgboss: the schema is owned by the migrator (not by an application role)', async () => {
+  const own = await migrator.query(
+    `SELECT pg_get_userbyid(nspowner) AS owner FROM pg_namespace WHERE nspname = 'pgboss'`);
+  assert.equal(own.rows[0].owner, 'venueos_migrator');
+});
+
+test('message_logs: the email pipeline columns are insertable, the table stays append-only', async () => {
+  await sql(app, T1, `
+    INSERT INTO message_logs (id, tenant_id, message_key, channel, "to", status, template, locale, template_vars, reply_to)
+    VALUES ('ml-q','t1','mk-q','email','a@example.test','queued','sample.hello','en','{"name":"Ali"}','b@example.test')`);
+  await sql(app, T1, `
+    INSERT INTO message_logs (id, tenant_id, message_key, channel, "to", status, error, attempt, is_final)
+    VALUES ('ml-f','t1','mk-q','email','a@example.test','failed','PROVIDER_UNAVAILABLE',6,true)`);
+  await rejects(sql(app, T1, `UPDATE message_logs SET is_final = false WHERE id = 'ml-f'`), /permission denied/);
+  await rejects(sql(app, T1, `DELETE FROM message_logs WHERE id = 'ml-q'`), /permission denied/);
+});

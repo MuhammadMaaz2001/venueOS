@@ -33,10 +33,13 @@ describe('health schemas', () => {
   it('parse the endpoint bodies', () => {
     expect(HealthResponseSchema.parse({ status: 'ok' })).toEqual({ status: 'ok' });
     expect(
-      ReadyResponseSchema.parse({ status: 'unavailable', checks: { database: 'down' } }),
+      ReadyResponseSchema.parse({
+        status: 'unavailable',
+        checks: { database: 'down', queue: 'down' },
+      }),
     ).toEqual({
       status: 'unavailable',
-      checks: { database: 'down' },
+      checks: { database: 'down', queue: 'down' },
     });
   });
 });

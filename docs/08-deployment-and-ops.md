@@ -85,12 +85,32 @@ smoke tests → manual approval → production (migrate, then roll out api/worke
 - Platform operations until a platform admin app exists (post-MVP): tenant status/plan changes
   and the dead-letter queue are handled with reviewed ops scripts run as the migrator.
 
+### Background jobs (pg-boss)
+
+- The `pgboss` schema, its queues (`email.send`, `email.send.dead`) and its grants are created by the
+  migration `pgboss_jobs_and_email_queue`, run by `migrate deploy` as the migrator like every other
+  migration. Neither the API nor the worker creates or migrates it (`migrate: false`,
+  `createSchema: false`); the worker refuses to start, and the API reports `queue: down` on
+  `/health/ready`, when `pgboss.version` is not the version the installed library expects.
+- **pg-boss is pinned to an exact version.** To upgrade: bump the pin, run
+  `node packages/db/scripts/pgboss-sql.mjs migrate <current schema version>`, put its output in a
+  NEW migration (never edit an applied one), and run the tests (`jobs.test.ts` fails when the library
+  and the database disagree on the schema version). Deploy the migration before the new app version.
+- The worker's pg-boss connection is `JOBS_DATABASE_URL` (`venueos_jobs`). Job handlers use
+  `DATABASE_URL` (`venueos_app`) inside tenant transactions.
+- **Dead letters.** A job that exhausts its retries, or fails permanently, moves to `<queue>.dead`
+  and stays there for 30 days. Inspect: `SELECT id, data, output, created_on FROM pgboss.job WHERE
+  name = 'email.send.dead'` (the `message_logs` rows for the `messageKey` say why; the `data` holds
+  identifiers only). Alert on any dead letter (see Monitoring). Redrive and the runbook arrive with P0-6b.
+- Staging/production use `EMAIL_PROVIDER=ses` with the task role's credentials (never keys in env
+  files). CI needs a Mailpit service container for the worker's delivery tests (P0-8).
+
 ## Environment variables (names only; values in the secret store)
 
 | App | Variables |
 | --- | --- |
 | api | `DATABASE_URL` (app role), `AUTH_DATABASE_URL` (auth role), `FIELD_ENCRYPTION_KEYS` (JSON keyring: active key id + keys), `S3_BUCKET`, `AWS_REGION`, `APP_ORIGIN` (the web app's origin, used for the CSRF `Origin` check), `SENTRY_DSN`, `TRUST_PROXY`, `LOG_LEVEL`, `SWAGGER_ENABLED`, `THROTTLE_LIMIT`, `THROTTLE_TTL_MS`, `PORT`, `NODE_ENV` |
-| worker | `DATABASE_URL` (app role), `AUTH_DATABASE_URL` (auth role, for the purge job), `JOBS_DATABASE_URL` (jobs role), `EMAIL_PROVIDER` (`smtp` or `ses`), `SMTP_URL` (dev/Mailpit), `SES_FROM`, `S3_BUCKET`, `AWS_REGION`, `SENTRY_DSN` |
+| worker | `DATABASE_URL` (app role), `AUTH_DATABASE_URL` (auth role, for the purge job), `JOBS_DATABASE_URL` (jobs role), `EMAIL_PROVIDER` (`smtp` or `ses`), `SMTP_URL` (dev/Mailpit; required for `smtp`), `EMAIL_FROM_ADDRESS`, `AWS_REGION` (required for `ses`), `S3_BUCKET`, `SENTRY_DSN`, `LOG_LEVEL`, `JOB_POLLING_INTERVAL_SECONDS`, `JOB_CONCURRENCY` |
 | web | `API_INTERNAL_URL`, `NEXT_PUBLIC_APP_NAME`, `SENTRY_DSN` |
 | db (CI/migrations) | `MIGRATE_DATABASE_URL` (migrator role); local seed only: `SEED_OWNER_EMAIL`, `SEED_OWNER_PASSWORD` (never set in staging/production); tests only: `VENUEOS_TEST_ADMIN_URL` (superuser, used to create a throwaway database) |
 

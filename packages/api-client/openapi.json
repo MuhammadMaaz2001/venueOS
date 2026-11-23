@@ -220,10 +220,18 @@
                   "up",
                   "down"
                 ]
+              },
+              "queue": {
+                "type": "string",
+                "enum": [
+                  "up",
+                  "down"
+                ]
               }
             },
             "required": [
-              "database"
+              "database",
+              "queue"
             ]
           }
         },

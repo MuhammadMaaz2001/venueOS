@@ -11,3 +11,5 @@ packages/db/src/generated/
 .DS_Store
 next-env.d.ts
 *.tsbuildinfo
+.claude/settings.local.json
+.claude/plans/
