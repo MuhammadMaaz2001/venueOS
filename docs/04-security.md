@@ -17,6 +17,12 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
 - Login with email + password in MVP (phone OTP later). Passwords hashed with **argon2id**
   (memory ≥ 19 MiB, iterations ≥ 2) and stored in `user_credentials` (not in `users`). Minimum
   10 characters; reject the top 10k breached passwords list. No other complexity rules.
+  **Stored format: the standard PHC string** `$argon2id$v=19$m=<KiB>,t=<passes>,p=<lanes>$<salt>$<hash>`
+  (unpadded base64), written with Node's built-in `crypto.argon2Sync`/`crypto.argon2` (added in
+  Node 24.7.0, Stable; hence `engines.node >= 24.7.0`). The P0-2 demo seed already writes this
+  format (m=65536, t=3, p=4), and **P0-4 must hash and verify with exactly the same format** (parse the
+  PHC string, recompute with the stored parameters, compare with `timingSafeEqual`, and rehash on
+  login when the stored parameters are weaker than the current ones).
 - **Sessions are server-side.** The cookie `__Host-vos_session` holds a 32-byte random token;
   the database stores only its SHA-256 hash (`auth_sessions.token_hash`).
   Cookie flags: `HttpOnly; Secure; SameSite=Lax; Path=/` (no `Domain`, host-only).

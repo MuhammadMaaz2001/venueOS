@@ -1,7 +1,8 @@
 {
+  // Typecheck everything in the package (source, tests, config, seed). Emit uses tsconfig.build.json.
   "extends": "../../tsconfig.node.json",
   "compilerOptions": {
     "noEmit": true
   },
-  "include": ["prisma.config.ts", "prisma/seed.ts"]
+  "include": ["src", "tests", "prisma.config.ts", "prisma/seed.ts"]
 }

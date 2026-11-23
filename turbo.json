@@ -2,7 +2,11 @@
   "$schema": "https://turborepo.com/schema.json",
   "envMode": "loose",
   "tasks": {
+    // Workspace packages are consumed as compiled `dist` (CommonJS, "exports" -> dist), so every
+    // task that imports them needs their build first (`^build`), dev included: `pnpm dev` builds the
+    // libraries once, then each library's own `dev` script (tsc --watch) keeps dist current.
     "dev": {
+      "dependsOn": ["^build"],
       "cache": false,
       "persistent": true
     },

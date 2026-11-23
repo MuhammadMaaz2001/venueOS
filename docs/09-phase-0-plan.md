@@ -36,25 +36,38 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       generated Prisma client (`packages/db/src/generated/prisma`) outside `packages/db`, ban
       `dangerouslySetInnerHTML`, ban `$queryRawUnsafe`/`$executeRawUnsafe` except in
       `packages/db/src/pgboss-adapter.ts`.
-- [ ] **P0-2 Database package**: **FIRST acceptance test, before building `TenantDb`:** one test
-      against the Docker Postgres, connected as `venueos_app` through the Prisma 7 `pg` adapter,
-      proves that (a) inside a single `prisma.$transaction(async tx => ...)`,
-      `set_config('app.tenant_id', <t1>, true)` is visible to the following statements
-      (`current_setting` returns t1 and tenant-1 rows are selectable), (b) RLS blocks tenant 2's
-      rows and rejects a write for tenant 2 in that same transaction, and (c) after commit the
-      next transaction on the pooled connection sees no tenant (no leakage). **If it fails, P0-2
-      stops and reports back before `TenantDb` is built.** Then: first migration = generated DDL with
-      `001_constraints_and_rls.sql` appended (review it by hand; from then on the constraint test
-      applies `prisma/migrations/*` instead of generating the DDL),
-      `TenantDb` (`tx()`, `asUser()`), `AuthDb` (`venueos_auth` connection), `pgboss-adapter.ts`,
-      seed (plans, demo tenant, default roles; sets `app.tenant_id`/`app.user_id` as needed),
-      `test:constraints` green. In `packages/shared`: currency minor-unit map (ISO 4217), money
-      helpers, `TenantSettings` Zod schema with the defaults from `05-business-rules.md` §15.
+- [x] **P0-2 Database package** (done): the **set_config gate passed first** (`tests/gate-set-config.test.ts`:
+      as `venueos_app` through the Prisma 7 `pg` adapter, `set_config('app.tenant_id', t, true)` is
+      visible inside one `prisma.$transaction`, RLS blocks tenant 2's rows and writes there, and the
+      next transaction on the same pooled connection, after commit or rollback, sees no tenant).
+      First migration `20261123073702_init` = generated DDL + `001_constraints_and_rls.sql` appended
+      (reviewed by hand; the constraint test now applies `prisma/migrations/*`). `TenantDb`
+      (`tx()`, `asUser()`, optional ambient `getContext`), `AuthDb` (`venueos_auth`) and
+      `pgboss-adapter.ts` (the only `$queryRawUnsafe`) in `packages/db/src`; integration tests
+      cover isolation, concurrency, auth-table access and the adapter. Seed (`pnpm db:seed`,
+      idempotent): plans, a demo tenant (venue, 4 spaces incl. one combined, Lunch/Dinner slots,
+      subscription) and its owner, credentials from `SEED_OWNER_EMAIL` / `SEED_OWNER_PASSWORD`
+      (refused when missing or `NODE_ENV=production`). **Seed creates NO roles or permissions
+      except one placeholder `Owner` role (`id = seed_role_owner`, `permissions = []`,
+      `is_system = true`)** because `memberships.role_id` is NOT NULL. **P0-5 must UPDATE that
+      role by its fixed id (`seed_role_owner`) with the real permission set, not create a second
+      Owner role**; the seed never overwrites an existing row (`update: {}`), so re-running it
+      after P0-5 is safe. In `packages/shared`: currency minor-unit map (ISO 4217), money helpers
+      (`money`, `roundMoney`, `formatMoney`, `parseMoney`, `sumMoney`; decimal.js, half-up, numbers
+      rejected) and the `TenantSettings` Zod schema with the defaults from `05-business-rules.md` §15.
+      **Package exports decision:** workspace packages are consumed as **compiled `dist`**
+      (CommonJS, `exports` -> `./dist/index.js` + types; `build` = `tsc`, `dev` = `tsc --watch`).
+      `api` and `worker` compile to CommonJS with `nest build`, so raw `.ts` exports would not run in
+      Node, and Prisma's generated client has to be compiled anyway. Turbo's `dev`, `build`,
+      `typecheck` and `test` all depend on `^build`. `@venueos/db` exports `TenantDb`, `AuthDb`,
+      `pgBossDb`, enums and model types, **never** `PrismaClient`. A worker-side `ScannerDb`
+      (`venueos_jobs`) is left to P0-6a.
 - [ ] **P0-3 API foundation**: config validation (Zod), pino logging with redaction,
       request ID, exception filter + error format, Zod validation pipe, Swagger at `/docs`,
       health endpoints, helmet, throttler, CLS context.
 - [ ] **P0-5 Authorization**: `permissions.ts` in shared (mirrors `04-security.md`), default
-      roles seed, `TenantGuard` (including SUSPENDED = read-only, `403 TENANT_SUSPENDED`),
+      roles seed (UPDATE the placeholder Owner role `seed_role_owner` created by the P0-2 seed;
+      do not create a second one), `TenantGuard` (including SUSPENDED = read-only, `403 TENANT_SUSPENDED`),
       `PermissionGuard`, `@RequirePermission` / `@Public`, route-scan test, entitlements guard,
       role CRUD, staff invitation create/revoke (rows in `invitations` through `AuthDb`), audit
       service (`actor_type` + `actor_user_id`).

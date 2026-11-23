@@ -28,7 +28,7 @@ venueOS/
 
 ## Prerequisites
 
-- Node 24 LTS, pnpm 12.21.0 (`corepack enable pnpm` uses the pinned `packageManager`)
+- Node 24 LTS (**24.7.0 or newer**: `crypto.argon2Sync`), pnpm 12.21.0 (`corepack enable pnpm` uses the pinned `packageManager`)
 - Docker Desktop (local PostgreSQL 16, Mailpit and the DB constraint tests). A non-Docker
   Postgres must have the same roles as `packages/db/docker/init-roles.sql`
 

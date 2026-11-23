@@ -5,7 +5,7 @@
   "description": "venueOS: multi-tenant SaaS for event venues",
   "packageManager": "pnpm@12.21.0",
   "engines": {
-    "node": ">=24 <25",
+    "node": ">=24.7.0 <25",
     "pnpm": "12.21.0"
   },
   "scripts": {

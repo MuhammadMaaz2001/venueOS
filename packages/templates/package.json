@@ -2,9 +2,21 @@
   "name": "@venueos/templates",
   "version": "0.0.0",
   "private": true,
-  "description": "venueOS templates package (stub; export strategy decided in P0-2)",
+  "description": "Email and PDF HTML templates (quotation, receipt, event sheet); filled in by later tasks",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {

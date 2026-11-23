@@ -2,21 +2,41 @@
   "name": "@venueos/db",
   "version": "0.0.0",
   "private": true,
-  "description": "Prisma 7 schema, migrations, RLS/constraint SQL (TenantDb, AuthDb arrive in P0-2)",
+  "description": "Prisma 7 schema, migrations, RLS/constraint SQL, TenantDb, AuthDb, pg-boss adapter, seed",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist",
+    "prisma/migrations"
+  ],
   "scripts": {
-    "typecheck": "tsc --noEmit",
+    "generate": "prisma generate",
+    "build": "prisma generate && tsc -p tsconfig.build.json",
+    "dev": "prisma generate && tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "prisma generate && tsc --noEmit",
     "validate": "prisma validate",
     "db:migrate": "prisma migrate dev",
+    "db:deploy": "prisma migrate deploy",
     "db:seed": "prisma db seed",
+    "test": "prisma generate && node --env-file-if-exists=.env --import tsx --test \"tests/*.test.ts\"",
+    "test:gate": "prisma generate && node --env-file-if-exists=.env --import tsx --test tests/gate-set-config.test.ts",
     "test:constraints": "node --env-file-if-exists=.env --test \"tests/*.test.mjs\""
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",
+    "@prisma/client": "7.10.1",
     "dotenv": "18.0.10",
     "pg": "8.23.1"
   },
   "devDependencies": {
     "@types/node": "24.19.2",
+    "@types/pg": "8.23.1",
     "prisma": "7.10.1",
     "tsx": "4.23.15",
     "typescript": "6.0.3"

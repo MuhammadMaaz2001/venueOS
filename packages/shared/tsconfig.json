@@ -1,11 +1,12 @@
 {
+  // Typecheck (source, specs, vitest config). Emit uses tsconfig.build.json.
+  // No ambient types on purpose: this package is imported by the browser and by Node.
   "extends": "../../tsconfig.base.json",
   "compilerOptions": {
     "module": "nodenext",
     "moduleResolution": "nodenext",
     "types": [],
-    "rootDir": "src",
-    "outDir": "dist"
+    "noEmit": true
   },
-  "include": ["src"]
+  "include": ["src", "vitest.config.ts"]
 }

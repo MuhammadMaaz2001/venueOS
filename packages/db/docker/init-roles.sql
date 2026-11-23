@@ -9,8 +9,10 @@
 -- Passwords are local-development placeholders only.
 
 -- Owns the database and schema, runs migrations. NOT a superuser, so permission problems show
--- up locally instead of in production. CREATEDB is needed by `prisma migrate dev` (shadow DB)
--- and by the constraint tests (throwaway databases).
+-- up locally instead of in production. CREATEDB is LOCAL/CI ONLY: `prisma migrate dev` needs it
+-- for its shadow database and the tests for throwaway databases. Staging and production run
+-- `prisma migrate deploy`, which needs no shadow DB, so their migrator must NOT have CREATEDB
+-- (docs/08-deployment-and-ops.md).
 CREATE ROLE venueos_migrator LOGIN PASSWORD 'migrator_password' CREATEDB;
 
 -- Owns SECURITY DEFINER functions such as resolve_tenant(). Cannot log in. BYPASSRLS is what

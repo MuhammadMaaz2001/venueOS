@@ -51,10 +51,20 @@ smoke tests → manual approval → production (migrate, then roll out api/worke
   `packages/db/docker/init-roles.sql`; in staging/production, infrastructure code creates them
   with the same names and attributes. **All grants, policies and default privileges are in the
   migrations**, so any database that has the roles behaves the same.
-- Run `prisma migrate deploy` as a one-off task with the migrator role
-  (`MIGRATE_DATABASE_URL`, read by `packages/db/prisma.config.ts`) before the new app
-  version starts. `prisma migrate dev` uses the same URL; its shadow database needs the
-  migrator's `CREATEDB`.
+- Run `prisma migrate deploy` (`pnpm --filter @venueos/db db:deploy`) as a one-off task with the
+  migrator role (`MIGRATE_DATABASE_URL`, read by `packages/db/prisma.config.ts`) before the new
+  app version starts. **Staging and production use `migrate deploy` only**: it needs no shadow
+  database, so the migrator there has **no `CREATEDB`** (and never `SUPERUSER`).
+- `prisma migrate dev` (local only) creates and drops a shadow database, so **only the local
+  `packages/db/docker/init-roles.sql` gives `venueos_migrator` `CREATEDB`**. We chose that over a
+  `shadowDatabaseUrl` (a second database and a second set of credentials to keep in sync). The
+  constraint tests need the same privilege to create their throwaway database; in CI the role comes
+  from the same `init-roles.sql`, so CI has it too. Infrastructure code for staging/production must
+  not copy that line.
+- The seed (`pnpm db:seed`) runs as the migrator. It always writes the plans; the demo tenant and
+  demo owner are written only when `NODE_ENV` is not `production` **and** `SEED_OWNER_EMAIL` /
+  `SEED_OWNER_PASSWORD` are set (local `.env` only, never a secret store value for a real
+  environment). Without them the seed refuses to create the demo owner.
 - The migrator is subject to forced RLS. Seeds and data migrations that touch tenant tables set
   `app.tenant_id` (and `app.user_id`) first, or write users/credentials through `venueos_auth`
   (see `03-data-model.md`).
@@ -71,7 +81,11 @@ smoke tests → manual approval → production (migrate, then roll out api/worke
 | api | `DATABASE_URL` (app role), `AUTH_DATABASE_URL` (auth role), `FIELD_ENCRYPTION_KEYS` (JSON keyring: active key id + keys), `S3_BUCKET`, `AWS_REGION`, `APP_ORIGIN`, `SENTRY_DSN` |
 | worker | `DATABASE_URL` (app role), `AUTH_DATABASE_URL` (auth role, for the purge job), `JOBS_DATABASE_URL` (jobs role), `EMAIL_PROVIDER` (`smtp` or `ses`), `SMTP_URL` (dev/Mailpit), `SES_FROM`, `S3_BUCKET`, `AWS_REGION`, `SENTRY_DSN` |
 | web | `API_INTERNAL_URL`, `NEXT_PUBLIC_APP_NAME`, `SENTRY_DSN` |
-| db (CI/migrations) | `MIGRATE_DATABASE_URL` (migrator role); tests only: `VENUEOS_TEST_ADMIN_URL` (superuser, used to create a throwaway database) |
+| db (CI/migrations) | `MIGRATE_DATABASE_URL` (migrator role); local seed only: `SEED_OWNER_EMAIL`, `SEED_OWNER_PASSWORD` (never set in staging/production); tests only: `VENUEOS_TEST_ADMIN_URL` (superuser, used to create a throwaway database) |
+
+`AUTH_DATABASE_URL` (role `venueos_auth`) is read by the API's `AuthModule` through `AuthDb` and by the
+worker's `auth.purge` job; no other code path may use it. `DATABASE_URL` feeds `TenantDb`
+(`venueos_app`).
 
 There is no `SESSION_SECRET`: sessions are random tokens stored hashed in the database.
 

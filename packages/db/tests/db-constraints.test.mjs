@@ -22,48 +22,10 @@
 
 import { test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
-import { execSync } from 'node:child_process';
-import fs from 'node:fs';
-import path from 'node:path';
-import { fileURLToPath } from 'node:url';
 import pg from 'pg';
+import { createTestDatabase, dropTestDatabase, urlFor } from './helpers/test-db.mjs';
 
-const here = path.dirname(fileURLToPath(import.meta.url));
-const pkgDir = path.resolve(here, '..');
-const adminUrl = process.env.VENUEOS_TEST_ADMIN_URL ?? 'postgresql://postgres:postgres@localhost:5432/postgres';
-const passwords = {
-  venueos_migrator: process.env.VENUEOS_TEST_MIGRATOR_PASSWORD ?? 'migrator_password',
-  venueos_app: process.env.VENUEOS_TEST_APP_PASSWORD ?? 'app_password',
-  venueos_auth: process.env.VENUEOS_TEST_AUTH_PASSWORD ?? 'auth_password',
-  venueos_jobs: process.env.VENUEOS_TEST_JOBS_PASSWORD ?? 'jobs_password',
-};
-const dbName = `venueos_test_${Date.now()}_${Math.floor(Math.random() * 1e6)}`;
-
-const urlFor = (user, database) => {
-  const u = new URL(adminUrl);
-  u.username = user;
-  u.password = passwords[user];
-  u.pathname = `/${database}`;
-  return u.toString();
-};
-
-function buildSchemaSql() {
-  const migDir = path.join(pkgDir, 'prisma', 'migrations');
-  const migrations = fs.existsSync(migDir)
-    ? fs.readdirSync(migDir, { withFileTypes: true }).filter((d) => d.isDirectory()).map((d) => d.name).sort()
-    : [];
-  if (migrations.length > 0) {
-    return migrations.map((m) => fs.readFileSync(path.join(migDir, m, 'migration.sql'), 'utf8')).join('\n');
-  }
-  const prisma = process.env.PRISMA_CMD ?? 'pnpm exec prisma';
-  const schema = path.join(pkgDir, 'prisma', 'schema.prisma');
-  const ddl = execSync(`${prisma} migrate diff --from-empty --to-schema "${schema}" --script`, {
-    cwd: process.env.PRISMA_CWD ?? pkgDir,
-    encoding: 'utf8',
-    maxBuffer: 64 * 1024 * 1024,
-  });
-  return ddl + '\n' + fs.readFileSync(path.join(pkgDir, 'prisma', 'sql', '001_constraints_and_rls.sql'), 'utf8');
-}
+let dbName;
 
 let admin, migrator, app, auth, jobs;
 
@@ -91,12 +53,8 @@ const sql = (client, c, text, params) => ctx(client, c, (cl) => cl.query(text, p
 const rejects = (promise, re) => assert.rejects(promise, (e) => re.test(e.message), `expected error matching ${re}`);
 
 before(async () => {
-  admin = new pg.Client({ connectionString: adminUrl });
-  await admin.connect();
-  await admin.query(`CREATE DATABASE "${dbName}" OWNER venueos_migrator`);
-
+  ({ admin, dbName } = await createTestDatabase());
   migrator = await connect('venueos_migrator');
-  await migrator.query(buildSchemaSql()); // as a NON-superuser: proves the migration works in staging/prod too
 
   app = await connect('venueos_app');
   auth = await connect('venueos_auth');
@@ -132,10 +90,7 @@ before(async () => {
 
 after(async () => {
   for (const c of [app, auth, jobs, migrator]) await c?.end().catch(() => {});
-  if (admin) {
-    await admin.query(`DROP DATABASE IF EXISTS "${dbName}" WITH (FORCE)`).catch(() => {});
-    await admin.end();
-  }
+  await dropTestDatabase(admin, dbName);
 });
 
 // ───────────────────────────── roles ─────────────────────────────

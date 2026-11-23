@@ -80,7 +80,8 @@ database, staging and production. A mistake is fixed with a reversing entry, nev
 
 ## Constraints and SQL that Prisma cannot express
 
-All in `packages/db/prisma/sql/001_constraints_and_rls.sql`, pasted into the first migration:
+All in `packages/db/prisma/sql/001_constraints_and_rls.sql`, appended to the first migration
+(`prisma/migrations/20261123073702_init`, which is now the source of truth; the file is a readable copy):
 
 1. `space_occupancies_no_overlap`: GiST exclusion constraint (space + time range, active rows).
 2. `space_occupancies_valid_range`, `booking_sessions_valid_range`: `ends_at > starts_at`.
@@ -119,9 +120,14 @@ It runs in CI on every change to `packages/db`.
   with `DATABASE_URL` (`venueos_app`, `TenantDb`), `AUTH_DATABASE_URL` (`venueos_auth`,
   `AuthDb`) and `JOBS_DATABASE_URL` (`venueos_jobs`, scanners). Verify the current Prisma 7
   docs for exact option names when scaffolding.
-- **Gate:** whether `set_config('app.tenant_id', …, true)` stays visible to later statements in
-  the same `prisma.$transaction(async tx => …)` with the adapter is *proved* by the first
-  acceptance test of P0-2 (see `09-phase-0-plan.md`) before `TenantDb` is built.
+- **Gate (passed):** `set_config('app.tenant_id', …, true)` stays visible to later statements in
+  the same `prisma.$transaction(async tx => …)` with the adapter and is gone for the next
+  transaction on the pooled connection. Proved by `packages/db/tests/gate-set-config.test.ts`
+  (`pnpm --filter @venueos/db test:gate`); re-run it after any Prisma or adapter upgrade.
+- `@venueos/db` is built to `dist` (`prisma generate && tsc`) and exports `TenantDb`, `AuthDb`,
+  `pgBossDb`, enums and model types; `PrismaClient` itself is not exported.
+- `pnpm db:migrate` = `prisma migrate dev` (local; needs the migrator's `CREATEDB` for the shadow
+  database), `pnpm --filter @venueos/db db:deploy` = `prisma migrate deploy` (staging/production).
 
 ## Adding a table (checklist)
 

@@ -2,9 +2,21 @@
   "name": "@venueos/api-client",
   "version": "0.0.0",
   "private": true,
-  "description": "venueOS api-client package (stub; export strategy decided in P0-2)",
+  "description": "Typed client generated from the API's OpenAPI spec (generator arrives with the first endpoints, P0-3)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
     "build": "tsc",
+    "dev": "tsc --watch --preserveWatchOutput",
     "typecheck": "tsc --noEmit",
     "generate": "node -e \"console.log('api-client:generate: nothing to generate until the API exposes endpoints (P0-3)')\""
   },

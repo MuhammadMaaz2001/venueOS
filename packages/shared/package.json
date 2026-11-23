@@ -2,12 +2,30 @@
   "name": "@venueos/shared",
   "version": "0.0.0",
   "private": true,
-  "description": "venueOS shared package (stub; export strategy decided in P0-2)",
+  "description": "venueOS shared code: Zod schemas, enums, currency and money helpers, TenantSettings (no server code)",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
   "scripts": {
-    "build": "tsc",
-    "typecheck": "tsc --noEmit"
+    "build": "tsc -p tsconfig.build.json",
+    "dev": "tsc -p tsconfig.build.json --watch --preserveWatchOutput",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run"
+  },
+  "dependencies": {
+    "decimal.js": "10.6.0",
+    "zod": "4.6.7"
   },
   "devDependencies": {
-    "typescript": "6.0.3"
+    "typescript": "6.0.3",
+    "vitest": "3.2.7"
   }
 }
