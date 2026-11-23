@@ -1,0 +1,15 @@
+{
+  // Builds the API into a throwaway folder so `pnpm api-client:generate` never touches `dist`
+  // (which the dev server is running from).
+  "extends": "../../tsconfig.node.json",
+  "compilerOptions": {
+    "experimentalDecorators": true,
+    "emitDecoratorMetadata": true,
+    "rootDir": "src",
+    "outDir": "node_modules/.cache/openapi-build",
+    "declaration": false,
+    "sourceMap": false
+  },
+  "include": ["src"],
+  "exclude": ["src/**/__tests__/**", "src/**/*.spec.ts", "src/**/*.int-spec.ts"]
+}

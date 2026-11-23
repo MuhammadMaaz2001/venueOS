@@ -3,7 +3,7 @@
 ## Style
 
 - REST over JSON, base path `/v1`. Plural nouns: `/v1/bookings`, `/v1/bookings/{id}/sessions`.
-  Health and docs live outside `/v1`: `GET /health`, `GET /health/ready`, `/docs` (dev only).
+  Health and docs live outside `/v1`: `GET /health`, `GET /health/ready`, `/docs` (off in production unless `SWAGGER_ENABLED=true`).
 - State changes that are not plain field edits are action endpoints:
   `POST /v1/bookings/{id}/hold`, `/confirm`, `/cancel`, `/restore`;
   `POST /v1/bookings/{id}/sessions/{sessionId}/cancel`;
@@ -49,12 +49,17 @@ Always this shape, with a stable machine `code`:
 | 400 | `VALIDATION_ERROR` (details = field errors) |
 | 401 | `UNAUTHENTICATED`, `SESSION_EXPIRED` |
 | 402 | `PLAN_LIMIT_REACHED` |
-| 403 | `FORBIDDEN`, `DISCOUNT_LIMIT`, `TENANT_SUSPENDED` (writes on a read-only tenant) |
+| 403 | `FORBIDDEN`, `CSRF_REJECTED` (missing `X-Requested-With` / wrong `Origin`), `DISCOUNT_LIMIT`, `TENANT_SUSPENDED` (writes on a read-only tenant) |
 | 404 | `NOT_FOUND` (also for other tenants' resources) |
 | 409 | `SLOT_TAKEN`, `VERSION_CONFLICT`, `DUPLICATE`, `IDEMPOTENCY_CONFLICT` (same key, different body) |
 | 422 | `ADVANCE_REQUIRED`, `LOCAL_RULE`, `INSUFFICIENT_STOCK`, `INVALID_STATE_TRANSITION` |
-| 429 | `RATE_LIMITED` |
+| 429 | `RATE_LIMITED` (with `Retry-After`) |
 | 500 | `INTERNAL` (no internals in message) |
+
+Other 4xx from the framework (malformed JSON, oversized body, unknown route) use `BAD_REQUEST`,
+`PAYLOAD_TOO_LARGE`, `METHOD_NOT_ALLOWED` or `NOT_FOUND` with fixed messages. `GET /health/ready` is the
+one endpoint that is not an error envelope: it answers `503 {"status":"unavailable","checks":{...}}`
+for load balancers.
 
 Messages are user-safe English; the web app maps `code` to translated text.
 

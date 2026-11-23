@@ -29,12 +29,25 @@ ranges named here (`npm view <pkg>@<version> peerDependencies`):
 | `eslint` | 9.39.5 | `eslint-config-next` 16 targets ESLint 9; ESLint 10 is not yet supported by every plugin it pulls in. |
 | `prisma`, `@prisma/adapter-pg` | 7.10.1 | The npm `latest` tag is the 8.0.0 release candidate. The project is on Prisma 7 (`prisma.config.ts`, `prisma-client` generator, driver adapter). All Prisma packages move together. |
 | `nestjs-zod` | 5.6.0 | Added in P0-3. It is the constraint behind the NestJS and swagger pins. |
+| `openapi-typescript` | 7.13.0 | Declares `typescript` `^5` as a peer; it generates correctly with TypeScript 6.0.3 (checked in P0-3), so the peer warning is accepted. Re-check when bumping TypeScript. |
+| `nestjs-pino` / `pino` / `pino-http` | 5.3.2 / 10.4.0 / 11.0.0 | Move together: `nestjs-pino` peers `pino` `^10` and `pino-http` `^11`. |
+| `unplugin-swc` + `@swc/core` | 2.0.0 / 1.16.22 | Dev only: vitest (esbuild) does not emit decorator metadata, which Nest constructor injection needs. The API itself still builds with `tsc`. |
 
 Upgrade path: raise the dependency that limits the others first (for example wait for a
 `nestjs-zod` release that lists the next Nest major), change the pins together in one PR, and run
 `pnpm lint && pnpm typecheck && pnpm test` plus `pnpm --filter @venueos/db test:constraints`.
 Allowed install scripts are listed in `pnpm-workspace.yaml` (`allowBuilds`); a new dependency that
 needs one must be reviewed before it is added there.
+
+## Dev reload (`pnpm dev`)
+
+`apps/api` and `apps/worker` run through `scripts/dev-node.mjs`: `tsc --watch` on the app plus
+`node --watch` on `dist/main.js`, which also restarts when the compiled `dist` of `packages/shared`
+or `packages/db` changes (those packages run their own `tsc --watch` under `pnpm dev`). Editing
+`packages/shared` therefore restarts the API and the worker within a couple of seconds. If an app starts
+consuming another workspace package, add its name to `watchedPackages` in that script. `nest start
+--watch` is not used for dev: it ignores changes that only alter a library's emitted JavaScript, and its
+process-tree kill crashes on Windows. Production builds still use `nest build`.
 
 ## API (NestJS) module layout
 

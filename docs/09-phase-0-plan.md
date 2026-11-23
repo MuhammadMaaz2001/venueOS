@@ -62,9 +62,16 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       `typecheck` and `test` all depend on `^build`. `@venueos/db` exports `TenantDb`, `AuthDb`,
       `pgBossDb`, enums and model types, **never** `PrismaClient`. A worker-side `ScannerDb`
       (`venueos_jobs`) is left to P0-6a.
-- [ ] **P0-3 API foundation**: config validation (Zod), pino logging with redaction,
-      request ID, exception filter + error format, Zod validation pipe, Swagger at `/docs`,
-      health endpoints, helmet, throttler, CLS context.
+- [x] **P0-3 API foundation** (done): config validation (Zod, refuses to boot), pino logging with
+      redaction (`requestId`/`tenantId`/`userId` from CLS), request ID, domain errors + one exception
+      filter + error format (`SLOT_TAKEN` mapped from `space_occupancies_no_overlap`), Zod validation
+      pipe, Swagger at `/docs` (off in production unless `SWAGGER_ENABLED`), `GET /health` and
+      `GET /health/ready` (outside `/v1`), helmet, in-memory throttler, `CsrfGuard`, CLS context,
+      `@Public()` / `@RequirePermission()` as metadata only. Also: `pnpm dev` restarts api and worker
+      when `packages/shared` or `packages/db` is rebuilt (`scripts/dev-node.mjs`), and
+      `pnpm api-client:generate` exports the OpenAPI document and generates types
+      (`openapi-typescript`). Handed on: bearer-token CSRF exemption hook (P0-4), the queue readiness
+      check (P0-6a), the `TRUST_PROXY` staging check (P0-8, see docs/08).
 - [ ] **P0-5 Authorization**: `permissions.ts` in shared (mirrors `04-security.md`), default
       roles seed (UPDATE the placeholder Owner role `seed_role_owner` created by the P0-2 seed;
       do not create a second one), `TenantGuard` (including SUSPENDED = read-only, `403 TENANT_SUSPENDED`),
@@ -86,7 +93,8 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       toasts mapped from API codes.
 - [ ] **P0-8 CI/CD**: GitHub Actions (lint, typecheck, tests, constraint tests with a Postgres
       service container, audit, gitleaks, Docker builds), staging deploy on AWS (web and API in
-      the same VPC).
+      the same VPC). Includes the staging smoke check that the API logs the **real client IP**
+      (not the web server's) so `TRUST_PROXY` matches the hop count (docs/08).
 
 **Exit gate:** constraint tests + tenant isolation integration tests green in CI; a staff user
 invited into tenant A cannot see anything of tenant B through any endpoint.

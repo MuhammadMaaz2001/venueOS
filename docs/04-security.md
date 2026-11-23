@@ -122,8 +122,21 @@ item inside that tenant's context. Resource IDs from another tenant return **404
 ## 5. Web security
 
 - CSRF: same-origin `/api` rewrite + `SameSite=Lax` cookie, and every state-changing request
-  must send `X-Requested-With: venueos`; the API rejects it otherwise and checks the `Origin`
-  header against the allowlist.
+  (every method except GET/HEAD/OPTIONS) must send `X-Requested-With: venueos` and an `Origin`
+  equal to `APP_ORIGIN`; the API rejects it otherwise with `403 CSRF_REJECTED` (the response does
+  not say which check failed; the reason is logged). A missing `Origin` is rejected too, because
+  browsers always send it on these requests. The guard (`CsrfGuard`) runs before the auth guards.
+  - **Scope:** the guard protects requests a browser authenticates by itself, i.e. cookies.
+    Requests authenticated by an `Authorization: Bearer` token (the future mobile app and public API
+    on `api.venueos.app`) are **exempt**, because a browser never attaches that header on its own.
+    Unauthenticated requests (login, signup) are not exempt: login CSRF is a real attack.
+  - **Not enabled yet:** the exemption lives in one function, `isBearerAuthenticated()`
+    (`apps/api/src/common/security/auth-kind.ts`), which returns `false` until bearer auth exists
+    (TODO P0-4 / the API-token work). It must accept only a *validated* token, never just the header,
+    and must never exempt a request that also carries the session cookie.
+  - `APP_ORIGIN` is a single origin. Public booking pages on tenant (sub)domains will POST from
+    other origins; they are handled with the public endpoints (`@Public()` + `resolve_tenant`), not
+    by widening this allowlist.
 - Security headers (helmet on API, Next.js headers on web): HSTS (1 year, includeSubDomains),
   CSP with nonces (no `unsafe-inline` scripts), `X-Content-Type-Options: nosniff`,
   `Referrer-Policy: strict-origin-when-cross-origin`, `frame-ancestors 'none'`,

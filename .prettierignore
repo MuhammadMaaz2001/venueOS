@@ -6,6 +6,9 @@ coverage
 pnpm-lock.yaml
 next-env.d.ts
 packages/db/src/generated
+# Generated from the API's OpenAPI document (pnpm api-client:generate).
+packages/api-client/openapi.json
+packages/api-client/src/schema.ts
 
 # Hand-written design documents and the P0-0 database files keep their own formatting.
 docs
