@@ -1,54 +1,32 @@
--- VenueOS: constraints and policies Prisma cannot express.
--- Append to the first migration (prisma migrate dev --create-only, then paste below the generated DDL).
+-- venueOS: constraints, triggers, Row Level Security and role grants that Prisma cannot express.
+--
+-- HOW TO USE
+--   Append this file to the FIRST migration (prisma migrate dev --create-only, then paste it below
+--   the generated DDL). It runs as venueos_migrator, the owner of the schema.
+--
+-- PRECONDITIONS (cluster-level, created by packages/db/docker/init-roles.sql locally and by
+-- infrastructure code elsewhere; see docs/04-security.md §3 and docs/08-deployment-and-ops.md):
+--   venueos_migrator  owns the database and schema, runs migrations, is a member of venueos_definer
+--   venueos_definer   NOLOGIN BYPASSRLS; owns SECURITY DEFINER functions (resolve_tenant)
+--   venueos_app       LOGIN, no BYPASSRLS; api and worker tenant work
+--   venueos_auth      LOGIN, no BYPASSRLS; used only by the API's AuthModule
+--   venueos_jobs      LOGIN, BYPASSRLS; worker scanners (SELECT on a few tables only)
+--
+-- Every column is snake_case (see docs/03-data-model.md). Tables carrying tenant_id get forced RLS.
 
--- 1) Double-booking prevention ---------------------------------------------
--- Two ACTIVE occupancy rows for the same physical space may never overlap.
--- '[)' = end-exclusive, so 16:00-19:00 and 19:00-23:00 can sit back to back.
 CREATE EXTENSION IF NOT EXISTS btree_gist;
 
-ALTER TABLE space_occupancies
-  ADD CONSTRAINT space_occupancies_valid_range CHECK (ends_at > starts_at);
-
-ALTER TABLE space_occupancies
-  ADD CONSTRAINT space_occupancies_no_overlap
-  EXCLUDE USING gist (
-    space_id WITH =,
-    tstzrange(starts_at, ends_at, '[)') WITH &&
-  ) WHERE (active);
-
--- 2) Keep occupancy in step with booking status ----------------------------
--- DRAFT (quotation) never blocks; TENTATIVE / CONFIRMED / COMPLETED block;
--- CANCELLED / EXPIRED release. Re-activating a cancelled booking fails with
--- the exclusion error if someone else has taken the slot meanwhile.
-CREATE OR REPLACE FUNCTION sync_occupancy_active() RETURNS trigger
-LANGUAGE plpgsql AS $$
-BEGIN
-  IF NEW.status IS DISTINCT FROM OLD.status THEN
-    UPDATE space_occupancies o
-       SET active = (NEW.status IN ('TENTATIVE', 'CONFIRMED', 'COMPLETED'))
-      FROM booking_sessions s
-     WHERE o.session_id = s.id
-       AND s."bookingId" = NEW.id;
-  END IF;
-  RETURN NEW;
-END $$;
-
-DROP TRIGGER IF EXISTS bookings_sync_occupancy ON bookings;
-CREATE TRIGGER bookings_sync_occupancy
-  AFTER UPDATE OF status ON bookings
-  FOR EACH ROW EXECUTE FUNCTION sync_occupancy_active();
-
--- 3) Tenant isolation (Row Level Security) ----------------------------------
--- The app runs every request in a transaction that first does:
+-- ───────────────────────────── 0) Helpers ─────────────────────────────
+-- Context set by TenantDb in every transaction:
 --   SELECT set_config('app.tenant_id', '<tenant id>', true);
--- Without it, tenant tables return no rows and reject writes.
--- Cross-tenant jobs (hold expiry, reminders, platform admin) connect as a
--- separate role created with BYPASSRLS; the app role must NOT have it.
+--   SELECT set_config('app.user_id',   '<user id>',   true);
 CREATE OR REPLACE FUNCTION app_current_tenant() RETURNS text
 LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('app.tenant_id', true), '') $$;
 
--- Call enable_tenant_rls('<table>') in the migration of EVERY new table that has tenant_id.
--- The CI test "every tenant_id table has forced RLS" fails if one is missed.
+CREATE OR REPLACE FUNCTION app_current_user() RETURNS text
+LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('app.user_id', true), '') $$;
+
+-- Call in the migration of EVERY new table that has tenant_id. The test suite fails if one is missed.
 CREATE OR REPLACE FUNCTION enable_tenant_rls(t regclass) RETURNS void
 LANGUAGE plpgsql AS $fn$
 BEGIN
@@ -61,7 +39,265 @@ BEGIN
        WITH CHECK (tenant_id = app_current_tenant())', t);
 END $fn$;
 
--- Apply to every existing table with a tenant_id column.
+-- updated_at / rev bookkeeping. rev is the optimistic-concurrency token (API: 409 VERSION_CONFLICT).
+CREATE OR REPLACE FUNCTION touch_row() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF TG_OP = 'INSERT' THEN
+    NEW.updated_at := COALESCE(NEW.updated_at, now());
+  ELSE
+    NEW.rev := OLD.rev + 1;
+    NEW.updated_at := now();
+  END IF;
+  RETURN NEW;
+END $$;
+
+CREATE OR REPLACE FUNCTION enable_rev_trigger(t regclass) RETURNS void
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  EXECUTE format('DROP TRIGGER IF EXISTS touch_row ON %s', t);
+  EXECUTE format(
+    'CREATE TRIGGER touch_row BEFORE INSERT OR UPDATE ON %s
+       FOR EACH ROW EXECUTE FUNCTION touch_row()', t);
+END $fn$;
+
+-- Privilege classes (docs/03-data-model.md "Privilege classes"):
+--   append-only: venueos_app may INSERT/SELECT only (optionally UPDATE of listed columns)
+CREATE OR REPLACE FUNCTION make_append_only(t regclass, updatable_cols text[] DEFAULT '{}') RETURNS void
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  EXECUTE format('REVOKE UPDATE, DELETE, TRUNCATE ON %s FROM venueos_app', t);
+  IF array_length(updatable_cols, 1) IS NOT NULL THEN
+    EXECUTE format('GRANT UPDATE (%s) ON %s TO venueos_app',
+                   (SELECT string_agg(quote_ident(c), ', ') FROM unnest(updatable_cols) c), t);
+  END IF;
+END $fn$;
+
+--   no-delete: rows are never deleted by the app (soft states instead)
+CREATE OR REPLACE FUNCTION revoke_delete(t regclass) RETURNS void
+LANGUAGE plpgsql AS $fn$
+BEGIN
+  EXECUTE format('REVOKE DELETE, TRUNCATE ON %s FROM venueos_app', t);
+END $fn$;
+
+--   auth-only: invisible to venueos_app; only venueos_auth (the API's AuthModule) can use them.
+--   Tables that also carry tenant_id need a policy for venueos_auth, because invitations are
+--   looked up by token before any tenant context exists.
+CREATE OR REPLACE FUNCTION restrict_to_auth(t regclass) RETURNS void
+LANGUAGE plpgsql AS $fn$
+DECLARE has_tenant boolean;
+BEGIN
+  EXECUTE format('REVOKE ALL ON %s FROM venueos_app', t);
+  EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON %s TO venueos_auth', t);
+  SELECT EXISTS (SELECT 1 FROM pg_attribute
+                  WHERE attrelid = t AND attname = 'tenant_id' AND NOT attisdropped)
+    INTO has_tenant;
+  IF has_tenant THEN
+    EXECUTE format('DROP POLICY IF EXISTS auth_all ON %s', t);
+    EXECUTE format('CREATE POLICY auth_all ON %s TO venueos_auth USING (true) WITH CHECK (true)', t);
+  END IF;
+END $fn$;
+
+-- Helpers are for migrations only.
+REVOKE EXECUTE ON FUNCTION enable_tenant_rls(regclass), enable_rev_trigger(regclass),
+  make_append_only(regclass, text[]), revoke_delete(regclass), restrict_to_auth(regclass) FROM PUBLIC;
+
+-- ───────────────────────────── 1) rev / updated_at triggers ─────────────────────────────
+DO $$
+DECLARE t text;
+BEGIN
+  FOR t IN
+    SELECT format('%I.%I', c.table_schema, c.table_name)
+      FROM information_schema.columns c
+      JOIN information_schema.columns u
+        ON u.table_schema = c.table_schema AND u.table_name = c.table_name AND u.column_name = 'updated_at'
+      JOIN information_schema.tables tb
+        ON tb.table_schema = c.table_schema AND tb.table_name = c.table_name
+     WHERE c.table_schema = 'public' AND c.column_name = 'rev' AND tb.table_type = 'BASE TABLE'
+  LOOP
+    PERFORM enable_rev_trigger(t::regclass);
+  END LOOP;
+END $$;
+
+-- ───────────────────────────── 2) CHECK constraints ─────────────────────────────
+-- A booking gets its number when first held (docs/05 §13); DRAFT and a cancelled draft have none.
+ALTER TABLE bookings ADD CONSTRAINT bookings_number_required
+  CHECK (status NOT IN ('TENTATIVE', 'CONFIRMED', 'COMPLETED', 'EXPIRED') OR number IS NOT NULL);
+
+ALTER TABLE booking_sessions ADD CONSTRAINT booking_sessions_valid_range CHECK (ends_at > starts_at);
+
+-- Payments: amount is always positive; entry_type decides the sign. A REVERSAL must point at
+-- the entry it negates (one reversal per entry: unique reverses_id); only REFUNDs link to a request.
+ALTER TABLE payments ADD CONSTRAINT payments_amount_positive CHECK (amount > 0);
+ALTER TABLE payments ADD CONSTRAINT payments_reversal_link
+  CHECK ((entry_type = 'REVERSAL') = (reverses_id IS NOT NULL));
+ALTER TABLE payments ADD CONSTRAINT payments_refund_link
+  CHECK (refund_request_id IS NULL OR entry_type = 'REFUND');
+
+-- Only cheques have a clearing lifecycle: every other method is CLEARED on entry and stays so.
+ALTER TABLE payments ADD CONSTRAINT payments_status_by_method
+  CHECK (method = 'CHEQUE' OR status = 'CLEARED');
+
+-- Line items are signed (docs/05 §3): DISCOUNT <= 0, ADJUSTMENT either sign, everything else >= 0.
+-- A booking's totals are SUM(amount) over its current line items.
+ALTER TABLE booking_line_items ADD CONSTRAINT booking_line_items_amount_sign CHECK (
+  CASE kind
+    WHEN 'DISCOUNT'   THEN amount <= 0
+    WHEN 'ADJUSTMENT' THEN true
+    ELSE amount >= 0
+  END);
+
+ALTER TABLE refund_requests ADD CONSTRAINT refund_requests_amount_positive CHECK (amount > 0);
+
+ALTER TABLE expenses ADD CONSTRAINT expenses_amount_positive CHECK (amount > 0);
+ALTER TABLE expenses ADD CONSTRAINT expenses_reversal_link
+  CHECK ((entry_type = 'REVERSAL') = (reverses_id IS NOT NULL));
+
+-- Stock can never go negative; the API takes SELECT ... FOR UPDATE on the item first and maps
+-- the violation to 422 INSUFFICIENT_STOCK.
+ALTER TABLE inventory_items ADD CONSTRAINT inventory_items_on_hand_nonneg CHECK (on_hand >= 0);
+
+ALTER TABLE inventory_movements ADD CONSTRAINT inventory_movements_shape CHECK (
+  CASE type
+    WHEN 'PURCHASE'   THEN stock_delta > 0 AND returned_qty IS NULL AND damaged_qty IS NULL
+    WHEN 'ISSUE'      THEN stock_delta < 0 AND session_id IS NOT NULL
+                           AND returned_qty IS NULL AND damaged_qty IS NULL
+    WHEN 'RETURN'     THEN session_id IS NOT NULL
+                           AND returned_qty IS NOT NULL AND damaged_qty IS NOT NULL
+                           AND returned_qty >= 0 AND damaged_qty >= 0
+                           AND returned_qty + damaged_qty > 0
+                           AND stock_delta = returned_qty
+    WHEN 'DAMAGE'     THEN stock_delta < 0 AND returned_qty IS NULL AND damaged_qty IS NULL
+    WHEN 'ADJUSTMENT' THEN stock_delta <> 0 AND returned_qty IS NULL AND damaged_qty IS NULL
+  END);
+ALTER TABLE inventory_movements ADD CONSTRAINT inventory_movements_expense_only_purchase
+  CHECK (expense_id IS NULL OR type = 'PURCHASE');
+
+-- ───────────────────────────── 3) Double-booking prevention ─────────────────────────────
+-- Two ACTIVE occupancy rows for the same physical space may never overlap.
+-- '[)' = end-exclusive, so 16:00-19:00 and 19:00-23:00 can sit back to back.
+ALTER TABLE space_occupancies
+  ADD CONSTRAINT space_occupancies_valid_range CHECK (ends_at > starts_at);
+
+ALTER TABLE space_occupancies
+  ADD CONSTRAINT space_occupancies_no_overlap
+  EXCLUDE USING gist (
+    space_id WITH =,
+    tstzrange(starts_at, ends_at, '[)') WITH &&
+  ) WHERE (active);
+
+-- ───────────────────────────── 4) Occupancy follows booking and session status ─────────────────────────────
+-- active = booking is TENTATIVE/CONFIRMED/COMPLETED AND the session is ACTIVE.
+-- DRAFT (quotation), CANCELLED and EXPIRED bookings never block; a cancelled session never blocks.
+-- Re-activating fails with the exclusion error if someone else has taken the slot meanwhile.
+
+-- New occupancy rows derive `active` themselves; whatever the app writes is overwritten.
+CREATE OR REPLACE FUNCTION occupancy_set_active_on_insert() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  SELECT (b.status IN ('TENTATIVE', 'CONFIRMED', 'COMPLETED') AND s.status = 'ACTIVE')
+    INTO NEW.active
+    FROM booking_sessions s
+    JOIN bookings b ON b.id = s.booking_id AND b.tenant_id = s.tenant_id
+   WHERE s.id = NEW.session_id AND s.tenant_id = NEW.tenant_id;
+  NEW.active := COALESCE(NEW.active, false);
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS space_occupancies_set_active ON space_occupancies;
+CREATE TRIGGER space_occupancies_set_active
+  BEFORE INSERT ON space_occupancies
+  FOR EACH ROW EXECUTE FUNCTION occupancy_set_active_on_insert();
+
+-- Booking status changes flip every occupancy of the booking.
+CREATE OR REPLACE FUNCTION sync_occupancy_from_booking() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
+    UPDATE space_occupancies o
+       SET active = (NEW.status IN ('TENTATIVE', 'CONFIRMED', 'COMPLETED') AND s.status = 'ACTIVE')
+      FROM booking_sessions s
+     WHERE o.session_id = s.id AND o.tenant_id = s.tenant_id
+       AND s.booking_id = NEW.id AND s.tenant_id = NEW.tenant_id;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS bookings_sync_occupancy ON bookings;
+CREATE TRIGGER bookings_sync_occupancy
+  AFTER UPDATE OF status ON bookings
+  FOR EACH ROW EXECUTE FUNCTION sync_occupancy_from_booking();
+
+-- Soft-cancelling (or restoring) one session flips only that session's occupancy.
+CREATE OR REPLACE FUNCTION sync_occupancy_from_session() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.status IS DISTINCT FROM OLD.status THEN
+    UPDATE space_occupancies o
+       SET active = (NEW.status = 'ACTIVE' AND b.status IN ('TENTATIVE', 'CONFIRMED', 'COMPLETED'))
+      FROM bookings b
+     WHERE b.id = NEW.booking_id AND b.tenant_id = NEW.tenant_id
+       AND o.session_id = NEW.id AND o.tenant_id = NEW.tenant_id;
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS booking_sessions_sync_occupancy ON booking_sessions;
+CREATE TRIGGER booking_sessions_sync_occupancy
+  AFTER UPDATE OF status ON booking_sessions
+  FOR EACH ROW EXECUTE FUNCTION sync_occupancy_from_session();
+
+-- ───────────────────────────── 5) Combined spaces ─────────────────────────────
+-- A combined space is made of physical spaces of the same venue; combined spaces never nest.
+CREATE OR REPLACE FUNCTION validate_space_component() RETURNS trigger
+LANGUAGE plpgsql AS $$
+DECLARE c spaces%ROWTYPE; p spaces%ROWTYPE;
+BEGIN
+  SELECT * INTO c FROM spaces WHERE id = NEW.combined_space_id;
+  SELECT * INTO p FROM spaces WHERE id = NEW.component_space_id;
+  IF c.id IS NULL OR p.id IS NULL THEN
+    RAISE EXCEPTION 'space_components_not_found' USING ERRCODE = '23503';
+  END IF;
+  IF c.tenant_id <> NEW.tenant_id OR p.tenant_id <> NEW.tenant_id OR c.venue_id <> p.venue_id THEN
+    RAISE EXCEPTION 'space_components_same_venue' USING ERRCODE = '23514';
+  END IF;
+  IF NOT c.is_combined THEN
+    RAISE EXCEPTION 'space_components_parent_not_combined' USING ERRCODE = '23514';
+  END IF;
+  IF p.is_combined THEN
+    RAISE EXCEPTION 'space_components_no_nesting' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS space_components_validate ON space_components;
+CREATE TRIGGER space_components_validate
+  BEFORE INSERT OR UPDATE ON space_components
+  FOR EACH ROW EXECUTE FUNCTION validate_space_component();
+
+-- Flipping is_combined must not break existing component links.
+CREATE OR REPLACE FUNCTION validate_space_combined_flag() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+  IF NEW.is_combined AND EXISTS (
+       SELECT 1 FROM space_components WHERE component_space_id = NEW.id) THEN
+    RAISE EXCEPTION 'space_components_no_nesting' USING ERRCODE = '23514';
+  END IF;
+  IF NOT NEW.is_combined AND EXISTS (
+       SELECT 1 FROM space_components WHERE combined_space_id = NEW.id) THEN
+    RAISE EXCEPTION 'space_components_parent_not_combined' USING ERRCODE = '23514';
+  END IF;
+  RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS spaces_validate_combined_flag ON spaces;
+CREATE TRIGGER spaces_validate_combined_flag
+  BEFORE UPDATE OF is_combined ON spaces
+  FOR EACH ROW EXECUTE FUNCTION validate_space_combined_flag();
+
+-- ───────────────────────────── 6) Tenant isolation (Row Level Security) ─────────────────────────────
+-- Without app.tenant_id, tenant tables return no rows and reject writes. Cross-tenant jobs
+-- connect as venueos_jobs (BYPASSRLS); venueos_app must NOT have it.
 DO $$
 DECLARE t text;
 BEGIN
@@ -78,19 +314,14 @@ BEGIN
   END LOOP;
 END $$;
 
--- 4) Before a tenant is chosen ---------------------------------------------
--- After login the app sets app.user_id and must list the user's own memberships
--- (tenant switcher) before any app.tenant_id exists. This second policy is OR-ed
--- with tenant_isolation, so a user sees their own membership rows in any tenant,
--- and nothing else.
-CREATE OR REPLACE FUNCTION app_current_user() RETURNS text
-LANGUAGE sql STABLE AS $$ SELECT nullif(current_setting('app.user_id', true), '') $$;
-
+-- Before a tenant is chosen (login, tenant switcher) only app.user_id is set. This policy is
+-- OR-ed with tenant_isolation: a user sees their own memberships in any tenant, nothing else.
 DROP POLICY IF EXISTS membership_self ON memberships;
 CREATE POLICY membership_self ON memberships
-  FOR SELECT USING ("userId" = app_current_user());
+  FOR SELECT USING (user_id = app_current_user());
 
--- Tenants: visible when it is the active tenant or the user is a member of it.
+-- Tenants (no tenant_id column): visible when it is the active tenant or the user is a member.
+-- Signup inserts a tenant after pre-generating its id and setting app.tenant_id to it.
 ALTER TABLE tenants ENABLE ROW LEVEL SECURITY;
 ALTER TABLE tenants FORCE ROW LEVEL SECURITY;
 DROP POLICY IF EXISTS tenant_visible ON tenants;
@@ -98,16 +329,88 @@ CREATE POLICY tenant_visible ON tenants
   USING (
     id = app_current_tenant()
     OR EXISTS (SELECT 1 FROM memberships m
-                WHERE m.tenant_id = tenants.id AND m."userId" = app_current_user())
+                WHERE m.tenant_id = tenants.id AND m.user_id = app_current_user())
   );
 
--- Public pages (subdomain -> tenant) run before anyone logs in. This function is the
--- ONLY way to read tenants without context; it returns the id and nothing else.
+-- Users (global table): your own row, or users with a membership in the current tenant.
+-- The auth role (AuthModule) manages all users: login, signup, invitations, reset.
+ALTER TABLE users ENABLE ROW LEVEL SECURITY;
+ALTER TABLE users FORCE ROW LEVEL SECURITY;
+DROP POLICY IF EXISTS users_visible ON users;
+CREATE POLICY users_visible ON users
+  USING (
+    id = app_current_user()
+    OR EXISTS (SELECT 1 FROM memberships m
+                WHERE m.user_id = users.id AND m.tenant_id = app_current_tenant())
+  );
+DROP POLICY IF EXISTS users_auth_all ON users;
+CREATE POLICY users_auth_all ON users TO venueos_auth USING (true) WITH CHECK (true);
+
+-- ───────────────────────────── 7) Public pages: resolve_tenant ─────────────────────────────
+-- Public pages (subdomain -> tenant) run before anyone logs in. This is the ONLY way to read
+-- tenants without context; it returns the id and nothing else. Because tenants has FORCE RLS,
+-- the function must be owned by a role with BYPASSRLS (venueos_definer), not by the migrator.
 CREATE OR REPLACE FUNCTION resolve_tenant(p_host_slug text) RETURNS text
-LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public AS $$
+LANGUAGE sql STABLE SECURITY DEFINER SET search_path = public, pg_temp AS $$
   SELECT id FROM tenants
-   WHERE (slug = p_host_slug OR "customDomain" = p_host_slug)
+   WHERE (slug = p_host_slug OR custom_domain = p_host_slug)
      AND status IN ('TRIAL', 'ACTIVE', 'PAST_DUE')
 $$;
+
+GRANT USAGE ON SCHEMA public TO venueos_definer;
+GRANT SELECT ON tenants TO venueos_definer;
+GRANT CREATE ON SCHEMA public TO venueos_definer;   -- needed only for ALTER ... OWNER TO
+ALTER FUNCTION resolve_tenant(text) OWNER TO venueos_definer;
+REVOKE CREATE ON SCHEMA public FROM venueos_definer;
 REVOKE ALL ON FUNCTION resolve_tenant(text) FROM PUBLIC;
--- GRANT EXECUTE ON FUNCTION resolve_tenant(text) TO venueos_app;  -- run after creating the app role
+GRANT EXECUTE ON FUNCTION resolve_tenant(text) TO venueos_app, venueos_auth;
+
+-- ───────────────────────────── 8) Role grants ─────────────────────────────
+GRANT USAGE ON SCHEMA public TO venueos_app, venueos_auth, venueos_jobs;
+
+-- Baseline: venueos_app gets DML on every table except Prisma's bookkeeping table...
+DO $$
+DECLARE t text;
+BEGIN
+  FOR t IN SELECT tablename FROM pg_tables
+            WHERE schemaname = 'public' AND tablename NOT LIKE '\_prisma%'
+  LOOP
+    EXECUTE format('GRANT SELECT, INSERT, UPDATE, DELETE ON public.%I TO venueos_app', t);
+  END LOOP;
+END $$;
+-- ...and so do tables created by future migrations. Their migration then narrows the class
+-- with make_append_only / revoke_delete / restrict_to_auth where needed (docs/03 checklist).
+ALTER DEFAULT PRIVILEGES IN SCHEMA public GRANT SELECT, INSERT, UPDATE, DELETE ON TABLES TO venueos_app;
+
+-- Plans are platform data: read-only for the app (seed/ops manage them as the migrator).
+REVOKE INSERT, UPDATE, DELETE ON plans FROM venueos_app;
+
+-- Append-only ledgers (CLAUDE.md rule 6). Payments: only cheque clearing may update a row.
+SELECT make_append_only('payments', ARRAY['status', 'cleared_at']);
+SELECT make_append_only('expenses');
+SELECT make_append_only('inventory_movements');
+SELECT make_append_only('audit_logs');
+SELECT make_append_only('message_logs');
+
+-- Never deleted by the app (cancel/expire/deactivate instead).
+SELECT revoke_delete('tenants');
+SELECT revoke_delete('users');
+SELECT revoke_delete('bookings');
+SELECT revoke_delete('booking_sessions');
+SELECT revoke_delete('quotations');
+SELECT revoke_delete('refund_requests');
+
+-- Auth tables: readable only through venueos_auth (the API's AuthModule).
+SELECT restrict_to_auth('user_credentials');
+SELECT restrict_to_auth('auth_sessions');
+SELECT restrict_to_auth('auth_tokens');
+SELECT restrict_to_auth('invitations');
+SELECT restrict_to_auth('login_attempts');
+GRANT SELECT, INSERT, UPDATE ON users TO venueos_auth;   -- no DELETE; policy users_auth_all applies
+
+-- Worker scanners: SELECT only, on the tables needed to FIND due work (they read ids and enqueue
+-- one job per item; the job itself runs as venueos_app inside the tenant context).
+REVOKE ALL ON ALL TABLES IN SCHEMA public FROM venueos_jobs;
+GRANT SELECT ON tenants, venues, bookings, booking_sessions, payment_schedule_items,
+                leads, inventory_items TO venueos_jobs;
+-- (pg-boss schema grants for venueos_app and venueos_jobs are added with the worker, task P0-6.)

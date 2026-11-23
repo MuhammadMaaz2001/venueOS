@@ -1,22 +1,33 @@
 // venueOS — multi-tenant event & marriage hall booking SaaS
-// PostgreSQL 16+. Constraints Prisma cannot express (exclusion constraint,
-// trigger, Row Level Security) live in packages/db/prisma/sql/001_constraints_and_rls.sql
-// and are appended to the first migration. See docs/03-data-model.md.
+// PostgreSQL 16+, Prisma 7 (driver adapter `@prisma/adapter-pg`, config in prisma.config.ts).
+// Constraints Prisma cannot express (exclusion constraint, triggers, CHECKs, Row Level
+// Security, role grants) live in packages/db/prisma/sql/001_constraints_and_rls.sql and are
+// appended to the first migration. See docs/03-data-model.md.
 //
 // Conventions
+// - Tables AND columns are snake_case in the database (@@map / @map); Prisma fields are camelCase.
 // - Every tenant-owned table has tenant_id (RLS policy applies automatically).
-// - Money: Decimal(14,2) in the tenant's currency. Never JS number.
-// - Instants: timestamptz (UTC). Local wall-clock times (slot start/end) are "HH:mm" strings
-//   interpreted in the venue's timezone.
-// - Bookings, payments, audit rows are never hard-deleted. Catalogue rows use `active`.
+// - Money: Decimal(18,3) in the tenant's currency; rounding to the currency's ISO 4217 minor
+//   unit happens in code (packages/shared). Never JS number.
+// - Instants: timestamptz (UTC). Date-only values use @db.Date. Local wall-clock times
+//   (slot start/end, opening hours) are "HH:mm" strings interpreted in the venue's timezone.
+// - Editable tables carry created_at, updated_at and rev. A BEFORE UPDATE trigger bumps rev and
+//   updated_at; the API's PATCH sends rev back for optimistic concurrency (409 VERSION_CONFLICT).
+// - Bookings, payments, audit rows are never hard-deleted; append-only tables are enforced by
+//   revoking UPDATE/DELETE from the app role (see the SQL file). Catalogue rows use `active`.
+// - created_by_id / received_by_id / requested_by_id etc. always hold a USER id (users.id).
+// - Files are referenced by S3 object key (…_key), never by URL.
+// - Cross-tenant safety: critical child→parent references use composite (tenant_id, id) FKs.
 
 generator client {
-  provider = "prisma-client-js"
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
 }
 
 datasource db {
   provider = "postgresql"
-  url      = env("DATABASE_URL")
+  // The connection URL lives in prisma.config.ts (Prisma 7): MIGRATE_DATABASE_URL for the CLI,
+  // DATABASE_URL / AUTH_DATABASE_URL / JOBS_DATABASE_URL at runtime through driver adapters.
 }
 
 // ─────────────────────────────── Platform ───────────────────────────────
@@ -25,8 +36,10 @@ enum TenantStatus {
   TRIAL
   ACTIVE
   PAST_DUE
-  SUSPENDED
+  SUSPENDED // read-only: GET allowed, writes rejected with 403 TENANT_SUSPENDED
   CANCELLED
+
+  @@map("tenant_status")
 }
 
 model Plan {
@@ -35,12 +48,14 @@ model Plan {
   name          String
   // Limits and feature flags, e.g. {"maxVenues":1,"maxSpaces":3,"maxUsers":5,"emailsPerMonth":2000,"customDomain":false}
   entitlements  Json
-  priceMonthly  Decimal        @db.Decimal(14, 2)
-  priceYearly   Decimal?       @db.Decimal(14, 2)
+  priceMonthly  Decimal        @map("price_monthly") @db.Decimal(18, 3)
+  priceYearly   Decimal?       @map("price_yearly") @db.Decimal(18, 3)
   currency      String         @db.Char(3)
-  isPublic      Boolean        @default(true)
+  isPublic      Boolean        @default(true) @map("is_public")
+  rev           Int            @default(1)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
   subscriptions Subscription[]
-  createdAt     DateTime       @default(now())
 
   @@map("plans")
 }
@@ -49,60 +64,69 @@ model Tenant {
   id              String       @id @default(cuid())
   slug            String       @unique // subdomain
   name            String
-  customDomain    String?      @unique
+  customDomain    String?      @unique @map("custom_domain")
   country         String       @db.Char(2)
-  currency        String       @db.Char(3)
+  currency        String       @db.Char(3) // ISO 4217; minor units come from the shared currency map
   timezone        String       // IANA, e.g. Asia/Karachi
-  defaultLocale   String       @default("en") // en, ur, ar ...
+  defaultLocale   String       @default("en") @map("default_locale") // en, ur, ar ...
   status          TenantStatus @default(TRIAL)
-  trialEndsAt     DateTime?
-  // Tenant-wide policies: holds, payments, numbering, branding
-  // e.g. {"holdHours":48,"advancePct":50,"balanceDueDays":7,"bookingPrefix":"RB"}
+  trialEndsAt     DateTime?    @map("trial_ends_at") @db.Timestamptz(6)
+  // Typed by TenantSettings (Zod, packages/shared) with defaults: holdHours, advancePct,
+  // tokenAmount, balanceDueDays, guestLockDays, reminderDays, eventReminderDays, minHours,
+  // bookingPrefix ... See docs/05-business-rules.md §15.
   settings        Json         @default("{}")
-  createdAt       DateTime     @default(now())
-  updatedAt       DateTime     @updatedAt
+  rev             Int          @default(1)
+  createdAt       DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  memberships         Membership[]
-  roles               Role[]
-  venues              Venue[]
-  spaces              Space[]
-  slotTemplates       SlotTemplate[]
-  eventTypes          EventType[]
-  menuItems           MenuItem[]
-  packages            Package[]
-  addOns              AddOn[]
-  priceRules          PriceRule[]
-  taxRates            TaxRate[]
+  memberships          Membership[]
+  invitations          Invitation[]
+  authSessions         AuthSession[]
+  roles                Role[]
+  venues               Venue[]
+  spaces               Space[]
+  spaceComponents      SpaceComponent[]
+  slotTemplates        SlotTemplate[]
+  spaceSlotPrices      SpaceSlotPrice[]
+  eventTypes           EventType[]
+  menuItems            MenuItem[]
+  packages             Package[]
+  packageItems         PackageItem[]
+  addOns               AddOn[]
+  priceRules           PriceRule[]
+  taxRates             TaxRate[]
   cancellationPolicies CancellationPolicy[]
-  customFieldDefs     CustomFieldDef[]
-  customers           Customer[]
-  leads               Lead[]
-  bookings            Booking[]
-  sessions            BookingSession[]
-  occupancies         SpaceOccupancy[]
-  lineItems           BookingLineItem[]
-  paymentSchedules    PaymentScheduleItem[]
-  payments            Payment[]
-  vendors             Vendor[]
-  vendorAssignments   VendorAssignment[]
-  expenses            Expense[]
-  inventoryItems      InventoryItem[]
-  inventoryMovements  InventoryMovement[]
-  counters            TenantCounter[]
-  messageTemplates    MessageTemplate[]
-  messages            MessageLog[]
-  auditLogs           AuditLog[]
-  subscriptions       Subscription[]
+  customFieldDefs      CustomFieldDef[]
+  customers            Customer[]
+  leads                Lead[]
+  bookings             Booking[]
+  quotations           Quotation[]
+  sessions             BookingSession[]
+  occupancies          SpaceOccupancy[]
+  lineItems            BookingLineItem[]
+  paymentSchedules     PaymentScheduleItem[]
+  payments             Payment[]
+  refundRequests       RefundRequest[]
+  vendors              Vendor[]
+  vendorAssignments    VendorAssignment[]
+  expenses             Expense[]
+  inventoryItems       InventoryItem[]
+  inventoryMovements   InventoryMovement[]
+  counters             TenantCounter[]
+  messageTemplates     MessageTemplate[]
+  messages             MessageLog[]
+  auditLogs            AuditLog[]
+  subscriptions        Subscription[]
 
   @@map("tenants")
 }
 
-// Per-tenant gap-free numbering (booking numbers, receipt numbers).
+// Per-tenant gap-free numbering (booking, quotation and receipt numbers).
 // Incremented with UPDATE ... RETURNING inside the same transaction as the insert.
 model TenantCounter {
   tenantId String @map("tenant_id")
   tenant   Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  key      String // booking:2026, receipt:2026
+  key      String // booking:2026, quotation:2026, receipt:2026
   value    Int    @default(0)
 
   @@id([tenantId, key])
@@ -110,18 +134,20 @@ model TenantCounter {
 }
 
 model Subscription {
-  id                 String    @id @default(cuid())
-  tenantId           String    @map("tenant_id")
-  tenant             Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  planId             String
-  plan               Plan      @relation(fields: [planId], references: [id])
-  status             String    // active, past_due, cancelled
-  billingCycle       String    // monthly, yearly
-  currentPeriodStart DateTime
-  currentPeriodEnd   DateTime
-  provider           String?   // stripe, bank_transfer, local gateway
-  providerRef        String?
-  createdAt          DateTime  @default(now())
+  id                 String   @id @default(cuid())
+  tenantId           String   @map("tenant_id")
+  tenant             Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  planId             String   @map("plan_id")
+  plan               Plan     @relation(fields: [planId], references: [id])
+  status             String   // active, past_due, cancelled
+  billingCycle       String   @map("billing_cycle") // monthly, yearly
+  currentPeriodStart DateTime @map("current_period_start") @db.Timestamptz(6)
+  currentPeriodEnd   DateTime @map("current_period_end") @db.Timestamptz(6)
+  provider           String?  // stripe, bank_transfer, local gateway
+  providerRef        String?  @map("provider_ref")
+  rev                Int      @default(1)
+  createdAt          DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@map("subscriptions")
@@ -129,38 +155,65 @@ model Subscription {
 
 // ─────────────────────────────── Identity ───────────────────────────────
 
+// Global table (no tenant_id). RLS: a user sees their own row and the users who have a
+// membership in the current tenant. Credentials live in user_credentials (auth role only).
 model User {
-  id            String       @id @default(cuid())
-  email         String?      @unique
-  phone         String?      @unique // E.164
-  name          String
-  passwordHash  String?      // argon2id
-  emailVerifiedAt DateTime?
-  isPlatformAdmin Boolean    @default(false)
-  failedLoginCount Int       @default(0)
-  lockedUntil   DateTime?
-  createdAt     DateTime     @default(now())
+  id              String    @id @default(cuid())
+  email           String?   @unique
+  phone           String?   @unique // E.164
+  name            String
+  emailVerifiedAt DateTime? @map("email_verified_at") @db.Timestamptz(6)
+  isPlatformAdmin Boolean   @default(false) @map("is_platform_admin") // reserved; platform admin app is post-MVP
+  rev             Int       @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  credentials   UserCredential?
   memberships   Membership[]
   authSessions  AuthSession[]
   authTokens    AuthToken[]
+  invitationsSent Invitation[]        @relation("InvitationInviter")
+  bookingsCreated Booking[]           @relation("BookingCreator")
+  quotationsCreated Quotation[]       @relation("QuotationCreator")
+  paymentsReceived Payment[]          @relation("PaymentReceiver")
+  refundsRequested RefundRequest[]    @relation("RefundRequester")
+  refundsApproved  RefundRequest[]    @relation("RefundApprover")
+  expensesCreated  Expense[]          @relation("ExpenseCreator")
+  movementsCreated InventoryMovement[] @relation("MovementCreator")
+  auditEntries     AuditLog[]         @relation("AuditActor")
 
   @@map("users")
 }
 
-// Server-side sessions. The cookie holds a random token; only its SHA-256 hash is stored.
-// Global table (no tenant_id): a user may switch between tenants in one session.
+// AUTH-ONLY (not readable by venueos_app; only venueos_auth). Split from users so that no
+// tenant-context query can ever select a password hash.
+model UserCredential {
+  userId           String    @id @map("user_id")
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  passwordHash     String    @map("password_hash") // argon2id
+  failedLoginCount Int       @default(0) @map("failed_login_count")
+  lockedUntil      DateTime? @map("locked_until") @db.Timestamptz(6)
+  passwordChangedAt DateTime? @map("password_changed_at") @db.Timestamptz(6)
+  updatedAt        DateTime  @default(now()) @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@map("user_credentials")
+}
+
+// AUTH-ONLY. Server-side sessions. The cookie holds a random token; only its SHA-256 hash is
+// stored. Global table (no tenant_id): a user may switch between tenants in one session.
 model AuthSession {
   id             String    @id @default(cuid())
-  userId         String
+  userId         String    @map("user_id")
   user           User      @relation(fields: [userId], references: [id], onDelete: Cascade)
-  tokenHash      String    @unique
-  activeTenantId String?
+  tokenHash      String    @unique @map("token_hash")
+  activeTenantId String?   @map("active_tenant_id")
+  activeTenant   Tenant?   @relation(fields: [activeTenantId], references: [id], onDelete: SetNull)
   ip             String?
-  userAgent      String?
-  createdAt      DateTime  @default(now())
-  lastSeenAt     DateTime  @default(now())
-  expiresAt      DateTime
-  revokedAt      DateTime?
+  userAgent      String?   @map("user_agent")
+  createdAt      DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  lastSeenAt     DateTime  @default(now()) @map("last_seen_at") @db.Timestamptz(6)
+  expiresAt      DateTime  @map("expires_at") @db.Timestamptz(6)
+  revokedAt      DateTime? @map("revoked_at") @db.Timestamptz(6)
 
   @@index([userId])
   @@map("auth_sessions")
@@ -169,22 +222,60 @@ model AuthSession {
 enum AuthTokenPurpose {
   EMAIL_VERIFY
   PASSWORD_RESET
-  INVITE
+
+  @@map("auth_token_purpose")
 }
 
-// One-time tokens sent by email. Stored hashed, single use, short expiry.
+// AUTH-ONLY. One-time tokens sent by email. Stored hashed, single use, short expiry.
+// (Staff invitations have their own table because they carry a tenant, role and venues.)
 model AuthToken {
   id        String           @id @default(cuid())
-  userId    String
+  userId    String           @map("user_id")
   user      User             @relation(fields: [userId], references: [id], onDelete: Cascade)
   purpose   AuthTokenPurpose
-  tokenHash String           @unique
-  expiresAt DateTime
-  usedAt    DateTime?
-  createdAt DateTime         @default(now())
+  tokenHash String           @unique @map("token_hash")
+  expiresAt DateTime         @map("expires_at") @db.Timestamptz(6)
+  usedAt    DateTime?        @map("used_at") @db.Timestamptz(6)
+  createdAt DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([userId, purpose])
   @@map("auth_tokens")
+}
+
+// AUTH-ONLY (has tenant_id, but accepting an invite happens before any tenant context exists,
+// so the auth role gets its own RLS policy). A pending staff invitation, 72 h expiry.
+model Invitation {
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  email       String
+  roleId      String    @map("role_id")
+  role        Role      @relation(fields: [roleId], references: [id])
+  venueIds    String[]  @map("venue_ids") // empty = all venues
+  tokenHash   String    @unique @map("token_hash")
+  invitedById String?   @map("invited_by_id")
+  invitedBy   User?     @relation("InvitationInviter", fields: [invitedById], references: [id])
+  expiresAt   DateTime  @map("expires_at") @db.Timestamptz(6)
+  acceptedAt  DateTime? @map("accepted_at") @db.Timestamptz(6)
+  revokedAt   DateTime? @map("revoked_at") @db.Timestamptz(6)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([tenantId, email])
+  @@map("invitations")
+}
+
+// AUTH-ONLY. One row per login attempt; backs the per-email and per-IP limits (also for
+// unknown emails). The email is stored only as a hash. Old rows are purged by a job.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  emailHash String   @map("email_hash")
+  ip        String?
+  succeeded Boolean  @default(false)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+
+  @@index([emailHash, createdAt])
+  @@index([ip, createdAt])
+  @@map("login_attempts")
 }
 
 model Role {
@@ -192,12 +283,16 @@ model Role {
   tenantId    String       @map("tenant_id")
   tenant      Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String       // Owner, Branch manager, Sales agent, Accountant, Operations
-  // e.g. ["booking.create","booking.confirm","payment.refund","settings.write"]
+  // Permission names from docs/04-security.md, e.g. ["booking.create","booking.confirm","payment.refund.approve","tenant.settings.manage"]
   permissions String[]
   // e.g. {"maxDiscountPct":10}
   limits      Json         @default("{}")
-  isSystem    Boolean      @default(false)
+  isSystem    Boolean      @default(false) @map("is_system")
+  rev         Int          @default(1)
+  createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
   memberships Membership[]
+  invitations Invitation[]
 
   @@unique([tenantId, name])
   @@map("roles")
@@ -207,17 +302,18 @@ model Membership {
   id        String   @id @default(cuid())
   tenantId  String   @map("tenant_id")
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  userId    String
+  userId    String   @map("user_id")
   user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  roleId    String
+  roleId    String   @map("role_id")
   role      Role     @relation(fields: [roleId], references: [id])
   // Empty = all venues in the tenant
-  venueIds  String[]
+  venueIds  String[] @map("venue_ids")
   active    Boolean  @default(true)
-  createdAt DateTime @default(now())
+  rev       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  assignedLeads Lead[]    @relation("LeadAssignee")
-  payments      Payment[] @relation("PaymentReceivedBy")
+  assignedLeads Lead[] @relation("LeadAssignee")
 
   @@unique([tenantId, userId])
   @@map("memberships")
@@ -233,10 +329,17 @@ model Venue {
   address       String?
   city          String?
   timezone      String?        // overrides tenant timezone
+  // Opening hours for HOURLY slots, venue-local "HH:mm". null = no restriction.
+  // closesAt earlier than opensAt means closing the next day.
+  opensAt       String?        @map("opens_at")
+  closesAt      String?        @map("closes_at")
   // City/venue rules, e.g. {"latestEndTime":"22:00","maxGuests":1000}
-  localRules    Json           @default("{}")
-  photos        String[]
+  localRules    Json           @default("{}") @map("local_rules")
+  photoKeys     String[]       @map("photo_keys") // S3 object keys
   active        Boolean        @default(true)
+  rev           Int            @default(1)
+  createdAt     DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
   spaces        Space[]
   slotTemplates SlotTemplate[]
   bookings      Booking[]
@@ -253,70 +356,84 @@ enum SpaceKind {
   ROOM
   FARMHOUSE
   OTHER
+
+  @@map("space_kind")
 }
 
 model Space {
-  id              String      @id @default(cuid())
-  tenantId        String      @map("tenant_id")
-  tenant          Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  venueId         String
-  venue           Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  name            String
-  kind            SpaceKind   @default(HALL)
-  capacitySeated  Int?
-  capacityStanding Int?
-  minGuests       Int?
+  id               String      @id @default(cuid())
+  tenantId         String      @map("tenant_id")
+  tenant           Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  venueId          String      @map("venue_id")
+  venue            Venue       @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name             String
+  kind             SpaceKind   @default(HALL)
+  capacitySeated   Int?        @map("capacity_seated")
+  capacityStanding Int?        @map("capacity_standing")
+  minGuests        Int?        @map("min_guests")
   // A combined space (e.g. "Hall A+B") has components; a physical space has none.
-  isCombined      Boolean     @default(false)
-  setupBufferMin  Int         @default(0)
-  cleanupBufferMin Int        @default(0)
-  baseRent        Decimal?    @db.Decimal(14, 2) // default rent per slot, overridable by price rules
-  active          Boolean     @default(true)
+  // A combined space cannot be a component of another combined space (trigger).
+  isCombined       Boolean     @default(false) @map("is_combined")
+  setupBufferMin   Int         @default(0) @map("setup_buffer_min")
+  cleanupBufferMin Int         @default(0) @map("cleanup_buffer_min")
+  baseRent         Decimal?    @map("base_rent") @db.Decimal(18, 3) // default rent per slot, overridable by price rules
+  active           Boolean     @default(true)
+  rev              Int         @default(1)
+  createdAt        DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
 
-  components      SpaceComponent[] @relation("CombinedSpace")
-  partOf          SpaceComponent[] @relation("ComponentSpace")
-  sessions        BookingSession[]
-  occupancies     SpaceOccupancy[]
-  priceRules      PriceRule[]
-  slotPrices      SpaceSlotPrice[]
+  components  SpaceComponent[] @relation("CombinedSpace")
+  partOf      SpaceComponent[] @relation("ComponentSpace")
+  sessions    BookingSession[]
+  occupancies SpaceOccupancy[]
+  priceRules  PriceRule[]
+  slotPrices  SpaceSlotPrice[]
 
+  @@unique([tenantId, id])
   @@index([tenantId, venueId])
   @@map("spaces")
 }
 
 model SpaceComponent {
   tenantId         String @map("tenant_id")
-  combinedSpaceId  String
+  tenant           Tenant @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  combinedSpaceId  String @map("combined_space_id")
   combinedSpace    Space  @relation("CombinedSpace", fields: [combinedSpaceId], references: [id], onDelete: Cascade)
-  componentSpaceId String
+  componentSpaceId String @map("component_space_id")
   componentSpace   Space  @relation("ComponentSpace", fields: [componentSpaceId], references: [id], onDelete: Cascade)
 
   @@id([combinedSpaceId, componentSpaceId])
+  @@index([tenantId])
   @@map("space_components")
 }
 
 enum SlotMode {
-  FIXED   // named shifts: Lunch, Dinner
-  HOURLY  // free start/end within opening hours
+  FIXED    // named shifts: Lunch, Dinner
+  HOURLY   // free start/end within opening hours
   FULL_DAY
+
+  @@map("slot_mode")
 }
 
 model SlotTemplate {
-  id          String           @id @default(cuid())
-  tenantId    String           @map("tenant_id")
-  tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  venueId     String
-  venue       Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  name        String           // Lunch, Dinner, Hourly
-  mode        SlotMode         @default(FIXED)
-  startTime   String           // "12:00" local time
-  endTime     String           // "16:00"; may be earlier than start for overnight
-  daysOfWeek  Int[]            // 0=Sun .. 6=Sat; empty = every day
-  minHours    Int?             // for HOURLY
-  active      Boolean          @default(true)
-  sessions    BookingSession[]
-  slotPrices  SpaceSlotPrice[]
-  priceRules  PriceRule[]
+  id         String           @id @default(cuid())
+  tenantId   String           @map("tenant_id")
+  tenant     Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  venueId    String           @map("venue_id")
+  venue      Venue            @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  name       String           // Lunch, Dinner, Hourly
+  mode       SlotMode         @default(FIXED)
+  startTime  String           @map("start_time") // "12:00" local time
+  endTime    String           @map("end_time")   // "16:00"; may be earlier than start for overnight
+  daysOfWeek Int[]            @map("days_of_week") // 0=Sun .. 6=Sat; empty = every day
+  minHours   Int?             @map("min_hours")    // for HOURLY; null = tenant setting minHours
+  active     Boolean          @default(true)
+  rev        Int              @default(1)
+  createdAt  DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
+  sessions   BookingSession[]
+  slotPrices SpaceSlotPrice[]
+  priceRules PriceRule[]
 
   @@index([tenantId, venueId])
   @@map("slot_templates")
@@ -324,13 +441,15 @@ model SlotTemplate {
 
 model SpaceSlotPrice {
   tenantId String       @map("tenant_id")
-  spaceId  String
+  tenant   Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  spaceId  String       @map("space_id")
   space    Space        @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  slotId   String
+  slotId   String       @map("slot_id")
   slot     SlotTemplate @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  rent     Decimal      @db.Decimal(14, 2) // rent per slot (FIXED/FULL_DAY) or per hour (HOURLY)
+  rent     Decimal      @db.Decimal(18, 3) // rent per slot (FIXED/FULL_DAY) or per hour (HOURLY)
 
   @@id([spaceId, slotId])
+  @@index([tenantId])
   @@map("space_slot_prices")
 }
 
@@ -339,9 +458,13 @@ model EventType {
   tenantId         String           @map("tenant_id")
   tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name             String           // Mehndi, Barat, Walima, Birthday, Conference
-  defaultPackageId String?
+  defaultPackageId String?          @map("default_package_id")
+  defaultPackage   Package?         @relation(fields: [defaultPackageId], references: [id], onDelete: SetNull)
   color            String?
   active           Boolean          @default(true)
+  rev              Int              @default(1)
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   sessions         BookingSession[]
   leads            Lead[]
 
@@ -358,6 +481,9 @@ model MenuItem {
   name      String
   category  String?       // Starter, Main, Dessert, Drink
   active    Boolean       @default(true)
+  rev       Int           @default(1)
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
   packages  PackageItem[]
 
   @@index([tenantId])
@@ -369,12 +495,16 @@ model Package {
   tenantId    String           @map("tenant_id")
   tenant      Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name        String           // Menu A, Platinum, Day delegate
-  perHeadRate Decimal          @db.Decimal(14, 2)
-  minGuests   Int              @default(0)
+  perHeadRate Decimal          @map("per_head_rate") @db.Decimal(18, 3)
+  minGuests   Int              @default(0) @map("min_guests")
   description String?
   active      Boolean          @default(true)
+  rev         Int              @default(1)
+  createdAt   DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt   DateTime         @updatedAt @map("updated_at") @db.Timestamptz(6)
   items       PackageItem[]
   sessions    BookingSession[]
+  eventTypes  EventType[]
 
   @@index([tenantId])
   @@map("packages")
@@ -382,13 +512,15 @@ model Package {
 
 model PackageItem {
   tenantId   String   @map("tenant_id")
-  packageId  String
+  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  packageId  String   @map("package_id")
   package    Package  @relation(fields: [packageId], references: [id], onDelete: Cascade)
-  menuItemId String
+  menuItemId String   @map("menu_item_id")
   menuItem   MenuItem @relation(fields: [menuItemId], references: [id], onDelete: Cascade)
   quantity   Int      @default(1)
 
   @@id([packageId, menuItemId])
+  @@index([tenantId])
   @@map("package_items")
 }
 
@@ -397,6 +529,8 @@ enum AddOnPricing {
   PER_HEAD
   PER_HOUR
   PER_UNIT
+
+  @@map("add_on_pricing")
 }
 
 model AddOn {
@@ -405,10 +539,13 @@ model AddOn {
   tenant    Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   name      String       // Stage decor, DJ, Extra dish, Projector
   pricing   AddOnPricing @default(FIXED)
-  price     Decimal      @db.Decimal(14, 2)
-  vendorId  String?
+  price     Decimal      @db.Decimal(18, 3)
+  vendorId  String?      @map("vendor_id")
   vendor    Vendor?      @relation(fields: [vendorId], references: [id])
   active    Boolean      @default(true)
+  rev       Int          @default(1)
+  createdAt DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@map("add_ons")
@@ -418,12 +555,16 @@ enum PriceRuleKind {
   DAY_OF_WEEK
   DATE_RANGE   // season
   SPECIFIC_DATE
+
+  @@map("price_rule_kind")
 }
 
 enum AdjustmentKind {
   PERCENT      // +20 = 20% higher
   FIXED_AMOUNT // +50000
   OVERRIDE     // rent becomes exactly this
+
+  @@map("adjustment_kind")
 }
 
 model PriceRule {
@@ -433,30 +574,36 @@ model PriceRule {
   name       String         // Wedding season, Friday dinner
   kind       PriceRuleKind
   // Scope: null = all spaces / all slots
-  spaceId    String?
+  spaceId    String?        @map("space_id")
   space      Space?         @relation(fields: [spaceId], references: [id], onDelete: Cascade)
-  slotId     String?
+  slotId     String?        @map("slot_id")
   slot       SlotTemplate?  @relation(fields: [slotId], references: [id], onDelete: Cascade)
-  daysOfWeek Int[]
-  startDate  DateTime?      @db.Date
-  endDate    DateTime?      @db.Date
+  daysOfWeek Int[]          @map("days_of_week")
+  startDate  DateTime?      @map("start_date") @db.Date
+  endDate    DateTime?      @map("end_date") @db.Date
   adjustment AdjustmentKind
-  value      Decimal        @db.Decimal(14, 2)
+  value      Decimal        @db.Decimal(18, 3)
   priority   Int            @default(0) // higher wins on conflict
   active     Boolean        @default(true)
+  rev        Int            @default(1)
+  createdAt  DateTime       @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt  DateTime       @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@map("price_rules")
 }
 
 model TaxRate {
-  id        String  @id @default(cuid())
-  tenantId  String  @map("tenant_id")
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name      String  // GST, VAT
-  ratePct   Decimal @db.Decimal(5, 2)
-  inclusive Boolean @default(false)
-  isDefault Boolean @default(false)
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name      String   // GST, VAT
+  ratePct   Decimal  @map("rate_pct") @db.Decimal(5, 2)
+  inclusive Boolean  @default(false)
+  isDefault Boolean  @default(false) @map("is_default")
+  rev       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId])
   @@map("tax_rates")
@@ -469,7 +616,10 @@ model CancellationPolicy {
   name      String
   // Ordered tiers, e.g. [{"minDaysBefore":60,"refundPct":80},{"minDaysBefore":30,"refundPct":50},{"minDaysBefore":0,"refundPct":0}]
   tiers     Json
-  isDefault Boolean   @default(false)
+  isDefault Boolean   @default(false) @map("is_default")
+  rev       Int       @default(1)
+  createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   bookings  Booking[]
 
   @@index([tenantId])
@@ -477,18 +627,21 @@ model CancellationPolicy {
 }
 
 model CustomFieldDef {
-  id        String  @id @default(cuid())
-  tenantId  String  @map("tenant_id")
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  entity    String  // customer, booking, session, lead
-  key       String  // cnic, family_name, po_number
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  entity    String   // customer, booking, session, lead
+  key       String   // cnic, family_name, po_number
   label     String
-  type      String  // text, number, date, select, phone
+  type      String   // text, number, date, select, phone
   options   String[]
-  required  Boolean @default(false)
+  required  Boolean  @default(false)
   // Sensitive values (e.g. CNIC) are encrypted by the API before storage and masked in the UI
-  sensitive Boolean @default(false)
-  order     Int     @default(0)
+  sensitive Boolean  @default(false)
+  sortOrder Int      @default(0) @map("sort_order")
+  rev       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, entity, key])
   @@map("custom_field_defs")
@@ -497,21 +650,25 @@ model CustomFieldDef {
 // ─────────────────────────────── CRM ───────────────────────────────
 
 model Customer {
-  id           String    @id @default(cuid())
-  tenantId     String    @map("tenant_id")
-  tenant       Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  name         String
-  phone        String    // E.164, used for WhatsApp and duplicate detection
-  altPhone     String?
-  email        String?
-  address      String?
-  customFields Json      @default("{}")
-  notes        String?
-  createdAt    DateTime  @default(now())
-  leads        Lead[]
-  bookings     Booking[]
+  id              String    @id @default(cuid())
+  tenantId        String    @map("tenant_id")
+  tenant          Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name            String
+  phone           String    // E.164, used for WhatsApp. NOT unique: the UI warns about duplicates
+  altPhone        String?   @map("alt_phone")
+  email           String?
+  address         String?
+  preferredLocale String?   @map("preferred_locale") // en, ur ...; null = tenant default
+  customFields    Json      @default("{}") @map("custom_fields")
+  notes           String?
+  rev             Int       @default(1)
+  createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+  leads           Lead[]
+  bookings        Booking[]
 
-  @@unique([tenantId, phone])
+  @@unique([tenantId, id])
+  @@index([tenantId, phone])
   @@map("customers")
 }
 
@@ -523,33 +680,37 @@ enum LeadStage {
   NEGOTIATION
   WON
   LOST
+
+  @@map("lead_stage")
 }
 
 model Lead {
-  id            String      @id @default(cuid())
-  tenantId      String      @map("tenant_id")
-  tenant        Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  customerId    String
-  customer      Customer    @relation(fields: [customerId], references: [id])
-  eventTypeId   String?
-  eventType     EventType?  @relation(fields: [eventTypeId], references: [id])
-  preferredDate DateTime?   @db.Date
-  flexibleDates Boolean     @default(false)
-  guests        Int?
-  budget        Decimal?    @db.Decimal(14, 2)
-  source        String      // walk_in, phone, whatsapp, web, marketplace, referral
-  stage         LeadStage   @default(NEW)
-  lostReason    String?
-  assigneeId    String?
-  assignee      Membership? @relation("LeadAssignee", fields: [assigneeId], references: [id])
-  nextFollowUpAt DateTime?
-  notes         String?
-  createdAt     DateTime    @default(now())
-  updatedAt     DateTime    @updatedAt
-  bookings      Booking[]
+  id             String      @id @default(cuid())
+  tenantId       String      @map("tenant_id")
+  tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  customerId     String      @map("customer_id")
+  customer       Customer    @relation(fields: [customerId], references: [id])
+  eventTypeId    String?     @map("event_type_id")
+  eventType      EventType?  @relation(fields: [eventTypeId], references: [id])
+  preferredDate  DateTime?   @map("preferred_date") @db.Date
+  flexibleDates  Boolean     @default(false) @map("flexible_dates")
+  guests         Int?
+  budget         Decimal?    @db.Decimal(18, 3)
+  source         String      // walk_in, phone, whatsapp, web, marketplace, referral
+  stage          LeadStage   @default(NEW)
+  lostReason     String?     @map("lost_reason")
+  assigneeId     String?     @map("assignee_id")
+  assignee       Membership? @relation("LeadAssignee", fields: [assigneeId], references: [id])
+  nextFollowUpAt DateTime?   @map("next_follow_up_at") @db.Timestamptz(6)
+  notes          String?
+  rev            Int         @default(1)
+  createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
+  bookings       Booking[]
 
   @@index([tenantId, stage])
   @@index([tenantId, nextFollowUpAt])
+  @@index([customerId])
   @@map("leads")
 }
 
@@ -562,97 +723,164 @@ enum BookingStatus {
   COMPLETED
   CANCELLED
   EXPIRED    // hold lapsed
+
+  @@map("booking_status")
 }
 
 model Booking {
-  id             String              @id @default(cuid())
-  tenantId       String              @map("tenant_id")
-  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  venueId        String
-  venue          Venue               @relation(fields: [venueId], references: [id])
-  number         String              // human number, e.g. RB-2026-0142
-  customerId     String
-  customer       Customer            @relation(fields: [customerId], references: [id])
-  leadId         String?
-  lead           Lead?               @relation(fields: [leadId], references: [id])
-  status         BookingStatus       @default(DRAFT)
-  version        Int                 @default(1) // bumps on every re-quote
-  holdExpiresAt  DateTime?
-  confirmedAt    DateTime?
-  cancelledAt    DateTime?
-  cancelReason   String?
-  cancellationPolicyId String?
+  id                   String              @id @default(cuid())
+  tenantId             String              @map("tenant_id")
+  tenant               Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  venueId              String              @map("venue_id")
+  venue                Venue               @relation(fields: [venueId], references: [id])
+  // Human number (e.g. RB-2026-0142), assigned when the booking is first put on hold, so
+  // abandoned quotations do not consume booking numbers. CHECK: required once not DRAFT/CANCELLED.
+  number               String?
+  customerId           String              @map("customer_id")
+  customer             Customer            @relation(fields: [tenantId, customerId], references: [tenantId, id])
+  leadId               String?             @map("lead_id")
+  lead                 Lead?               @relation(fields: [leadId], references: [id])
+  status               BookingStatus       @default(DRAFT)
+  // Price version: bumps on every re-quote (see quotations). Not the concurrency token.
+  quoteVersion         Int                 @default(1) @map("quote_version")
+  // Optimistic-concurrency revision: bumped by trigger on every UPDATE; PATCH sends it back.
+  rev                  Int                 @default(1)
+  holdExpiresAt        DateTime?           @map("hold_expires_at") @db.Timestamptz(6)
+  holdExtensions       Int                 @default(0) @map("hold_extensions")
+  confirmedAt          DateTime?           @map("confirmed_at") @db.Timestamptz(6)
+  cancelledAt          DateTime?           @map("cancelled_at") @db.Timestamptz(6)
+  cancelReason         String?             @map("cancel_reason")
+  cancellationPolicyId String?             @map("cancellation_policy_id")
   cancellationPolicy   CancellationPolicy? @relation(fields: [cancellationPolicyId], references: [id])
-  currency       String              @db.Char(3)
-  subtotal       Decimal             @default(0) @db.Decimal(14, 2)
-  discountTotal  Decimal             @default(0) @db.Decimal(14, 2)
-  taxTotal       Decimal             @default(0) @db.Decimal(14, 2)
-  grandTotal     Decimal             @default(0) @db.Decimal(14, 2)
-  paidTotal      Decimal             @default(0) @db.Decimal(14, 2)
-  customFields   Json                @default("{}")
-  notes          String?
-  createdById    String?
-  createdAt      DateTime            @default(now())
-  updatedAt      DateTime            @updatedAt
+  // Frozen copy of the policy at confirmation: {"policyId":"...","name":"...","tiers":[...]}.
+  // Cancellation refunds are computed from this, never from the live policy row.
+  cancellationSnapshot Json?               @map("cancellation_snapshot")
+  currency             String              @db.Char(3)
+  subtotal             Decimal             @default(0) @db.Decimal(18, 3)
+  discountTotal        Decimal             @default(0) @map("discount_total") @db.Decimal(18, 3)
+  taxTotal             Decimal             @default(0) @map("tax_total") @db.Decimal(18, 3)
+  grandTotal           Decimal             @default(0) @map("grand_total") @db.Decimal(18, 3)
+  paidTotal            Decimal             @default(0) @map("paid_total") @db.Decimal(18, 3)
+  customFields         Json                @default("{}") @map("custom_fields")
+  notes                String?
+  createdById          String?             @map("created_by_id")
+  createdBy            User?               @relation("BookingCreator", fields: [createdById], references: [id])
+  createdAt            DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt            DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   sessions       BookingSession[]
   lineItems      BookingLineItem[]
+  quotations     Quotation[]
   schedule       PaymentScheduleItem[]
   payments       Payment[]
+  refundRequests RefundRequest[]
   expenses       Expense[]
 
   @@unique([tenantId, number])
+  @@unique([tenantId, id])
   @@index([tenantId, status])
+  @@index([customerId])
+  @@index([leadId])
   @@map("bookings")
 }
 
+// An issued quotation (one row per version of a booking's quote). The line items are a frozen
+// JSON snapshot, so history survives re-quotes. The booking's own booking_line_items always
+// hold the CURRENT version. number is shared by all versions of one booking's quotation.
+model Quotation {
+  id            String    @id @default(cuid())
+  tenantId      String    @map("tenant_id")
+  tenant        Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId     String    @map("booking_id")
+  booking       Booking   @relation(fields: [tenantId, bookingId], references: [tenantId, id])
+  version       Int       // = bookings.quote_version at the time
+  number        String    // {prefix}-Q-{year}-{seq:4}
+  currency      String    @db.Char(3)
+  lineItems     Json      @map("line_items") // frozen snapshot of booking_line_items (+ sessions summary)
+  subtotal      Decimal   @db.Decimal(18, 3)
+  discountTotal Decimal   @map("discount_total") @db.Decimal(18, 3)
+  taxTotal      Decimal   @map("tax_total") @db.Decimal(18, 3)
+  grandTotal    Decimal   @map("grand_total") @db.Decimal(18, 3)
+  validUntil    DateTime? @map("valid_until") @db.Date
+  sentAt        DateTime? @map("sent_at") @db.Timestamptz(6)
+  acceptedAt    DateTime? @map("accepted_at") @db.Timestamptz(6)
+  pdfKey        String?   @map("pdf_key") // S3 object key
+  createdById   String?   @map("created_by_id")
+  createdBy     User?     @relation("QuotationCreator", fields: [createdById], references: [id])
+  rev           Int       @default(1)
+  createdAt     DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@unique([bookingId, version])
+  @@unique([tenantId, number, version])
+  @@index([tenantId, bookingId])
+  @@map("quotations")
+}
+
+enum SessionStatus {
+  ACTIVE
+  CANCELLED // soft cancel; its occupancy rows become inactive
+
+  @@map("session_status")
+}
+
 model BookingSession {
-  id           String       @id @default(cuid())
-  tenantId     String       @map("tenant_id")
-  tenant       Tenant       @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId    String
-  booking      Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  spaceId      String
-  space        Space        @relation(fields: [spaceId], references: [id])
-  slotId       String?
-  slot         SlotTemplate? @relation(fields: [slotId], references: [id])
-  eventTypeId  String?
-  eventType    EventType?   @relation(fields: [eventTypeId], references: [id])
-  packageId    String?
-  package      Package?     @relation(fields: [packageId], references: [id])
-  startsAt     DateTime     @db.Timestamptz(6) // event start, without buffers
-  endsAt       DateTime     @db.Timestamptz(6)
-  guests       Int
-  guaranteedGuests Int?     // billed minimum
-  setupNotes   String?      // decor, seating, stage — feeds the event sheet
-  kitchenNotes String?      // dietary notes, serving time — feeds the event sheet
-  customFields Json         @default("{}")
-  occupancies  SpaceOccupancy[]
-  lineItems    BookingLineItem[]
+  id               String        @id @default(cuid())
+  tenantId         String        @map("tenant_id")
+  tenant           Tenant        @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId        String        @map("booking_id")
+  booking          Booking       @relation(fields: [tenantId, bookingId], references: [tenantId, id], onDelete: Cascade)
+  spaceId          String        @map("space_id")
+  space            Space         @relation(fields: [tenantId, spaceId], references: [tenantId, id])
+  status           SessionStatus @default(ACTIVE)
+  cancelledAt      DateTime?     @map("cancelled_at") @db.Timestamptz(6)
+  slotId           String?       @map("slot_id")
+  slot             SlotTemplate? @relation(fields: [slotId], references: [id])
+  eventTypeId      String?       @map("event_type_id")
+  eventType        EventType?    @relation(fields: [eventTypeId], references: [id])
+  packageId        String?       @map("package_id")
+  package          Package?      @relation(fields: [packageId], references: [id])
+  startsAt         DateTime      @map("starts_at") @db.Timestamptz(6) // event start, without buffers
+  endsAt           DateTime      @map("ends_at") @db.Timestamptz(6)
+  guests           Int
+  guaranteedGuests Int?          @map("guaranteed_guests") // billed minimum
+  setupNotes       String?       @map("setup_notes")   // decor, seating, stage — feeds the event sheet
+  kitchenNotes     String?       @map("kitchen_notes") // dietary notes, serving time — feeds the event sheet
+  customFields     Json          @default("{}") @map("custom_fields")
+  rev              Int           @default(1)
+  createdAt        DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt        DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  occupancies        SpaceOccupancy[]
+  lineItems          BookingLineItem[]
   vendorAssignments  VendorAssignment[]
   inventoryMovements InventoryMovement[]
-  expenses     Expense[]
+  expenses           Expense[]
 
+  @@unique([tenantId, id])
+  @@index([bookingId])
   @@index([tenantId, startsAt])
   @@map("booking_sessions")
 }
 
 // One row per PHYSICAL space a session blocks (buffers included).
 // The exclusion constraint in 001_constraints_and_rls.sql forbids two
-// active rows for the same space with overlapping ranges.
+// active rows for the same space with overlapping ranges. `active` is derived by triggers
+// from the booking and session status; values written by the app are overwritten on INSERT.
 model SpaceOccupancy {
   id        String         @id @default(cuid())
   tenantId  String         @map("tenant_id")
   tenant    Tenant         @relation(fields: [tenantId], references: [id], onDelete: Cascade)
   sessionId String         @map("session_id")
-  session   BookingSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  session   BookingSession @relation(fields: [tenantId, sessionId], references: [tenantId, id], onDelete: Cascade)
   spaceId   String         @map("space_id")
-  space     Space          @relation(fields: [spaceId], references: [id])
+  space     Space          @relation(fields: [tenantId, spaceId], references: [tenantId, id])
   startsAt  DateTime       @map("starts_at") @db.Timestamptz(6)
   endsAt    DateTime       @map("ends_at") @db.Timestamptz(6)
-  active    Boolean        @default(true) // false when booking is cancelled/expired
+  active    Boolean        @default(true)
 
   @@index([tenantId, spaceId, startsAt])
+  @@index([sessionId])
   @@map("space_occupancies")
 }
 
@@ -663,25 +891,30 @@ enum LineItemKind {
   ADJUSTMENT // price rule effect, shown for transparency
   DISCOUNT
   TAX
+
+  @@map("line_item_kind")
 }
 
-// Frozen price snapshot: later catalogue changes never alter a signed booking.
+// Frozen price snapshot of the CURRENT quote version: later catalogue changes never alter a
+// signed booking. Older versions live in quotations.line_items.
+// `amount` is SIGNED (CHECK per kind): DISCOUNT <= 0, ADJUSTMENT +/-, RENT/PACKAGE/ADD_ON/TAX >= 0.
+// Totals are SUM(amount).
 model BookingLineItem {
   id          String          @id @default(cuid())
   tenantId    String          @map("tenant_id")
   tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId   String
+  bookingId   String          @map("booking_id")
   booking     Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  sessionId   String?
+  sessionId   String?         @map("session_id")
   session     BookingSession? @relation(fields: [sessionId], references: [id], onDelete: Cascade)
   kind        LineItemKind
   description String
-  refType     String?         // add_on, package, price_rule, tax_rate
-  refId       String?
+  refType     String?         @map("ref_type") // add_on, package, price_rule, tax_rate
+  refId       String?         @map("ref_id")
   quantity    Decimal         @default(1) @db.Decimal(12, 2)
-  unitPrice   Decimal         @db.Decimal(14, 2)
-  amount      Decimal         @db.Decimal(14, 2)
-  sortOrder   Int             @default(0)
+  unitPrice   Decimal         @map("unit_price") @db.Decimal(18, 3)
+  amount      Decimal         @db.Decimal(18, 3)
+  sortOrder   Int             @default(0) @map("sort_order")
 
   @@index([tenantId, bookingId])
   @@map("booking_line_items")
@@ -689,24 +922,32 @@ model BookingLineItem {
 
 // ─────────────────────────────── Money ───────────────────────────────
 
+// What is due when. Paid/unpaid is computed FIFO from received payments (no allocation table).
 model PaymentScheduleItem {
   id        String   @id @default(cuid())
   tenantId  String   @map("tenant_id")
   tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId String
+  bookingId String   @map("booking_id")
   booking   Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
   label     String   // Token, Advance, Balance
-  dueDate   DateTime @db.Date
-  amount    Decimal  @db.Decimal(14, 2)
+  dueDate   DateTime @map("due_date") @db.Date
+  amount    Decimal  @db.Decimal(18, 3)
   reminded  Boolean  @default(false)
+  rev       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId, dueDate])
+  @@index([bookingId])
   @@map("payment_schedule_items")
 }
 
-enum PaymentDirection {
-  IN      // received from customer
-  REFUND  // returned to customer
+enum PaymentEntryType {
+  RECEIPT  // money received from the customer
+  REFUND   // money returned to the customer (created by approving a refund request)
+  REVERSAL // negates the entry it points to (reverses_id); reason required
+
+  @@map("payment_entry_type")
 }
 
 enum PaymentMethod {
@@ -716,36 +957,94 @@ enum PaymentMethod {
   CARD
   MOBILE_WALLET
   ONLINE_GATEWAY
+
+  @@map("payment_method")
 }
 
+enum PaymentStatus {
+  PENDING // cheque received, not yet cleared
+  CLEARED
+  BOUNCED
+
+  @@map("payment_status")
+}
+
+// APPEND-ONLY (UPDATE/DELETE revoked from venueos_app). Only status and cleared_at may be
+// updated (column-level grant) for cheque clearing. amount is always positive; its effect on
+// the paid total comes from entry_type: RECEIPT +, REFUND −, REVERSAL negates its target.
 model Payment {
-  id           String           @id @default(cuid())
-  tenantId     String           @map("tenant_id")
-  tenant       Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId    String
-  booking      Booking          @relation(fields: [bookingId], references: [id])
-  direction    PaymentDirection @default(IN)
-  method       PaymentMethod
-  amount       Decimal          @db.Decimal(14, 2)
-  reference    String?          // cheque no, bank ref, gateway txn id
-  receiptNo    String?
-  receivedAt   DateTime         @default(now())
-  receivedById String?
-  receivedBy   Membership?      @relation("PaymentReceivedBy", fields: [receivedById], references: [id])
-  approvedById String?          // required for refunds
-  gatewayPayload Json?
-  notes        String?
+  id               String           @id @default(cuid())
+  tenantId         String           @map("tenant_id")
+  tenant           Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId        String           @map("booking_id")
+  booking          Booking          @relation(fields: [tenantId, bookingId], references: [tenantId, id])
+  entryType        PaymentEntryType @default(RECEIPT) @map("entry_type")
+  method           PaymentMethod
+  amount           Decimal          @db.Decimal(18, 3) // CHECK amount > 0
+  // CHECK: only CHEQUE may be PENDING/BOUNCED; every other method is CLEARED on entry.
+  status           PaymentStatus    @default(CLEARED)
+  clearedAt        DateTime?        @map("cleared_at") @db.Timestamptz(6)
+  reference        String?          // cheque no, bank ref, gateway txn id
+  receiptNo        String?          @map("receipt_no")
+  receivedAt       DateTime         @default(now()) @map("received_at") @db.Timestamptz(6)
+  receivedById     String?          @map("received_by_id")
+  receivedBy       User?            @relation("PaymentReceiver", fields: [receivedById], references: [id])
+  gatewayPayload   Json?            @map("gateway_payload")
+  notes            String?
   // Client-generated key; a retried POST with the same key returns the first result.
-  idempotencyKey String?
-  // Payments are immutable. A mistake is fixed by a reversing entry that points here.
-  reversesId   String?      @unique
-  reverses     Payment?     @relation("PaymentReversal", fields: [reversesId], references: [id])
-  reversedBy   Payment?     @relation("PaymentReversal")
+  idempotencyKey   String?          @map("idempotency_key")
+  // REVERSAL rows point at the entry they negate (one reversal per entry). Reason in notes.
+  reversesId       String?          @unique @map("reverses_id")
+  reverses         Payment?         @relation("PaymentReversal", fields: [reversesId], references: [id])
+  reversedBy       Payment?         @relation("PaymentReversal")
+  // REFUND rows created by approving a refund request point back to it.
+  refundRequestId  String?          @unique @map("refund_request_id")
+  refundRequest    RefundRequest?   @relation(fields: [refundRequestId], references: [id])
+  createdAt        DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@unique([tenantId, receiptNo])
   @@unique([tenantId, idempotencyKey])
   @@index([tenantId, bookingId])
   @@map("payments")
+}
+
+enum RefundRequestStatus {
+  REQUESTED
+  APPROVED // approved; the REFUND payment exists (a cheque refund can stay here until it clears)
+  REJECTED
+  PAID     // the REFUND payment is CLEARED
+
+  @@map("refund_request_status")
+}
+
+// One user requests, another approves (a tenant with a single user holding the refund
+// permissions may self-approve; the audit row records it). Approval creates the REFUND payment.
+model RefundRequest {
+  id             String              @id @default(cuid())
+  tenantId       String              @map("tenant_id")
+  tenant         Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId      String              @map("booking_id")
+  booking        Booking             @relation(fields: [bookingId], references: [id])
+  status         RefundRequestStatus @default(REQUESTED)
+  amount         Decimal             @db.Decimal(18, 3) // CHECK amount > 0
+  reason         String
+  requestedById  String              @map("requested_by_id")
+  requestedBy    User                @relation("RefundRequester", fields: [requestedById], references: [id])
+  approvedById   String?             @map("approved_by_id")
+  approvedBy     User?               @relation("RefundApprover", fields: [approvedById], references: [id])
+  selfApproved   Boolean             @default(false) @map("self_approved")
+  decidedAt      DateTime?           @map("decided_at") @db.Timestamptz(6)
+  decisionNote   String?             @map("decision_note")
+  idempotencyKey String?             @map("idempotency_key")
+  rev            Int                 @default(1)
+  createdAt      DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt      DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  payment        Payment?
+
+  @@unique([tenantId, idempotencyKey])
+  @@index([tenantId, bookingId])
+  @@index([tenantId, status])
+  @@map("refund_requests")
 }
 
 // ─────────────────────────────── Vendors ───────────────────────────────
@@ -759,9 +1058,12 @@ model Vendor {
   phone         String?
   email         String?
   // Default commission the venue earns on this vendor's work (vendor pays the venue)
-  commissionPct Decimal? @db.Decimal(5, 2)
+  commissionPct Decimal? @map("commission_pct") @db.Decimal(5, 2)
   notes         String?
   active        Boolean  @default(true)
+  rev           Int      @default(1)
+  createdAt     DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt     DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
   addOns        AddOn[]
   assignments   VendorAssignment[]
   expenses      Expense[]
@@ -775,26 +1077,31 @@ enum VendorAssignmentStatus {
   CONFIRMED
   DONE
   CANCELLED
+
+  @@map("vendor_assignment_status")
 }
 
 // A vendor booked for one session (function). Feeds the event sheet and vendor reports.
 model VendorAssignment {
-  id               String                 @id @default(cuid())
-  tenantId         String                 @map("tenant_id")
-  tenant           Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  sessionId        String
-  session          BookingSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
-  vendorId         String
-  vendor           Vendor                 @relation(fields: [vendorId], references: [id])
-  service          String                 // "Stage decor", "Photography"
-  status           VendorAssignmentStatus @default(REQUESTED)
-  arrivalTime      DateTime?              @db.Timestamptz(6)
+  id                 String                 @id @default(cuid())
+  tenantId           String                 @map("tenant_id")
+  tenant             Tenant                 @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  sessionId          String                 @map("session_id")
+  session            BookingSession         @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+  vendorId           String                 @map("vendor_id")
+  vendor             Vendor                 @relation(fields: [vendorId], references: [id])
+  service            String                 // "Stage decor", "Photography"
+  status             VendorAssignmentStatus @default(REQUESTED)
+  arrivalTime        DateTime?              @map("arrival_time") @db.Timestamptz(6)
   // What the venue pays the vendor (cost). Payments to the vendor are Expense rows.
-  agreedCost       Decimal?               @db.Decimal(14, 2)
+  agreedCost         Decimal?               @map("agreed_cost") @db.Decimal(18, 3)
   // What the vendor owes the venue (commission income)
-  commissionAmount Decimal?               @db.Decimal(14, 2)
-  commissionReceived Decimal              @default(0) @db.Decimal(14, 2)
-  notes            String?
+  commissionAmount   Decimal?               @map("commission_amount") @db.Decimal(18, 3)
+  commissionReceived Decimal                @default(0) @map("commission_received") @db.Decimal(18, 3)
+  notes              String?
+  rev                Int                    @default(1)
+  createdAt          DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt          DateTime               @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@index([tenantId, sessionId])
   @@index([tenantId, vendorId])
@@ -811,74 +1118,117 @@ enum ExpenseCategory {
   UTILITIES
   MAINTENANCE
   OTHER
+
+  @@map("expense_category")
 }
 
+enum ExpenseEntryType {
+  EXPENSE
+  REVERSAL // negates the expense it points to (reverses_id); reason required
+
+  @@map("expense_entry_type")
+}
+
+// APPEND-ONLY (UPDATE/DELETE revoked from venueos_app). Mistakes are fixed with a REVERSAL
+// entry plus a new EXPENSE. amount is always positive (CHECK amount > 0).
 // An expense may belong to a booking/session (event profit) or be a general overhead.
 model Expense {
-  id          String          @id @default(cuid())
-  tenantId    String          @map("tenant_id")
-  tenant      Tenant          @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  bookingId   String?
-  booking     Booking?        @relation(fields: [bookingId], references: [id])
-  sessionId   String?
-  session     BookingSession? @relation(fields: [sessionId], references: [id])
-  vendorId    String?
-  vendor      Vendor?         @relation(fields: [vendorId], references: [id])
-  category    ExpenseCategory
-  description String
-  amount      Decimal         @db.Decimal(14, 2)
-  method      PaymentMethod
-  paidAt      DateTime        @default(now())
-  reference   String?
-  receiptUrl  String?         // uploaded bill photo
-  createdById String?
-  createdAt   DateTime        @default(now())
+  id             String           @id @default(cuid())
+  tenantId       String           @map("tenant_id")
+  tenant         Tenant           @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  bookingId      String?          @map("booking_id")
+  booking        Booking?         @relation(fields: [bookingId], references: [id])
+  sessionId      String?          @map("session_id")
+  session        BookingSession?  @relation(fields: [sessionId], references: [id])
+  vendorId       String?          @map("vendor_id")
+  vendor         Vendor?          @relation(fields: [vendorId], references: [id])
+  entryType      ExpenseEntryType @default(EXPENSE) @map("entry_type")
+  category       ExpenseCategory
+  description    String
+  amount         Decimal          @db.Decimal(18, 3)
+  method         PaymentMethod
+  paidAt         DateTime         @default(now()) @map("paid_at") @db.Timestamptz(6)
+  reference      String?
+  receiptKey     String?          @map("receipt_key") // S3 object key of the bill photo
+  idempotencyKey String?          @map("idempotency_key")
+  reversesId     String?          @unique @map("reverses_id")
+  reverses       Expense?         @relation("ExpenseReversal", fields: [reversesId], references: [id])
+  reversedBy     Expense?         @relation("ExpenseReversal")
+  createdById    String?          @map("created_by_id")
+  createdBy      User?            @relation("ExpenseCreator", fields: [createdById], references: [id])
+  createdAt      DateTime         @default(now()) @map("created_at") @db.Timestamptz(6)
+  purchases      InventoryMovement[]
 
+  @@unique([tenantId, idempotencyKey])
   @@index([tenantId, bookingId])
   @@index([tenantId, paidAt])
   @@map("expenses")
 }
 
 model InventoryItem {
-  id         String              @id @default(cuid())
-  tenantId   String              @map("tenant_id")
-  tenant     Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  venueId    String?             // null = shared across venues
-  name       String              // Dinner plate, Chiavari chair, Round table
-  category   String              // crockery, furniture, linen, decor
-  unit       String              @default("pcs")
-  unitCost   Decimal?            @db.Decimal(14, 2) // to value damages
-  reorderLevel Int?
-  active     Boolean             @default(true)
-  movements  InventoryMovement[]
+  id           String              @id @default(cuid())
+  tenantId     String              @map("tenant_id")
+  tenant       Tenant              @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  venueId      String?             @map("venue_id") // null = shared across venues
+  name         String              // Dinner plate, Chiavari chair, Round table
+  category     String              // crockery, furniture, linen, decor
+  unit         String              @default("pcs")
+  unitCost     Decimal?            @map("unit_cost") @db.Decimal(18, 3) // to value damages; copied onto each movement
+  reorderLevel Int?                @map("reorder_level")
+  // Stored stock on hand. CHECK (on_hand >= 0). Always changed in the same transaction as the
+  // movement that explains it, after SELECT ... FOR UPDATE on this row.
+  onHand       Int                 @default(0) @map("on_hand")
+  active       Boolean             @default(true)
+  rev          Int                 @default(1)
+  createdAt    DateTime            @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt    DateTime            @updatedAt @map("updated_at") @db.Timestamptz(6)
+  movements    InventoryMovement[]
 
   @@index([tenantId])
   @@map("inventory_items")
 }
 
 enum InventoryMovementType {
-  PURCHASE   // +qty
-  ISSUE      // -qty, to an event
-  RETURN     // +qty, back from an event
-  DAMAGE     // -qty, broken/lost (optionally charged to the event)
-  ADJUSTMENT // +/- after a stock count
+  PURCHASE   // + stock (may link to an expense)
+  ISSUE      // − stock, to an event session
+  RETURN     // + stock for returned_qty; damaged_qty = issued units that came back broken/lost
+  DAMAGE     // − stock, in-store damage only (event damage is recorded on the RETURN)
+  ADJUSTMENT // ± after a stock count, reason required
+
+  @@map("inventory_movement_type")
 }
 
-// Stock on hand = sum(qty) per item. Ledger is append-only.
+// APPEND-ONLY ledger (UPDATE/DELETE revoked from venueos_app).
+// stock_delta is the signed effect on inventory_items.on_hand. Rows by type:
+//   PURCHASE   stock_delta > 0
+//   ISSUE      stock_delta < 0, session_id required
+//   RETURN     session_id required, stock_delta = returned_qty (damaged units were already
+//              deducted at ISSUE, so they do not reduce stock again)
+//   DAMAGE     stock_delta < 0
+//   ADJUSTMENT stock_delta <> 0
+// A session is reconciled when issued (−ΣISSUE) = Σreturned_qty + Σdamaged_qty.
 model InventoryMovement {
-  id        String                @id @default(cuid())
-  tenantId  String                @map("tenant_id")
-  tenant    Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  itemId    String
-  item      InventoryItem         @relation(fields: [itemId], references: [id])
-  sessionId String?
-  session   BookingSession?       @relation(fields: [sessionId], references: [id])
-  type      InventoryMovementType
-  qty       Int                   // signed: ISSUE/DAMAGE negative
-  note      String?
-  createdById String?
-  createdAt DateTime              @default(now())
+  id             String                @id @default(cuid())
+  tenantId       String                @map("tenant_id")
+  tenant         Tenant                @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  itemId         String                @map("item_id")
+  item           InventoryItem         @relation(fields: [itemId], references: [id])
+  sessionId      String?               @map("session_id")
+  session        BookingSession?       @relation(fields: [sessionId], references: [id])
+  type           InventoryMovementType
+  stockDelta     Int                   @map("stock_delta")
+  returnedQty    Int?                  @map("returned_qty") // RETURN only
+  damagedQty     Int?                  @map("damaged_qty")  // RETURN only
+  unitCost       Decimal?              @map("unit_cost") @db.Decimal(18, 3) // snapshot of the item's cost at this time
+  expenseId      String?               @map("expense_id")   // PURCHASE only: the expense that paid for it
+  expense        Expense?              @relation(fields: [expenseId], references: [id])
+  note           String?
+  idempotencyKey String?               @map("idempotency_key")
+  createdById    String?               @map("created_by_id")
+  createdBy      User?                 @relation("MovementCreator", fields: [createdById], references: [id])
+  createdAt      DateTime              @default(now()) @map("created_at") @db.Timestamptz(6)
 
+  @@unique([tenantId, idempotencyKey])
   @@index([tenantId, itemId])
   @@index([tenantId, sessionId])
   @@map("inventory_movements")
@@ -887,51 +1237,71 @@ model InventoryMovement {
 // ─────────────────────────────── Messaging (email) & audit ───────────────────────────────
 
 model MessageTemplate {
-  id        String  @id @default(cuid())
-  tenantId  String  @map("tenant_id")
-  tenant    Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  event     String  // quotation_sent, booking_confirmed, payment_due, payment_received, event_reminder
-  channel   String  @default("email") // email now; sms/whatsapp later without a schema change
-  locale    String  @default("en")
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  event     String   // quotation_sent, booking_confirmed, payment_due, payment_received, event_reminder
+  channel   String   @default("email") // email now; sms/whatsapp later without a schema change
+  locale    String   @default("en")
   subject   String?
-  body      String  // Handlebars-style: {{customer.name}}, {{booking.number}} (escaped)
-  active    Boolean @default(true)
+  body      String   // Handlebars-style: {{customer.name}}, {{booking.number}} (escaped)
+  active    Boolean  @default(true)
+  rev       Int      @default(1)
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@unique([tenantId, event, channel, locale])
   @@map("message_templates")
 }
 
+// APPEND-ONLY event log (UPDATE/DELETE revoked from venueos_app). One row per delivery event;
+// all rows of one message share message_key (generated when the job is enqueued). The current
+// status of a message is the newest row for its key: queued → sent → delivered / bounced / failed.
 model MessageLog {
   id          String   @id @default(cuid())
   tenantId    String   @map("tenant_id")
   tenant      Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  messageKey  String   @map("message_key")
   channel     String
   to          String
   event       String?
-  entityType  String?  // booking, lead, payment
-  entityId    String?
-  status      String   // queued, sent, delivered, read, failed
-  providerRef String?
+  entityType  String?  @map("entity_type") // booking, lead, payment
+  entityId    String?  @map("entity_id")
+  status      String   // queued, sent, delivered, bounced, failed
+  providerRef String?  @map("provider_ref")
   error       String?
-  createdAt   DateTime @default(now())
+  createdAt   DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([tenantId, createdAt])
+  @@index([tenantId, messageKey])
   @@map("message_logs")
 }
 
+enum ActorType {
+  USER
+  SYSTEM         // jobs
+  PLATFORM_ADMIN // reserved for the post-MVP platform admin app
+
+  @@map("actor_type")
+}
+
+// APPEND-ONLY (UPDATE/DELETE revoked from venueos_app).
 model AuditLog {
-  id         String   @id @default(cuid())
-  tenantId   String   @map("tenant_id")
-  tenant     Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  actorId    String?  // membership id; null = system job
-  action     String   // booking.confirm, payment.refund, price_rule.update
-  entityType String
-  entityId   String
-  before     Json?
-  after      Json?
-  ip         String?
-  createdAt  DateTime @default(now())
+  id          String    @id @default(cuid())
+  tenantId    String    @map("tenant_id")
+  tenant      Tenant    @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  actorType   ActorType @default(USER) @map("actor_type")
+  actorUserId String?   @map("actor_user_id") // null for SYSTEM
+  actorUser   User?     @relation("AuditActor", fields: [actorUserId], references: [id])
+  action      String    // booking.confirm, payment.refund, price_rule.update
+  entityType  String    @map("entity_type")
+  entityId    String    @map("entity_id")
+  before      Json?
+  after       Json?
+  ip          String?
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
 
   @@index([tenantId, entityType, entityId])
+  @@index([tenantId, createdAt])
   @@map("audit_logs")
 }

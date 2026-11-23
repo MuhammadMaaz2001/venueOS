@@ -7,5 +7,5 @@ coverage/
 .env
 .env.*
 !.env.example
-.pgtest-data/
+packages/db/src/generated/
 .DS_Store

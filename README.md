@@ -5,7 +5,7 @@ quotations, bookings, availability, payments, event sheets, vendors, expenses an
 Built first for marriage halls and banquets in Pakistan, designed for any venue, country,
 currency and language.
 
-> Status: Phase 0 (foundations). See `docs/09-phase-0-plan.md`.
+> Status: Phase 0 (foundations); P0-0 (docs + schema fixes) done, next P0-1. See `docs/09-phase-0-plan.md`.
 
 ## Repository layout
 
@@ -17,7 +17,7 @@ venueOS/
 │   ├── api/                  # NestJS — REST API /v1, auth, business logic
 │   └── worker/               # NestJS standalone — pg-boss jobs (holds, reminders, emails, PDFs)
 ├── packages/
-│   ├── db/                   # Prisma schema, migrations, RLS/constraint SQL, TenantDb
+│   ├── db/                   # Prisma 7 schema, migrations, RLS/constraint SQL, TenantDb, AuthDb
 │   ├── shared/               # Zod schemas, enums, permissions, money/date helpers
 │   ├── api-client/           # generated typed API client (do not edit by hand)
 │   └── templates/            # email + PDF HTML templates
@@ -29,7 +29,8 @@ venueOS/
 ## Prerequisites
 
 - Node 24 LTS, pnpm 10+
-- Docker (for local PostgreSQL) or a local PostgreSQL 16+ with the `btree_gist` extension
+- Docker Desktop (local PostgreSQL 16, Mailpit and the DB constraint tests). A non-Docker
+  Postgres must have the same roles as `packages/db/docker/init-roles.sql`
 
 ## Getting started
 
@@ -39,10 +40,15 @@ pnpm install
 cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 cp apps/worker/.env.example apps/worker/.env
-docker compose up -d postgres mailpit   # Postgres :5432, local email inbox :8025
-pnpm db:migrate && pnpm db:seed
+cp packages/db/.env.example packages/db/.env
+docker compose up -d postgres mailpit   # Postgres :5432 (roles created on first start), local email inbox :8025
+pnpm db:migrate && pnpm db:seed          # run as venueos_migrator (MIGRATE_DATABASE_URL)
 pnpm dev
 ```
+
+The first start of the Postgres container runs `packages/db/docker/init-roles.sql`, which
+creates the five roles (`venueos_migrator`, `venueos_definer`, `venueos_app`, `venueos_auth`,
+`venueos_jobs`). If you change that file, recreate the volume: `docker compose down -v`.
 
 - Web: http://localhost:3000 (seeded owner login: see `packages/db/seed.ts`, created in task P0-2)
 - API: http://localhost:4000/v1, OpenAPI docs at http://localhost:4000/docs

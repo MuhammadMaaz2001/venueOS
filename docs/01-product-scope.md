@@ -19,15 +19,15 @@ Build order matters: each module depends on the ones above it.
 
 | # | Module | Includes |
 | --- | --- | --- |
-| 1 | Setup and onboarding | Tenant signup, setup wizard, venues/branches, spaces (halls/lawns) with capacity, combined spaces (Hall A+B), slot templates (Lunch/Dinner, hourly, full day), currency, tax, timezone, language, receipt settings |
+| 1 | Setup and onboarding | Tenant signup, setup wizard, venues/branches (with opening hours), spaces (halls/lawns) with capacity, combined spaces (Hall A+B), slot templates (Lunch/Dinner, hourly, full day), currency, tax, timezone, language, receipt settings |
 | 2 | Staff, roles and audit | Users, invitations, roles and permissions, discount limits per role, audit log viewer |
 | 3 | Catalogue and pricing | Menu items, per-head packages with minimum guests, add-ons (fixed / per head / per hour / per unit), price rules (weekday, season, specific dates), tax rates, cancellation policies, custom fields |
-| 4 | Customers | Profile, history, duplicate detection by phone, custom fields (sensitive ones encrypted and masked) |
-| 5 | Leads / inquiries | Capture (phone, walk-in, WhatsApp, web form), stages New → Contacted → Site visit → Quoted → Won/Lost, assignment, follow-up reminders |
+| 4 | Customers | Profile, preferred language, history, duplicate warning by phone (not a hard block), custom fields (sensitive ones encrypted and masked) |
+| 5 | Leads / inquiries | Capture (phone, walk-in, WhatsApp, web form), stages New → Contacted → Site visit → Quoted → Negotiation → Won/Lost, assignment, follow-up reminders |
 | 6 | Availability calendar | Space × date × slot grid, month/week views, free/held/confirmed colours, quick hold |
 | 7 | Quotations | Server-side price calculation, PDF, email to customer, "share on WhatsApp" link (wa.me, no API), versions |
 | 8 | Bookings | Multi-session bookings (Mehndi, Barat, Walima), tentative holds with expiry, confirm, change, cancel, frozen prices |
-| 9 | Payments and receipts | Payment schedule (token → advance → balance), cash/bank/cheque/wallet/card entry, receipt PDF (English/Urdu), refunds with approval, reversals |
+| 9 | Payments and receipts | Payment schedule (token → advance → balance), cash/bank/cheque/wallet/card entry (cheques pending → cleared/bounced), receipt PDF (English/Urdu), refund requests with approval, reversals |
 | 10 | Event sheet | Printable and mobile run sheet per session: date, slot, space, guest count, menu, setup and kitchen notes, assigned vendors, issued inventory; updates live when the booking changes |
 | 11 | Vendors | Vendor directory, assign vendors to sessions, agreed cost, commission due and received |
 | 12 | Expenses and inventory | Event and overhead expenses, event profit, inventory items, issue/return/damage ledger per event, stock on hand, low-stock alert |
@@ -43,10 +43,25 @@ Build order matters: each module depends on the ones above it.
 | Sales agent | Assigned venues | Leads, customers, quotations, holds; confirm needs advance received |
 | Accountant | Tenant | Payments, refunds (approve), expenses, financial reports |
 | Operations / kitchen | Assigned venues | Read event sheets; record inventory issue/return/damage |
-| Platform admin | Platform | Tenants, plans, support access (logged, see security doc) |
+
+Platform admin (tenants, plans, support access) is **post-MVP**, see below. Until then the
+platform operator manages tenants, plans and status through seed/ops scripts run as the
+migrator role.
+
+## Planned markets
+
+Pakistan first, then the Gulf. Money therefore supports 0-, 2- and 3-decimal currencies
+(`Decimal(18,3)` + an ISO 4217 minor-unit map); right-to-left layout and Urdu/Arabic are
+first-class.
 
 ## Explicitly out of scope for MVP
 
+- Platform admin app (`admin.venueos.app`), TOTP 2FA for platform admins and tenant
+  impersonation / support access (`users.is_platform_admin` and `actor_type = PLATFORM_ADMIN`
+  are reserved; no tables yet)
+- Tenant offboarding purge: a purge function run as `venueos_migrator` after the 90-day
+  retention of a cancelled tenant (no implementation in the MVP; until it exists the data of
+  cancelled tenants is simply kept and export is done on request)
 - Customer portal and public booking widget
 - Online payment gateways (payments are recorded manually)
 - WhatsApp Business API and SMS (email only; a manual wa.me share link is allowed)

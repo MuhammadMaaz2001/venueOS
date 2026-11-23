@@ -6,7 +6,8 @@
   narrow). No non-null `!` except in tests.
 - ESLint + Prettier shared config at the root; CI fails on warnings.
 - Names: files `kebab-case.ts`, classes `PascalCase`, functions/variables `camelCase`,
-  constants `SCREAMING_SNAKE_CASE`, DB tables `snake_case` (Prisma `@@map`).
+  constants `SCREAMING_SNAKE_CASE`, DB tables **and columns** `snake_case` (Prisma `@@map` /
+  `@map`; Prisma fields stay `camelCase`).
 - One concept per file; no file over ~300 lines without a reason.
 - Comments explain *why*, not *what*. Business rules reference the section in
   `docs/05-business-rules.md` (e.g. `// Rule 3.2: price rules order`).
@@ -60,7 +61,7 @@ apps/web/src/
 | --- | --- | --- |
 | Unit | Vitest | Pricing, state machine, schedules, refunds, formatting |
 | Integration | Vitest + Testcontainers (Postgres) + Supertest | Every endpoint: happy path, 400, 403, other-tenant 404, key conflicts |
-| DB constraints | `packages/db/tests/db-constraints.test.mjs` | Exclusion constraint, trigger, RLS (17 checks) |
+| DB constraints | `packages/db/tests/db-constraints.test.mjs` (`node --test`) | Runs on the **real migrated schema** in a throwaway database (Docker/CI Postgres, as the non-superuser migrator): exclusion constraint, occupancy triggers, composite FKs, RLS, auth-table and append-only privileges, CHECKs |
 | E2E | Playwright | Golden paths: setup wizard, lead → quotation → hold → confirm → payment → receipt, event sheet |
 
 - Tests create their own tenant(s) with factories; never depend on seed data.
@@ -68,6 +69,10 @@ apps/web/src/
 
 ## Git workflow
 
+- **The developer does all git operations** (branches, commits, pushes, merges, PRs).
+  Claude Code never runs `git commit`, `push`, `merge`, `rebase` or branch commands and never
+  opens PRs; it may run read-only commands (`status`, `diff`, `log`) and ends every task by
+  listing the changed files and suggesting a conventional commit message.
 - `main` is always deployable; protected; PR + green CI required.
 - Branches: `feat/<module>-<short>`, `fix/<short>`, `chore/<short>`.
 - Conventional commits; squash merge.
@@ -81,5 +86,8 @@ apps/web/src/
 - Give one module (or one slice of it) per task, with the acceptance criteria from
   `01-product-scope.md` and the rules from `05-business-rules.md`.
 - Ask for tests first on logic-heavy work (pricing, states, refunds), then the implementation.
-- After each task: `pnpm lint && pnpm typecheck && pnpm test` must pass before committing.
+- Before a task is reported done, Claude Code runs `pnpm lint && pnpm typecheck && pnpm test`
+  (and `pnpm --filter @venueos/db test:constraints` when `packages/db` changed), fixes every
+  failure, and never disables a lint rule or skips a test to get green. These scripts exist from
+  P0-1 onward.
 - Review every migration and every new `@Public()` route by hand.
