@@ -24,7 +24,7 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       **P0-0b** (done): payment status by method, signed line items with per-kind CHECKs,
       `inventory.reconcile` job documented, offboarding purge moved to post-MVP, `.gitattributes`,
       and the `set_config`-in-transaction gate added to P0-2.
-- [ ] **P0-1 Monorepo skeleton**: pnpm workspaces, Turborepo, shared tsconfig/eslint/prettier,
+- [x] **P0-1 Monorepo skeleton**: pnpm workspaces, Turborepo, shared tsconfig/eslint/prettier,
       `apps/web` (Next.js), `apps/api` (NestJS), `apps/worker` (NestJS standalone),
       `packages/{db,shared,api-client,templates}`, docker-compose (Postgres 16 + roles, Mailpit),
       `.env.example` files, `pnpm dev` runs everything. Exact (pinned) dependency versions, Node 24

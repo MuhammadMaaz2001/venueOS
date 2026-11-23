@@ -5,7 +5,7 @@ quotations, bookings, availability, payments, event sheets, vendors, expenses an
 Built first for marriage halls and banquets in Pakistan, designed for any venue, country,
 currency and language.
 
-> Status: Phase 0 (foundations); P0-0 (docs + schema fixes) done, next P0-1. See `docs/09-phase-0-plan.md`.
+> Status: Phase 0 (foundations); P0-0 (docs + schema fixes) and P0-1 (monorepo skeleton) done, next P0-2. See `docs/09-phase-0-plan.md`.
 
 ## Repository layout
 
@@ -28,7 +28,7 @@ venueOS/
 
 ## Prerequisites
 
-- Node 24 LTS, pnpm 10+
+- Node 24 LTS, pnpm 12.21.0 (`corepack enable pnpm` uses the pinned `packageManager`)
 - Docker Desktop (local PostgreSQL 16, Mailpit and the DB constraint tests). A non-Docker
   Postgres must have the same roles as `packages/db/docker/init-roles.sql`
 
@@ -41,6 +41,9 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 cp apps/worker/.env.example apps/worker/.env
 cp packages/db/.env.example packages/db/.env
+cp .env.example .env                     # only read by docker compose; set POSTGRES_PORT if 5432 is taken
+# Optional: opt out of Turborepo telemetry. Turbo ignores .env files, so export it in your shell
+# ($env:TURBO_TELEMETRY_DISABLED = "1" in PowerShell) or run `pnpm exec turbo telemetry disable` once.
 docker compose up -d postgres mailpit   # Postgres :5432 (roles created on first start), local email inbox :8025
 pnpm db:migrate && pnpm db:seed          # run as venueos_migrator (MIGRATE_DATABASE_URL)
 pnpm dev

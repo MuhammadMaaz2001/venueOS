@@ -1,0 +1,33 @@
+{
+  "name": "venueos",
+  "version": "0.0.0",
+  "private": true,
+  "description": "venueOS: multi-tenant SaaS for event venues",
+  "packageManager": "pnpm@12.21.0",
+  "engines": {
+    "node": ">=24 <25",
+    "pnpm": "12.21.0"
+  },
+  "scripts": {
+    "dev": "turbo run dev",
+    "build": "turbo run build",
+    "lint": "eslint . --max-warnings 0 && prettier --check .",
+    "format": "prettier --write .",
+    "typecheck": "turbo run typecheck",
+    "test": "turbo run test",
+    "db:migrate": "pnpm --filter @venueos/db db:migrate",
+    "db:seed": "pnpm --filter @venueos/db db:seed",
+    "api-client:generate": "pnpm --filter @venueos/api-client generate"
+  },
+  "devDependencies": {
+    "@eslint/js": "9.39.5",
+    "@types/node": "24.19.2",
+    "eslint": "9.39.5",
+    "eslint-config-next": "16.4.6",
+    "globals": "17.14.0",
+    "prettier": "3.10.1",
+    "turbo": "2.11.13",
+    "typescript": "6.0.3",
+    "typescript-eslint": "8.73.0"
+  }
+}

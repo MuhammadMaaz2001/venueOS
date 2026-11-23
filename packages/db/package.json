@@ -1,0 +1,24 @@
+{
+  "name": "@venueos/db",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Prisma 7 schema, migrations, RLS/constraint SQL (TenantDb, AuthDb arrive in P0-2)",
+  "scripts": {
+    "typecheck": "tsc --noEmit",
+    "validate": "prisma validate",
+    "db:migrate": "prisma migrate dev",
+    "db:seed": "prisma db seed",
+    "test:constraints": "node --env-file-if-exists=.env --test \"tests/*.test.mjs\""
+  },
+  "dependencies": {
+    "@prisma/adapter-pg": "7.10.1",
+    "dotenv": "18.0.10",
+    "pg": "8.23.1"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "prisma": "7.10.1",
+    "tsx": "4.23.15",
+    "typescript": "6.0.3"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "name": "@venueos/templates",
+  "version": "0.0.0",
+  "private": true,
+  "description": "venueOS templates package (stub; export strategy decided in P0-2)",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@types/node": "24.19.2",
+    "typescript": "6.0.3"
+  }
+}

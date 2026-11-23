@@ -13,6 +13,29 @@
   `docs/05-business-rules.md` (e.g. `// Rule 3.2: price rules order`).
 - No magic numbers for tenant-configurable values: read them from tenant settings.
 
+## Pinned versions and why
+
+Every dependency is pinned to an exact version (`.npmrc` has `save-exact=true`; no `^`, `~` or
+`latest`). Node 24 and pnpm 12.21.0 are fixed through `engines` and `packageManager`. Several
+pins are **not** the newest release on purpose. Do not bump these without checking the peer
+ranges named here (`npm view <pkg>@<version> peerDependencies`):
+
+| Package | Pinned | Why not newer |
+| --- | --- | --- |
+| `@nestjs/*` (core, common, platform-express, testing) | 11.2.11 | `nestjs-zod` 5.6.0 declares peers `@nestjs/common` `^10 \|\| ^11` and `@nestjs/swagger` `^7.4.2 \|\| ^8 \|\| ^11`. NestJS 12 is outside that range. |
+| `@nestjs/swagger` | 11.4.8 | Must match the Nest major and the `nestjs-zod` peer range above. |
+| `@nestjs/cli` | 11.0.24 | Same major as the framework. |
+| `typescript` | 6.0.3 | `typescript-eslint` 8.73.0 supports `>=4.8.4 <6.1.0`, so TypeScript 7 breaks linting. |
+| `eslint` | 9.39.5 | `eslint-config-next` 16 targets ESLint 9; ESLint 10 is not yet supported by every plugin it pulls in. |
+| `prisma`, `@prisma/adapter-pg` | 7.10.1 | The npm `latest` tag is the 8.0.0 release candidate. The project is on Prisma 7 (`prisma.config.ts`, `prisma-client` generator, driver adapter). All Prisma packages move together. |
+| `nestjs-zod` | 5.6.0 | Added in P0-3. It is the constraint behind the NestJS and swagger pins. |
+
+Upgrade path: raise the dependency that limits the others first (for example wait for a
+`nestjs-zod` release that lists the next Nest major), change the pins together in one PR, and run
+`pnpm lint && pnpm typecheck && pnpm test` plus `pnpm --filter @venueos/db test:constraints`.
+Allowed install scripts are listed in `pnpm-workspace.yaml` (`allowBuilds`); a new dependency that
+needs one must be reviewed before it is added there.
+
 ## API (NestJS) module layout
 
 ```

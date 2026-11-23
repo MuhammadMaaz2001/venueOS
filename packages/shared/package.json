@@ -1,0 +1,13 @@
+{
+  "name": "@venueos/shared",
+  "version": "0.0.0",
+  "private": true,
+  "description": "venueOS shared package (stub; export strategy decided in P0-2)",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "typescript": "6.0.3"
+  }
+}

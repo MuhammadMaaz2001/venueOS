@@ -1,0 +1,12 @@
+packages:
+  - apps/*
+  - packages/*
+
+# Dependencies allowed to run install scripts. Everything else stays blocked.
+allowBuilds:
+  '@prisma/engines': true # downloads the schema engine used by migrate
+  prisma: true
+  esbuild: true # tsx and vitest
+  '@swc/core': false # not needed (the API builds with tsc)
+  '@parcel/watcher': false # optional file-watching speed-up
+  '@scarf/scarf': false # telemetry

@@ -9,3 +9,5 @@ coverage/
 !.env.example
 packages/db/src/generated/
 .DS_Store
+next-env.d.ts
+*.tsbuildinfo

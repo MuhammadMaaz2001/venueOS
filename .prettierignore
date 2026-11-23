@@ -1,0 +1,15 @@
+node_modules
+.turbo
+dist
+.next
+coverage
+pnpm-lock.yaml
+next-env.d.ts
+packages/db/src/generated
+
+# Hand-written design documents and the P0-0 database files keep their own formatting.
+docs
+*.md
+packages/db/prisma
+packages/db/docker
+packages/db/tests
