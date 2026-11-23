@@ -44,6 +44,22 @@ Build order matters: each module depends on the ones above it.
 | Accountant | Tenant | Payments, refunds (approve), expenses, financial reports |
 | Operations / kitchen | Assigned venues | Read event sheets; record inventory issue/return/damage |
 
+**Default permission sets** (seeded per tenant as system roles; the single source is `DEFAULT_ROLES` in
+`packages/shared/src/roles.ts`, which a test keeps in line with this table). Permission names are in
+`04-security.md` section 2. `maxDiscountPct` is the role's discount limit (absent = 0, see `05-business-rules.md`).
+
+| Role | `maxDiscountPct` | Permissions |
+| --- | --- | --- |
+| Owner | 100 | All of them. Always keeps `role.manage` and `staff.manage` |
+| Branch manager | 15 | `venue.manage`, `catalogue.manage`, `pricing.manage`; `customer.view`, `customer.manage`, `lead.view`, `lead.manage`; `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`, `booking.cancel`, `booking.edit_locked`; `payment.view`, `payment.record`, `payment.refund.request`; `eventsheet.view`, `vendor.view`, `vendor.manage`, `expense.view`, `expense.record`, `inventory.view`, `inventory.record`, `inventory.adjust`; `report.view`, `report.financial` |
+| Sales agent | 5 | `customer.view`, `customer.manage`, `lead.view`, `lead.manage`; `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`; `payment.view`; `eventsheet.view`, `vendor.view`. Not included: payment.record (tenants can add it) |
+| Accountant | 0 | `customer.view`, `booking.view`, `booking.view_prices`; `payment.view`, `payment.record`, `payment.reverse`, `payment.refund.request`, `payment.refund.approve`; `expense.view`, `expense.record`, `expense.reverse`, `vendor.view`; `report.view`, `report.financial` |
+| Operations | 0 | `booking.view`; `eventsheet.view`, `vendor.view`, `inventory.view`, `inventory.record` |
+
+Owner-only by default: everything under Tenant (`tenant.settings.manage`, `billing.manage`, `staff.manage`,
+`role.manage`, `audit.view`, `template.manage`), plus `customer.view_sensitive`, `booking.confirm_override`
+and `booking.override_rules`. Tenants copy and edit these roles; the names of system roles stay locked.
+
 Platform admin (tenants, plans, support access) is **post-MVP**, see below. Until then the
 platform operator manages tenants, plans and status through seed/ops scripts run as the
 migrator role.

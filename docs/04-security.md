@@ -54,6 +54,17 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
   and fails if any has neither.
 - Venue scoping: a membership with `venueIds` set may only touch data of those venues. Services
   filter by `venueIds` from CLS; list endpoints never trust a `venueId` query param alone.
+- **Roles cannot be used to escalate privileges.** Holding `role.manage` does not let a user grant
+  what they lack: when creating (copying) or editing a role, every permission that is *added* must be held
+  by the caller, and `maxDiscountPct` may not be raised above the caller's own limit (else
+  `403 FORBIDDEN`). Permissions already on a role may stay or be removed by anyone with `role.manage`.
+  This applies to editing the caller's own role as well.
+- **Owner lock-out.** The system Owner role always keeps `role.manage` and `staff.manage` (an edit that
+  removes either is rejected with `422 INVALID_STATE_TRANSITION`), and the name of a system role cannot
+  be changed. A tenant must also always keep at least one active membership with the Owner role: removing
+  or deactivating the last owner is rejected with `422` (enforced by the staff endpoints, P0-4).
+- Guards read the caller's membership and role **on every request**, so a role edit or a deactivation
+  applies on the next request. Nothing about permissions is cached.
 - Value limits are checked on the server: discount above the role limit → 403
   `DISCOUNT_LIMIT`; confirming without the required advance → 422 unless the user has
   `booking.confirm_override` (audited with a reason).

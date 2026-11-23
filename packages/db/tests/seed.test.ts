@@ -6,6 +6,7 @@ import { spawnSync } from 'node:child_process';
 import { argon2Sync } from 'node:crypto';
 import path from 'node:path';
 import pg from 'pg';
+import { DEFAULT_ROLES } from '@venueos/shared';
 import { adminUrl, createTestDatabase, dropTestDatabase, pkgDir, urlFor } from './helpers/test-db.mjs';
 
 let admin: pg.Client; // maintenance connection (create/drop the database)
@@ -83,7 +84,7 @@ describe('prisma/seed.ts', () => {
       subscriptions: 1,
       users: 1,
       user_credentials: 1,
-      roles: 1,
+      roles: 5,
       memberships: 1,
       venues: 1,
       spaces: 4,
@@ -95,12 +96,41 @@ describe('prisma/seed.ts', () => {
     }
 
     const { rows } = await su.query(
-      `SELECT r.id, r.permissions, r.is_system, m.user_id
+      `SELECT r.id, r.name, r.permissions, r.limits, r.is_system, m.user_id
          FROM roles r JOIN memberships m ON m.role_id = r.id`,
     );
-    assert.deepEqual(rows, [
-      { id: 'seed_role_owner', permissions: [], is_system: true, user_id: 'seed_user_owner' },
-    ]);
+    assert.equal(rows.length, 1, 'only the owner has a membership');
+    assert.equal(rows[0].id, 'seed_role_owner');
+    assert.equal(rows[0].name, 'Owner');
+    assert.equal(rows[0].is_system, true);
+    assert.equal(rows[0].user_id, 'seed_user_owner');
+    assert.equal(rows[0].permissions.length, DEFAULT_ROLES[0]?.permissions.length);
+    assert.deepEqual(rows[0].limits, { maxDiscountPct: 100 });
+  });
+
+  test('seeds the five default roles, exactly one Owner', async () => {
+    const { rows } = await su.query(`SELECT id, name, is_system FROM roles ORDER BY name`);
+    assert.deepEqual(
+      rows.map((r: { name: string }) => r.name),
+      ['Accountant', 'Branch manager', 'Operations', 'Owner', 'Sales agent'],
+    );
+    assert.ok(rows.every((r: { is_system: boolean }) => r.is_system));
+    assert.equal(rows.filter((r: { name: string }) => r.name === 'Owner').length, 1);
+    for (const def of DEFAULT_ROLES) {
+      const res = await su.query(`SELECT permissions, limits FROM roles WHERE id = $1`, [`seed_role_${def.key}`]);
+      assert.deepEqual([...res.rows[0].permissions].sort(), [...def.permissions].sort(), def.name);
+      assert.deepEqual(res.rows[0].limits, def.limits, def.name);
+    }
+  });
+
+  test('fills the empty Owner placeholder of a pre-P0-5 seed in place, without a second Owner', async () => {
+    await su.query(`UPDATE roles SET permissions = '{}', limits = '{}' WHERE id = 'seed_role_owner'`);
+    const res = runSeed({ SEED_OWNER_EMAIL: 'owner@example.test', SEED_OWNER_PASSWORD: PASSWORD });
+    assert.equal(res.code, 0, res.out);
+    const { rows } = await su.query(`SELECT permissions, limits FROM roles WHERE id = 'seed_role_owner'`);
+    assert.equal(rows[0].permissions.length, DEFAULT_ROLES[0]?.permissions.length);
+    assert.deepEqual(rows[0].limits, { maxDiscountPct: 100 });
+    assert.equal(await count(`roles WHERE name = 'Owner'`), 1);
   });
 
   test('stores a verifiable argon2id hash, never the plain password', async () => {

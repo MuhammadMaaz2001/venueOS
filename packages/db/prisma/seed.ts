@@ -12,13 +12,14 @@
 //  - The demo owner's credentials come from SEED_OWNER_EMAIL and SEED_OWNER_PASSWORD (packages/db/.env).
 //    No default password exists in the code. If either is missing the seed refuses (exit 1) before
 //    touching the database.
-//  - No roles/permissions here except one placeholder Owner role so the owner membership can exist
-//    (memberships.role_id is NOT NULL). P0-5 must UPDATE that role by its fixed id (SEED_IDS.ownerRole),
-//    not create a second one.
+//  - Roles: the five default roles of packages/shared (DEFAULT_ROLES). The Owner role keeps its fixed id
+//    (SEED_IDS.ownerRole). A database seeded before P0-5 holds it with an empty permission list; it is
+//    UPDATED (by id, only while still empty) rather than duplicated, and never touched after that.
 
 import 'dotenv/config';
 import { randomBytes, argon2Sync } from 'node:crypto';
 import { PrismaPg } from '@prisma/adapter-pg';
+import { DEFAULT_ROLES } from '@venueos/shared';
 import { PrismaClient } from '../src/generated/prisma/client.js';
 
 /** Fixed ids so the seed can find its own rows again, and P0-5 can find the Owner role. */
@@ -60,6 +61,9 @@ const PLANS = [
     priceYearly: '599000',
   },
 ] as const;
+
+/** Fixed row id of a default role. */
+const roleId = (key: string): string => `seed_role_${key}`;
 
 /** argon2id, PHC string format ($argon2id$v=19$m=...,t=...,p=...$salt$hash), OWASP-recommended cost. */
 function hashPassword(password: string): string {
@@ -168,18 +172,31 @@ async function seedDemoTenant(prisma: PrismaClient, owner: OwnerConfig) {
         update: {},
       });
 
-      // Placeholder role: P0-5 UPDATEs it (by this id) with the real permission set.
-      await tx.role.upsert({
-        where: { id: SEED_IDS.ownerRole },
-        create: {
-          id: SEED_IDS.ownerRole,
-          tenantId: SEED_IDS.tenant,
-          name: 'Owner',
-          permissions: [],
-          isSystem: true,
-        },
-        update: {},
-      });
+      // Default roles. Fixed ids (`seed_role_<key>`; the Owner keeps `seed_role_owner`) let a re-run find
+      // its own rows. A re-run never overwrites a role a tenant edited (`update: {}`)...
+      for (const def of DEFAULT_ROLES) {
+        await tx.role.upsert({
+          where: { id: roleId(def.key) },
+          create: {
+            id: roleId(def.key),
+            tenantId: SEED_IDS.tenant,
+            name: def.name,
+            permissions: [...def.permissions],
+            limits: def.limits,
+            isSystem: true,
+          },
+          update: {},
+        });
+      }
+      // ...except the Owner placeholder a pre-P0-5 seed left with no permissions at all: fill it in
+      // place (never a second Owner). Once it has any permission this matches nothing.
+      const ownerDef = DEFAULT_ROLES.find((r) => r.key === 'owner');
+      if (ownerDef) {
+        await tx.role.updateMany({
+          where: { id: SEED_IDS.ownerRole, tenantId: SEED_IDS.tenant, permissions: { isEmpty: true } },
+          data: { permissions: [...ownerDef.permissions], limits: ownerDef.limits },
+        });
+      }
       await tx.membership.upsert({
         where: { id: SEED_IDS.ownerMembership },
         create: {

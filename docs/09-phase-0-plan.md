@@ -72,19 +72,32 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       `pnpm api-client:generate` exports the OpenAPI document and generates types
       (`openapi-typescript`). Handed on: bearer-token CSRF exemption hook (P0-4), the queue readiness
       check (P0-6a), the `TRUST_PROXY` staging check (P0-8, see docs/08).
-- [ ] **P0-5 Authorization**: `permissions.ts` in shared (mirrors `04-security.md`), default
-      roles seed (UPDATE the placeholder Owner role `seed_role_owner` created by the P0-2 seed;
-      do not create a second one), `TenantGuard` (including SUSPENDED = read-only, `403 TENANT_SUSPENDED`),
-      `PermissionGuard`, `@RequirePermission` / `@Public`, route-scan test, entitlements guard,
-      role CRUD, staff invitation create/revoke (rows in `invitations` through `AuthDb`), audit
-      service (`actor_type` + `actor_user_id`).
+- [x] **P0-5 Authorization** (done): `permissions.ts` in shared (43 names, typed `Permission`; a test
+      compares it with the table in `04-security.md`), `DEFAULT_ROLES` (five system roles with permission
+      sets and `maxDiscountPct`, mirrored in `01-product-scope.md` and checked by a test), the seed fills
+      the placeholder Owner role `seed_role_owner` in place (only while its permissions are empty; no
+      second Owner) and creates the other four. Guards in the order of `02-system-design.md`:
+      `AuthGuard` (asks an `AuthContextProvider`; the default authenticates nobody, so every non-public
+      route is 401 until P0-4), `TenantGuard` (membership + role + `venueIds` + limits into CLS; SUSPENDED
+      = read-only with `403 TENANT_SUSPENDED`, CANCELLED = 403), `PermissionGuard`, `EntitlementGuard`
+      (`@Entitlement('maxVenues'|'maxSpaces'|'maxUsers')`, 402 `PLAN_LIMIT_REACHED`). `VenueScope` helper.
+      Route-scan test (every route has exactly one of `@Public()` / `@RequirePermission()`).
+      `AuditService.record(tx, ...)` (USER or SYSTEM actor, masked sensitive fields, same transaction).
+      Role endpoints `GET/POST /v1/roles`, `GET/PATCH /v1/roles/:id` (create by copying; system role
+      names locked; privilege-escalation and Owner lock-out guards, see `04-security.md` section 2).
+      API integration tests run against a throwaway migrated Postgres (`apps/api/test/global-setup.mjs`,
+      needs the same Postgres as `test:constraints`). The test identity stub lives in test files only and
+      a test proves the production `AppModule` never registers it. **Moved out of P0-5:** staff invitation
+      create/revoke (it needs the email provider of P0-6a and auth), now part of P0-4 together with accept.
+      **Not built (follow-ups):** audit log viewer (`audit.view`), role delete/retire.
 - [ ] **P0-6a Worker foundation (part 1)**: pg-boss setup (its `pgboss` schema created by the
       migrator; grant `venueos_app` and `venueos_jobs` usage on it), job base class (tenant
       context, idempotency, retries), `EmailProvider` + `email.send` job with Mailpit/SES provider,
       `message_logs` written as append-only events.
 - [ ] **P0-4 Auth**: signup, email verification, login/logout, sessions (hashed tokens,
       `__Host-` cookie), lockout via `login_attempts`, password reset, "log out everywhere",
-      tenant list + switch, invitation accept. Transaction patterns (see below).
+      tenant list + switch, staff invitation create/revoke/accept (moved here from P0-5). Transaction
+      patterns (see below). **What P0-4 must wire up** is listed in "Handoff from P0-5" below.
 - [ ] **P0-6b Worker foundation (part 2)**: `pdf.render` skeleton with Playwright and bundled
       Urdu font, `auth.purge` job, dead-letter handling and runbook.
 - [ ] **P0-7 Web foundation**: layout shell (sidebar, tenant switcher, user menu), auth pages,
@@ -92,12 +105,53 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       URL segment), shadcn/ui, format helpers (currency minor units, venue timezone), error
       toasts mapped from API codes.
 - [ ] **P0-8 CI/CD**: GitHub Actions (lint, typecheck, tests, constraint tests with a Postgres
-      service container, audit, gitleaks, Docker builds), staging deploy on AWS (web and API in
+      service container, audit, gitleaks, Docker builds). `pnpm test` of `apps/api` also needs that
+      Postgres (the role script run and `VENUEOS_TEST_ADMIN_URL` set), like `test:constraints`, staging deploy on AWS (web and API in
       the same VPC). Includes the staging smoke check that the API logs the **real client IP**
       (not the web server's) so `TRUST_PROXY` matches the hop count (docs/08).
 
 **Exit gate:** constraint tests + tenant isolation integration tests green in CI; a staff user
 invited into tenant A cannot see anything of tenant B through any endpoint.
+
+### Handoff from P0-5 (what P0-4 must wire up)
+
+1. **Who fills `AuthContext`.** Provide the real `AuthContextProvider` (replace `NoAuthContextProvider`
+   in `common/access/access.module.ts`): hash the `__Host-vos_session` cookie, load a live
+   `auth_sessions` row through `AuthDb`, slide `last_seen_at`, and return
+   `{ userId, sessionId, activeTenantId }`. No valid session: return `undefined` (the guard answers
+   401) or throw `SessionExpiredError` (`401 SESSION_EXPIRED`) for an expired one. Never decide identity
+   from a header or from the body.
+2. **Guard order** is fixed in `app.module.ts`: throttler, `CsrfGuard`, `AuthGuard`, `TenantGuard`,
+   `PermissionGuard`, `EntitlementGuard`. `AuthGuard` already exists and calls the provider; P0-4 adds no
+   guard, it supplies the provider (and may move provider-specific 401 handling into it).
+   `CsrfGuard` stays before `AuthGuard`.
+3. **`isBearerAuthenticated()`** (`common/security/auth-kind.ts`) is still a stub that returns false.
+   Implement it only together with bearer auth, accept only a validated token and never exempt a
+   request that also carries the session cookie.
+4. **Routes that need a login but no tenant** (tenant list, tenant switch, `GET /me`, accept
+   invitation after login) cannot use `@RequirePermission` and the route-scan forbids undeclared routes.
+   Add a third marker (for example `@AuthenticatedOnly()`), teach `TenantGuard` / `PermissionGuard` to skip
+   tenant checks for it, and extend `findAccessViolations` in the route-scan test (exactly one of the
+   three). Signup, login and invitation accept before login stay `@Public()`.
+5. **`activeTenantId`** lives on `auth_sessions`; tenant switch rotates the token and sets it. A user with
+   `activeTenantId = null` gets `403` from `TenantGuard` on tenant routes.
+6. **Signup** creates the five default roles from `DEFAULT_ROLES` (`@venueos/shared`) with `is_system = true`
+   and gives the first user the Owner role, in the tenant's `TenantDb` transaction, with an audit row.
+7. **Owner invariant:** a tenant always keeps at least one **active** membership with the Owner role.
+   Deactivating or removing the last owner, or moving them to another role, is rejected with
+   `422 INVALID_STATE_TRANSITION`. Staff endpoints use `@RequirePermission('staff.manage')` and the same
+   privilege-escalation rule as roles: only assign a role whose permissions the caller holds, and
+   venue ids inside the caller's own scope.
+8. **Invitations** (create/revoke/accept, `invitations` through `AuthDb`): create is
+   `@Entitlement('maxUsers')` (count pending invitations too: a decision for P0-4), audited
+   (`staff.invite`, `staff.invite.revoke`), the role id is loaded through `TenantDb` (404 if not the
+   tenant's) and checked for escalation; accept follows the pattern below. `GET /v1/roles` needs
+   `role.manage` only; revisit whether staff managers also need to list assignable roles.
+9. **`/v1/roles` and the other endpoints** take their context from CLS (`tenantId`, `userId`, `access`);
+   P0-4 must keep `userId` and `tenantId` set exactly as `AuthGuard` / `TenantGuard` do, because
+   `TenantDb.tx(fn)` and `AuditService` read them.
+10. **Tests** keep using `authHeader()` from `__tests__/helpers/test-auth.ts` (test-only provider
+    override). Add session-based tests for the real provider; keep `no-test-auth.spec.ts` green.
 
 ### Transaction patterns for P0-4
 

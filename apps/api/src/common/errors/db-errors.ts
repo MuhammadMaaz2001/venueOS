@@ -40,3 +40,9 @@ export function mapDatabaseError(error: unknown): AppError | undefined {
   }
   return undefined;
 }
+
+/** SQLSTATE unique_violation, or Prisma's P2002 for the same thing. */
+export function isUniqueViolation(error: unknown): boolean {
+  const { codes } = collectFacts(error);
+  return codes.has('23505') || codes.has('P2002');
+}

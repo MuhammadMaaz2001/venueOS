@@ -96,7 +96,7 @@ apps/web/src/
 | Level | Tool | What |
 | --- | --- | --- |
 | Unit | Vitest | Pricing, state machine, schedules, refunds, formatting |
-| Integration | Vitest + Testcontainers (Postgres) + Supertest | Every endpoint: happy path, 400, 403, other-tenant 404, key conflicts |
+| Integration | Vitest + a throwaway migrated Postgres per run (the docker/CI Postgres, `apps/api/test/global-setup.mjs`) + Supertest | Every endpoint: happy path, 400, 403, other-tenant 404, key conflicts |
 | DB constraints | `packages/db/tests/db-constraints.test.mjs` (`node --test`) | Runs on the **real migrated schema** in a throwaway database (Docker/CI Postgres, as the non-superuser migrator): exclusion constraint, occupancy triggers, composite FKs, RLS, auth-table and append-only privileges, CHECKs |
 | E2E | Playwright | Golden paths: setup wizard, lead → quotation → hold → confirm → payment → receipt, event sheet |
 

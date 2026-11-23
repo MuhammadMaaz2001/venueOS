@@ -8,6 +8,7 @@ export const contextModule = ClsModule.forRoot({
     mount: true,
     setup: (cls, req: RequestWithId) => {
       cls.set('requestId', req.id ?? '');
+      cls.set('ip', (req as { ip?: string }).ip);
     },
   },
 });

@@ -36,6 +36,41 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the roles of the current tenant */
+        get: operations["RolesController_list"];
+        put?: never;
+        /** Create a custom role as a copy of an existing one */
+        post: operations["RolesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/roles/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["RolesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /** Edit a role: name (custom roles only), permissions, limits */
+        patch: operations["RolesController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -50,6 +85,49 @@ export interface components {
             checks: {
                 /** @enum {string} */
                 database: "up" | "down";
+            };
+        };
+        RoleListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+                limits: {
+                    maxDiscountPct: number;
+                };
+                isSystem: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        RoleResponseDto: {
+            id: string;
+            name: string;
+            permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+            limits: {
+                maxDiscountPct: number;
+            };
+            isSystem: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        CreateRoleDto: {
+            name: string;
+            copyFromRoleId: string;
+        };
+        UpdateRoleDto: {
+            rev: number;
+            name?: string;
+            permissions?: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+            limits?: {
+                maxDiscountPct: number;
             };
         };
     };
@@ -106,6 +184,94 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["ReadyResponseDto"];
+                };
+            };
+        };
+    };
+    RolesController_list: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleListResponseDto"];
+                };
+            };
+        };
+    };
+    RolesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRoleDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+        };
+    };
+    RolesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+        };
+    };
+    RolesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateRoleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RoleResponseDto"];
                 };
             };
         };

@@ -4,12 +4,15 @@ import type { Type } from '@nestjs/common';
 import { Writable } from 'node:stream';
 import request from 'supertest';
 import { AppModule } from '../../app.module';
+import { AuthContextProvider } from '../../common/access/auth-context.provider';
 import { LOG_STREAM } from '../../common/logging/logging.module';
 import { APP_CONFIG } from '../../config/config.module';
 import type { AppConfig } from '../../config/config.module';
 import { loadEnv } from '../../config/load-env';
 import { configureApp } from '../../configure-app';
+import { AccessProbeController } from './access-probe.controller';
 import { ProbeController } from './probe.controller';
+import { TestAuthContextProvider } from './test-auth';
 
 // vitest does not read .env files. Variables already in the environment win (CI sets them).
 for (const file of ['.env', '.env.example']) {
@@ -41,11 +44,21 @@ export interface TestApp {
   rawLogs: () => string;
   /** Headers every state-changing browser request from the web app carries. */
   csrfHeaders: Record<string, string>;
+  /** CSRF headers plus the test identity header (`authHeader(userId, tenantId)`). */
+  as: (auth: Record<string, string>) => Record<string, string>;
   http: () => ReturnType<typeof request>;
 }
 
 export async function createTestApp(
-  options: { env?: Record<string, string>; controllers?: Type[] } = {},
+  options: {
+    env?: Record<string, string>;
+    controllers?: Type[];
+    /**
+     * Keep the application's own AuthContextProvider (which authenticates nobody until P0-4) instead
+     * of the test stub. Used to prove that no header can authenticate a real request.
+     */
+    realAuth?: boolean;
+  } = {},
 ): Promise<TestApp> {
   let output = '';
   const stream = new Writable({
@@ -55,15 +68,18 @@ export async function createTestApp(
     },
   });
 
-  const moduleRef = await Test.createTestingModule({
+  let builder = Test.createTestingModule({
     imports: [AppModule],
-    controllers: options.controllers ?? [ProbeController],
+    controllers: options.controllers ?? [ProbeController, AccessProbeController],
   })
     .overrideProvider(APP_CONFIG)
     .useValue(testConfig(options.env))
     .overrideProvider(LOG_STREAM)
-    .useValue(stream)
-    .compile();
+    .useValue(stream);
+  if (!options.realAuth) {
+    builder = builder.overrideProvider(AuthContextProvider).useClass(TestAuthContextProvider);
+  }
+  const moduleRef = await builder.compile();
 
   const app = moduleRef.createNestApplication<NestExpressApplication>({ bufferLogs: true });
   configureApp(app);
@@ -78,6 +94,7 @@ export async function createTestApp(
         .filter((line) => line.trim() !== '')
         .map((line) => JSON.parse(line) as Record<string, unknown>),
     csrfHeaders: { 'X-Requested-With': 'venueos', Origin: APP_ORIGIN },
+    as: (auth) => ({ 'X-Requested-With': 'venueos', Origin: APP_ORIGIN, ...auth }),
     http: () => request(app.getHttpServer()),
   };
 }

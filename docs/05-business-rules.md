@@ -62,6 +62,9 @@ Per session, in this order:
 4. **Add-ons**: FIXED = price; PER_HEAD = price × billed guests; PER_HOUR = price × hours;
    PER_UNIT = price × quantity.
 5. **Discount**: amount or % on the booking subtotal, limited by the role's `maxDiscountPct`.
+   A role without `maxDiscountPct` (or with an invalid value) may give **no discount** (0). The limit is
+   part of the role (`roles.limits`); a caller may not raise a role's limit above their own
+   (`04-security.md` section 2).
 6. **Tax**: tenant default tax rate(s), exclusive or inclusive as configured; computed on the
    discounted subtotal; shown as `TAX` lines.
 

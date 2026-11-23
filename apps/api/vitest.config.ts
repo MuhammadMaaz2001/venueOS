@@ -5,6 +5,8 @@ export default defineConfig({
   test: {
     include: ['src/**/*.spec.ts', 'src/**/*.int-spec.ts'],
     environment: 'node',
+    // One throwaway migrated Postgres for the run; sets DATABASE_URL for every test file.
+    globalSetup: ['./test/global-setup.mjs'],
     // Integration tests boot the whole Nest app (and open DB connections); keep them predictable.
     testTimeout: 20_000,
   },

@@ -52,6 +52,129 @@
           "health"
         ]
       }
+    },
+    "/v1/roles": {
+      "get": {
+        "operationId": "RolesController_list",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the roles of the current tenant",
+        "tags": [
+          "roles"
+        ]
+      },
+      "post": {
+        "operationId": "RolesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a custom role as a copy of an existing one",
+        "tags": [
+          "roles"
+        ]
+      }
+    },
+    "/v1/roles/{id}": {
+      "get": {
+        "operationId": "RolesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "roles"
+        ]
+      },
+      "patch": {
+        "operationId": "RolesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateRoleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RoleResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit a role: name (custom roles only), permissions, limits",
+        "tags": [
+          "roles"
+        ]
+      }
     }
   },
   "info": {
@@ -107,6 +230,324 @@
         "required": [
           "status",
           "checks"
+        ]
+      },
+      "RoleListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "permissions": {
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "tenant.settings.manage",
+                      "billing.manage",
+                      "staff.manage",
+                      "role.manage",
+                      "audit.view",
+                      "template.manage",
+                      "venue.manage",
+                      "catalogue.manage",
+                      "pricing.manage",
+                      "customer.view",
+                      "customer.manage",
+                      "customer.view_sensitive",
+                      "lead.view",
+                      "lead.manage",
+                      "quotation.manage",
+                      "quotation.send",
+                      "booking.view",
+                      "booking.view_prices",
+                      "booking.create",
+                      "booking.edit",
+                      "booking.hold",
+                      "booking.extend_hold",
+                      "booking.confirm",
+                      "booking.confirm_override",
+                      "booking.cancel",
+                      "booking.edit_locked",
+                      "booking.override_rules",
+                      "payment.view",
+                      "payment.record",
+                      "payment.reverse",
+                      "payment.refund.request",
+                      "payment.refund.approve",
+                      "eventsheet.view",
+                      "vendor.view",
+                      "vendor.manage",
+                      "expense.view",
+                      "expense.record",
+                      "expense.reverse",
+                      "inventory.view",
+                      "inventory.record",
+                      "inventory.adjust",
+                      "report.view",
+                      "report.financial"
+                    ]
+                  }
+                },
+                "limits": {
+                  "type": "object",
+                  "properties": {
+                    "maxDiscountPct": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "maxDiscountPct"
+                  ]
+                },
+                "isSystem": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "permissions",
+                "limits",
+                "isSystem",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "RoleResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "permissions": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tenant.settings.manage",
+                "billing.manage",
+                "staff.manage",
+                "role.manage",
+                "audit.view",
+                "template.manage",
+                "venue.manage",
+                "catalogue.manage",
+                "pricing.manage",
+                "customer.view",
+                "customer.manage",
+                "customer.view_sensitive",
+                "lead.view",
+                "lead.manage",
+                "quotation.manage",
+                "quotation.send",
+                "booking.view",
+                "booking.view_prices",
+                "booking.create",
+                "booking.edit",
+                "booking.hold",
+                "booking.extend_hold",
+                "booking.confirm",
+                "booking.confirm_override",
+                "booking.cancel",
+                "booking.edit_locked",
+                "booking.override_rules",
+                "payment.view",
+                "payment.record",
+                "payment.reverse",
+                "payment.refund.request",
+                "payment.refund.approve",
+                "eventsheet.view",
+                "vendor.view",
+                "vendor.manage",
+                "expense.view",
+                "expense.record",
+                "expense.reverse",
+                "inventory.view",
+                "inventory.record",
+                "inventory.adjust",
+                "report.view",
+                "report.financial"
+              ]
+            }
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxDiscountPct": {
+                "type": "number"
+              }
+            },
+            "required": [
+              "maxDiscountPct"
+            ]
+          },
+          "isSystem": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "permissions",
+          "limits",
+          "isSystem",
+          "rev",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "CreateRoleDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "copyFromRoleId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          }
+        },
+        "required": [
+          "name",
+          "copyFromRoleId"
+        ]
+      },
+      "UpdateRoleDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "permissions": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "tenant.settings.manage",
+                "billing.manage",
+                "staff.manage",
+                "role.manage",
+                "audit.view",
+                "template.manage",
+                "venue.manage",
+                "catalogue.manage",
+                "pricing.manage",
+                "customer.view",
+                "customer.manage",
+                "customer.view_sensitive",
+                "lead.view",
+                "lead.manage",
+                "quotation.manage",
+                "quotation.send",
+                "booking.view",
+                "booking.view_prices",
+                "booking.create",
+                "booking.edit",
+                "booking.hold",
+                "booking.extend_hold",
+                "booking.confirm",
+                "booking.confirm_override",
+                "booking.cancel",
+                "booking.edit_locked",
+                "booking.override_rules",
+                "payment.view",
+                "payment.record",
+                "payment.reverse",
+                "payment.refund.request",
+                "payment.refund.approve",
+                "eventsheet.view",
+                "vendor.view",
+                "vendor.manage",
+                "expense.view",
+                "expense.record",
+                "expense.reverse",
+                "inventory.view",
+                "inventory.record",
+                "inventory.adjust",
+                "report.view",
+                "report.financial"
+              ]
+            }
+          },
+          "limits": {
+            "type": "object",
+            "properties": {
+              "maxDiscountPct": {
+                "type": "number",
+                "minimum": 0,
+                "maximum": 100
+              }
+            },
+            "required": [
+              "maxDiscountPct"
+            ]
+          }
+        },
+        "required": [
+          "rev"
         ]
       }
     }

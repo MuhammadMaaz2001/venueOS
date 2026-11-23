@@ -31,7 +31,7 @@ pnpm install
 pnpm dev                 # web :3000, api :4000, worker
 pnpm build
 pnpm lint && pnpm typecheck
-pnpm test                # unit + integration
+pnpm test                # unit + integration (api and db tests need the docker Postgres: docker compose up -d postgres)
 pnpm --filter @venueos/db test:constraints   # double-booking, RLS, privilege tests on a Docker/CI Postgres
 pnpm db:migrate          # prisma migrate dev (uses MIGRATE_DATABASE_URL, the venueos_migrator role)
 pnpm db:seed
