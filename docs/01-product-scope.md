@@ -1,0 +1,76 @@
+# 01 — Product scope
+
+## Who it is for
+
+Marriage halls, banquet halls, marquees, lawns, farmhouses, hotel banquet departments and
+event spaces. Single venues and multi-branch groups.
+
+## Problems the MVP must solve
+
+- Double bookings caused by paper registers and Excel
+- Inquiries on phone/WhatsApp that are never followed up
+- Token, advance and balance payments tracked by hand; disputes
+- Kitchen, decor and vendors getting guest counts and menus late or verbally
+- No view of event profit, stock losses or which sales agent converts
+
+## MVP (Phase 1) — 14 modules
+
+Build order matters: each module depends on the ones above it.
+
+| # | Module | Includes |
+| --- | --- | --- |
+| 1 | Setup and onboarding | Tenant signup, setup wizard, venues/branches, spaces (halls/lawns) with capacity, combined spaces (Hall A+B), slot templates (Lunch/Dinner, hourly, full day), currency, tax, timezone, language, receipt settings |
+| 2 | Staff, roles and audit | Users, invitations, roles and permissions, discount limits per role, audit log viewer |
+| 3 | Catalogue and pricing | Menu items, per-head packages with minimum guests, add-ons (fixed / per head / per hour / per unit), price rules (weekday, season, specific dates), tax rates, cancellation policies, custom fields |
+| 4 | Customers | Profile, history, duplicate detection by phone, custom fields (sensitive ones encrypted and masked) |
+| 5 | Leads / inquiries | Capture (phone, walk-in, WhatsApp, web form), stages New → Contacted → Site visit → Quoted → Won/Lost, assignment, follow-up reminders |
+| 6 | Availability calendar | Space × date × slot grid, month/week views, free/held/confirmed colours, quick hold |
+| 7 | Quotations | Server-side price calculation, PDF, email to customer, "share on WhatsApp" link (wa.me, no API), versions |
+| 8 | Bookings | Multi-session bookings (Mehndi, Barat, Walima), tentative holds with expiry, confirm, change, cancel, frozen prices |
+| 9 | Payments and receipts | Payment schedule (token → advance → balance), cash/bank/cheque/wallet/card entry, receipt PDF (English/Urdu), refunds with approval, reversals |
+| 10 | Event sheet | Printable and mobile run sheet per session: date, slot, space, guest count, menu, setup and kitchen notes, assigned vendors, issued inventory; updates live when the booking changes |
+| 11 | Vendors | Vendor directory, assign vendors to sessions, agreed cost, commission due and received |
+| 12 | Expenses and inventory | Event and overhead expenses, event profit, inventory items, issue/return/damage ledger per event, stock on hand, low-stock alert |
+| 13 | Email notifications | Quotation sent, booking confirmed, payment due, payment received, event reminder; internal alerts (new lead, follow-up due, hold expiring); editable templates per tenant |
+| 14 | Dashboard and reports | Occupancy, revenue, receivables, upcoming events, event profit, expenses by category, conversion by agent |
+
+## Roles (default, editable per tenant)
+
+| Role | Scope | Typical permissions |
+| --- | --- | --- |
+| Owner | Tenant | Everything, including billing, roles, settings |
+| Branch manager | Assigned venues | Bookings, pricing, discounts up to limit, vendors, expenses, reports |
+| Sales agent | Assigned venues | Leads, customers, quotations, holds; confirm needs advance received |
+| Accountant | Tenant | Payments, refunds (approve), expenses, financial reports |
+| Operations / kitchen | Assigned venues | Read event sheets; record inventory issue/return/damage |
+| Platform admin | Platform | Tenants, plans, support access (logged, see security doc) |
+
+## Explicitly out of scope for MVP
+
+- Customer portal and public booking widget
+- Online payment gateways (payments are recorded manually)
+- WhatsApp Business API and SMS (email only; a manual wa.me share link is allowed)
+- Multi-branch consolidated reports beyond simple filters
+- Marketplace / public venue directory
+- Any AI feature
+- Mobile app (the web app must be fully usable on a phone)
+
+Keep the data model ready for these, but do not build them.
+
+## SaaS plans (structure; prices set after pilot)
+
+| Plan | Venues | Spaces | Users | Notable |
+| --- | --- | --- | --- | --- |
+| Starter | 1 | 3 | 5 | All MVP modules |
+| Growth | 2 | 10 | 15 | Higher email quota |
+| Enterprise | Unlimited | Unlimited | Unlimited | Custom domain, priority support |
+
+Limits live in `plans.entitlements` (JSON) and are enforced by the API's entitlements guard.
+
+## Definition of done for the MVP
+
+- One pilot hall runs a full week of real operations without its paper register
+- No double booking possible (constraint tests green in CI)
+- Tenant isolation tests green in CI
+- Every money movement has a receipt or expense record and an audit entry
+- Works on a mid-range Android phone over a 4G connection

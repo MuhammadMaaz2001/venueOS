@@ -1,0 +1,17 @@
+# Local development only.
+services:
+  postgres:
+    image: postgres:16
+    environment:
+      POSTGRES_USER: venueos_migrator
+      POSTGRES_PASSWORD: migrator_password
+      POSTGRES_DB: venueos
+    ports: ["5432:5432"]
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./packages/db/docker/init-roles.sql:/docker-entrypoint-initdb.d/01-roles.sql:ro
+  mailpit:
+    image: axllent/mailpit
+    ports: ["1025:1025", "8025:8025"]
+volumes:
+  pgdata:
