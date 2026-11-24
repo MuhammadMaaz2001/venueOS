@@ -168,16 +168,30 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       venue-scope editing (needs the venues module), the venue's own time zone in `format.ts` callers (the
       tenant's is used until venues exist), profile / password change UI, translated names of the system roles
       (they are data), dark mode, Sentry, the e2e in CI (P0-8).
-- [ ] **P0-8 CI/CD**: GitHub Actions (lint, typecheck, tests, constraint tests with a Postgres
-      service container, audit, gitleaks, Docker builds). `pnpm test` of `apps/worker` needs the same
-      Postgres **and a Mailpit service container** (SMTP :1025, HTTP API :8025; `SMTP_URL` and
-      `MAILPIT_API_URL` override the defaults). `pnpm test` of `apps/api` also needs that
-      Postgres (the role script run and `VENUEOS_TEST_ADMIN_URL` set), like `test:constraints`, staging deploy on AWS (web and API in
-      the same VPC). Includes the staging smoke check that the API logs the **real client IP**
-      (not the web server's) so `TRUST_PROXY` matches the hop count (docs/08).
+- [x] **P0-8 CI/CD and Docker (local scope)** (done): **Images** for `api`, `worker` (Playwright Chromium and its
+      system libraries, non-root) and `web` (Next.js `standalone` output) in `apps/<app>/Dockerfile`: `turbo prune
+      --docker`, multi-stage, `node:24-slim` pinned by digest, production dependencies only (`pnpm deploy --prod`),
+      non-root user, `HEALTHCHECK` on api and web; `.dockerignore` keeps `.env*`, `node_modules` and build output out.
+      The web image bakes `API_INTERNAL_URL=http://api:4000` (Next compiles the `/api` rewrite at build time), so
+      every environment must run the API as the service `api`. `docker-compose.apps.yml` runs the three images
+      against the local postgres, mailpit and s3 (see "Run with Docker" in the README); proved: `/api/health/ready`
+      answers `{"status":"ok","checks":{"database":"up","queue":"up"}}`, `/login` is 200 with the CSP header, a
+      write without `X-Requested-With` is `403 CSRF_REJECTED`, and a signup is mailed by the containerised worker.
+      `shadcn` (a CLI) moved to `devDependencies`: `pnpm audit --prod` is clean. **CI** (`.github/workflows/ci.yml`,
+      every PR and push to main, actions pinned by commit SHA, read-only token, no secrets): `verify` (frozen install,
+      lint, typecheck, `pnpm test`, `test:constraints`), `e2e` (migrate as the migrator, Playwright), `audit`
+      (`pnpm audit --prod`) and `gitleaks` (pinned image, whole history, `.gitleaks.toml` allows only local
+      placeholders). Postgres 16, Mailpit and SeaweedFS are the pinned images of `docker-compose.yml` started with
+      `docker compose up -d --wait` (GitHub's `services:` cannot give SeaweedFS its command and config).
+      The workflow is linted with `actionlint` and its e2e environment was replayed locally without `.env` files;
+      **the first real run happens on your first pull request** (I cannot open one). **Not built, later: AWS
+      deploy** (deploy workflow, ECR, SSM rollout, the `migrate` image, the staging smoke check of the real client IP
+      (`TRUST_PROXY`, docs/08), the AWS runbook, production env files, building the images in CI).
 
-**Exit gate:** constraint tests + tenant isolation integration tests green in CI; a staff user
-invited into tenant A cannot see anything of tenant B through any endpoint.
+**Exit gate (checked, local):** constraint tests (`pnpm --filter @venueos/db test:constraints`) and the tenant
+isolation integration tests pass, and `apps/api/src/__tests__/tenant-isolation-sweep.int-spec.ts` proves, for every
+route of the application, that an Owner and a Sales agent of tenant A get nothing of tenant B (ids, names, emails) and
+change nothing there; a new tenant route without an isolation case fails that test. CI runs both on every PR.
 
 ### Handoff from P0-5 (what P0-4 must wire up)
 

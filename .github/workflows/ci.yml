@@ -1,0 +1,136 @@
+# CI on every pull request (and on pushes to main). docs/08-deployment-and-ops.md, "CI/CD".
+#
+# The service containers are the SAME pinned images as local development: `docker compose up` of docker-compose.yml
+# (Postgres 16 with packages/db/docker/init-roles.sql loaded by its init directory, Mailpit, SeaweedFS as the
+# S3). GitHub's `services:` cannot hand SeaweedFS its command and config file, so compose is used for all three.
+# Nothing here needs a secret: every credential below is a local placeholder (see .gitleaks.toml).
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+env:
+  TURBO_TELEMETRY_DISABLED: '1'
+  # Local-development placeholders, the same as docker-compose.yml / init-roles.sql.
+  VENUEOS_TEST_ADMIN_URL: postgresql://postgres:postgres@localhost:5432/postgres
+  AWS_ACCESS_KEY_ID: venueos
+  AWS_SECRET_ACCESS_KEY: venueos-local-secret
+
+jobs:
+  verify:
+    name: Lint, typecheck, test, constraint tests
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: corepack enable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json # engines.node: >=24.7 <25
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm lint
+      - run: pnpm typecheck
+
+      - name: Start Postgres 16, Mailpit and SeaweedFS (docker compose)
+        run: docker compose up -d --wait postgres mailpit s3
+      # The worker's PDF tests render with Chromium.
+      - name: Install Playwright Chromium
+        run: pnpm --filter @venueos/worker exec playwright install --with-deps chromium
+      - run: pnpm test
+      - name: Database constraint tests (double booking, RLS, privileges)
+        run: pnpm --filter @venueos/db test:constraints
+
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100
+
+  e2e:
+    name: Web e2e (Playwright)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    env:
+      # What `pnpm dev` (started by Playwright's webServer) gives the three apps. No .env files exist in CI.
+      NODE_ENV: development
+      DATABASE_URL: postgresql://venueos_app:app_password@localhost:5432/venueos
+      AUTH_DATABASE_URL: postgresql://venueos_auth:auth_password@localhost:5432/venueos
+      JOBS_DATABASE_URL: postgresql://venueos_jobs:jobs_password@localhost:5432/venueos
+      MIGRATE_DATABASE_URL: postgresql://venueos_migrator:migrator_password@localhost:5432/venueos
+      E2E_AUTH_DATABASE_URL: postgresql://venueos_auth:auth_password@localhost:5432/venueos
+      APP_ORIGIN: http://localhost:3000
+      API_INTERNAL_URL: http://localhost:4000
+      # 32 bytes of 7: a throwaway test key, never a real one (the API tests use the same).
+      FIELD_ENCRYPTION_KEYS: '{"active":"k1","keys":{"k1":"BwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwcHBwc="}}'
+      EMAIL_PROVIDER: smtp
+      SMTP_URL: smtp://localhost:1025
+      EMAIL_FROM_ADDRESS: bookings@venueos.test
+      S3_BUCKET: venueos-local
+      S3_REGION: us-east-1
+      S3_ENDPOINT: http://localhost:9100
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_SSE: none
+      SCHEDULER_ENABLED: 'false'
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: corepack enable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - name: Start Postgres 16, Mailpit and SeaweedFS (docker compose)
+        run: docker compose up -d --wait postgres mailpit s3
+      - name: Migrate the database (as venueos_migrator, like staging and production)
+        run: pnpm --filter @venueos/db db:deploy
+      - name: Install Playwright Chromium
+        run: pnpm --filter @venueos/web exec playwright install --with-deps chromium
+      # Playwright starts `pnpm dev` (web, api, worker) itself and waits for the API's /health/ready.
+      - name: Journeys and screenshots
+        run: pnpm --filter @venueos/web e2e
+      - name: Upload traces
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: e2e-results
+          path: apps/web/e2e/.results
+          retention-days: 7
+      - name: Service logs on failure
+        if: failure()
+        run: docker compose logs --no-color --tail 100
+
+  audit:
+    name: Dependency audit
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+      - run: corepack enable
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
+        with:
+          node-version-file: package.json
+      # Production dependencies only (docs/04-security.md section 10); dev tools are not shipped.
+      - run: pnpm audit --prod
+
+  gitleaks:
+    name: Secret scan
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          fetch-depth: 0 # the whole history: a secret that was committed and removed is still leaked
+      # The image (pinned by digest) instead of the gitleaks action, which needs a license on organisations.
+      - name: gitleaks detect
+        run: >
+          docker run --rm -v "$PWD:/repo"
+          ghcr.io/gitleaks/gitleaks:v8.30.0@sha256:691af3c7c5a48b16f187ce3446d5f194838f91238f27270ed36eef6359a574d9
+          detect --source /repo --config /repo/.gitleaks.toml --redact --no-banner --verbose

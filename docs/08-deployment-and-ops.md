@@ -29,6 +29,7 @@ pilot; move to ECS before onboarding paying tenants.
 - Each app has its own Dockerfile using `turbo prune <app> --docker`, multi-stage, Node 24
   slim, non-root user, `NODE_ENV=production`.
 - Images tagged with the git SHA; the same image is promoted from staging to production.
+- Today (local scope, P0-8): `apps/api|worker|web/Dockerfile`, run together with `docker-compose.apps.yml` (README, "Run with Docker"); CI is `.github/workflows/ci.yml`. The web image bakes `API_INTERNAL_URL=http://api:4000`, so the API service must be named `api` in every environment. Registry, deploy workflow, migrate image and the AWS runbook are later (docs/09).
 
 ## CI/CD (GitHub Actions)
 

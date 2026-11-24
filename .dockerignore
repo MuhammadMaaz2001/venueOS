@@ -1,0 +1,22 @@
+# Keep secrets, local state and build output out of every image (and out of the build context).
+.git
+.github
+.claude
+.turbo
+node_modules
+**/node_modules
+**/dist
+**/.next
+**/.turbo
+**/coverage
+**/*.tsbuildinfo
+**/.env
+**/.env.*
+!**/.env.example
+**/e2e/.results
+**/e2e/.screenshots
+apps/worker/.artifacts
+packages/db/src/generated
+docs
+*.md
+!packages/**/NOTICE.md
