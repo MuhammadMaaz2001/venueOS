@@ -91,17 +91,49 @@ jobs:
         run: docker compose up -d --wait postgres mailpit s3
       - name: Migrate the database (as venueos_migrator, like staging and production)
         run: pnpm --filter @venueos/db db:deploy
+      # Signup creates the workspace's subscription on the `starter` plan, and the plans are platform data that only
+      # the seed writes (docs/08: "it always writes the plans"). NODE_ENV=production seeds the plans ONLY: no demo
+      # tenant and no owner credentials, exactly what staging and production get.
+      - name: Seed the platform plans
+        run: pnpm --filter @venueos/db db:seed
+        env:
+          NODE_ENV: production
       - name: Install Playwright Chromium
         run: pnpm --filter @venueos/web exec playwright install --with-deps chromium
-      # Playwright starts `pnpm dev` (web, api, worker) itself and waits for the API's /health/ready.
+      # The three apps run in the background with their output in files, so a failed run uploads what the servers
+      # said (a 500 only shows as "Something went wrong" in the browser). turbo prefixes every line with its app.
+      # Playwright's webServer reuses them (reuseExistingServer) once the next step has seen them come up.
+      - name: Start web, api and worker (pnpm dev)
+        run: |
+          mkdir -p e2e-logs
+          nohup pnpm dev > e2e-logs/dev-servers.log 2>&1 &
+      # Playwright only checks once whether the servers are up (and would start a second `pnpm dev` that fights for
+      # the ports), so wait here until the API is ready (database and queue up) and the web app answers.
+      - name: Wait for the apps
+        run: |
+          for url in http://localhost:4000/health/ready http://localhost:3000/login; do
+            timeout 300 bash -c "until curl -fsS -o /dev/null $url; do sleep 3; done" || {
+              echo "::error::$url did not come up within 5 minutes"
+              tail -n 100 e2e-logs/dev-servers.log
+              exit 1
+            }
+          done
       - name: Journeys and screenshots
         run: pnpm --filter @venueos/web e2e
-      - name: Upload traces
+      - name: Split the server logs by app
+        if: failure()
+        run: |
+          for app in api worker web; do
+            grep -F "$app:dev:" e2e-logs/dev-servers.log > "e2e-logs/$app.log" || true
+          done
+      - name: Upload traces and server logs
         if: failure()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: e2e-results
-          path: apps/web/e2e/.results
+          path: |
+            apps/web/e2e/.results
+            e2e-logs
           retention-days: 7
       - name: Service logs on failure
         if: failure()
