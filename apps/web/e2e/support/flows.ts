@@ -1,25 +1,23 @@
 import { expect } from '@playwright/test';
 import type { Browser, BrowserContext, Page } from '@playwright/test';
 import en from '../../src/messages/en.json';
-import ur from '../../src/messages/ur.json';
 import { LINK, linkFromMail } from './mail';
 
 export const PASSWORD = 'correct horse battery staple 42';
 
-export type Locale = 'en' | 'ur';
-export const MESSAGES = { en, ur } as const;
+/** English only in the MVP. A language added later gets its messages file here and a run of the journeys. */
+export type Locale = 'en';
+export const MESSAGES = { en } as const;
 
 /** Console messages about a blocked resource (Content Security Policy): the journeys must produce none. */
 export const cspViolations: string[] = [];
 
-/** A browser context that speaks `locale` (the app reads it from the NEXT_LOCALE cookie). */
+/** A fresh browser context (own cookies: one per person), optionally with a screen size. */
 export async function newContext(
   browser: Browser,
-  locale: Locale,
   viewport?: { width: number; height: number },
 ): Promise<BrowserContext> {
   const context = await browser.newContext(viewport ? { viewport } : {});
-  await context.addCookies([{ name: 'NEXT_LOCALE', value: locale, url: 'http://localhost:3000' }]);
   context.on('console', (message) => {
     if (/content[- ]security[- ]policy/i.test(message.text())) cspViolations.push(message.text());
   });
@@ -80,7 +78,7 @@ export async function registerAndLogin(
   locale: Locale,
   person: Person,
 ): Promise<{ context: BrowserContext; page: Page }> {
-  const context = await newContext(browser, locale);
+  const context = await newContext(browser);
   const page = await context.newPage();
   await signup(page, locale, person);
   await verifyEmail(page, locale, person.email);
@@ -113,7 +111,7 @@ export async function acceptNewInvite(
   person: { name: string; email: string },
 ): Promise<void> {
   const m = MESSAGES[locale].Auth;
-  const context = await newContext(browser, locale);
+  const context = await newContext(browser);
   const page = await context.newPage();
   await open(page, await linkFromMail(person.email, LINK.invite));
   await page.getByLabel(m.fields.name, { exact: true }).fill(person.name);

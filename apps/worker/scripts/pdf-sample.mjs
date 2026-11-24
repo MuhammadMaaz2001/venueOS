@@ -28,8 +28,8 @@ const renderer = new ChromiumPdfRenderer(
 );
 
 try {
-  const { html } = renderPdfHtml('sample', 'ur', {
-    tenantName: 'رائل ہال · Royal Hall',
+  const { html } = renderPdfHtml('sample', 'en', {
+    tenantName: 'Royal Hall',
     reference: 'SAMPLE-0001',
     issuedOn: new Date().toISOString().slice(0, 10),
   });

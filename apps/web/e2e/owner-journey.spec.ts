@@ -14,13 +14,13 @@ import {
   verifyEmail,
 } from './support/flows';
 
-// signup -> verify (link from Mailpit) -> login -> switch workspace -> invite -> accept -> logout, in English and
-// Urdu. Needs the whole stack and Mailpit running (see playwright.config.ts).
+// signup -> verify (link from Mailpit) -> login -> switch workspace -> invite -> accept -> logout, in English (the
+// MVP's only language; a language added later is one more entry in the loop below). Needs the whole stack and Mailpit running (see playwright.config.ts).
 
 /** The message boxes of the page (Next's route announcer is also role=alert, so select by slot). */
 const alertOf = (page: Page) => page.locator('[data-slot="alert"]');
 
-for (const locale of ['en', 'ur'] as const) {
+for (const locale of ['en'] as const) {
   test.describe(`owner journey (${locale})`, () => {
     const m = MESSAGES[locale];
 
@@ -47,7 +47,7 @@ for (const locale of ['en', 'ur'] as const) {
       };
 
       // ── A signs up, confirms the address (one POST for the token), logs in ─────────────────────────
-      const contextA = await newContext(browser, locale);
+      const contextA = await newContext(browser);
       const pageA = await contextA.newPage();
       await signup(pageA, locale, ownerA);
 
@@ -65,13 +65,13 @@ for (const locale of ['en', 'ur'] as const) {
       await login(pageA, locale, ownerA.email);
       await expect(pageA.getByTestId('tenant-name')).toHaveText(ownerA.tenantName);
       await expect(pageA.getByRole('heading', { level: 1 })).toContainText(ownerA.name);
-      expect(await pageA.locator('html').getAttribute('dir')).toBe(locale === 'ur' ? 'rtl' : 'ltr');
+      expect(await pageA.locator('html').getAttribute('dir')).toBe('ltr');
 
       // ── A invites a NEW person; they accept and log in ──────────────────────────────────────────────
       const newcomer = { name: 'Sales Newcomer', email: uniqueEmail('newcomer') };
       await invite(pageA, locale, newcomer.email, 'Sales agent');
 
-      const contextC = await newContext(browser, locale);
+      const contextC = await newContext(browser);
       const pageC = await contextC.newPage();
       const inviteLink = await linkFromMail(newcomer.email, LINK.invite);
       await open(pageC, inviteLink);
@@ -144,7 +144,7 @@ for (const locale of ['en', 'ur'] as const) {
     test('a wrong password and an unknown address get the same message; a bad link is explained', async ({
       browser,
     }) => {
-      const context = await newContext(browser, locale);
+      const context = await newContext(browser);
       const page = await context.newPage();
 
       await open(page, '/login');

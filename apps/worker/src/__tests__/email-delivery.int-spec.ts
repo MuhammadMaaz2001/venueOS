@@ -116,7 +116,7 @@ describe('email.send, delivered through SMTP into Mailpit', () => {
         {
           to,
           template: 'auth.verify-email',
-          locale: 'ur',
+          locale: 'en',
           vars: { name: 'Ali', hours: 24 },
           secretVars: { verifyUrl: link },
         },
@@ -134,7 +134,7 @@ describe('email.send, delivered through SMTP into Mailpit', () => {
     expect(mail?.HTML).toContain(
       'href="https://app.example.test/verify-email?token=SEALED-LINK-TOKEN-0123456789"',
     );
-    expect(mail?.HTML).toContain('dir="rtl"');
+    expect(mail?.HTML).toContain('dir="ltr"');
     expect(mail?.From.Name).toBe('venueOS'); // not the tenant's name
     expect(mail?.From.Name).not.toContain('Royal');
 

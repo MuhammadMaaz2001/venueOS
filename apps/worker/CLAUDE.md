@@ -76,4 +76,4 @@
   shows, redrives and discards (docs/08 runbook).
 - **Tests** also need the local S3 (SeaweedFS: `docker compose up -d s3`) and Chromium
   (`pnpm --filter @venueos/worker exec playwright install chromium`). `startWorker({ renderer, storage, kinds,
-  extraJobs })` swaps in scripted parts; `pnpm --filter @venueos/worker pdf:sample` renders the bilingual sample.
+  extraJobs })` swaps in scripted parts; `pnpm --filter @venueos/worker pdf:sample` renders the English sample.

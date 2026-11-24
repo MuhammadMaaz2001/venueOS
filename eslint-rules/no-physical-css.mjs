@@ -1,4 +1,4 @@
-// apps/web styles must work in right-to-left languages (Urdu), so class names use LOGICAL properties:
+// apps/web styles must be ready for right-to-left languages (Arabic is planned for the Gulf market), so class names use LOGICAL properties:
 // ms-/me-/ps-/pe-/start-/end-/text-start/text-end/rounded-s-/rounded-e-/border-s/border-e, never
 // ml-/mr-/pl-/pr-/left-/right-/text-left/text-right/rounded-l-/rounded-r-/border-l/border-r.
 // (docs/02-system-design.md "Frontend structure", apps/web/CLAUDE.md.)

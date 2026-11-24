@@ -117,7 +117,7 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       invitations (create/list/revoke/accept for new and existing users, plan limit counts pending ones, partial
       unique index), staff list/patch with the last-owner rule, escalation checks, abuse limits for the mail
       endpoints (`auth_requests`), sealed secret email variables (AES-256-GCM, AAD `tenant:messageKey`),
-      templates `auth.verify-email`, `auth.account-exists`, `auth.password-reset`, `staff.invite` (en + ur),
+      templates `auth.verify-email`, `auth.account-exists`, `auth.password-reset`, `staff.invite` (English only: see "English-only MVP" below),
       breached-password check (SecLists top 10k, MIT, see `modules/auth/data/NOTICE.md`). Migration
       `auth_requests_and_pending_invitations`. Checked in a real browser: `__Host-` cookie set and sent over
       `http://localhost` through a Next `/api` rewrite (signup, mail via the worker into Mailpit, verify, login,
@@ -132,8 +132,8 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       Asia/Karachi, the only `AuthDb` user in the worker): sessions, tokens, invitations, `login_attempts` kept 30
       days, `auth_requests` 1 day, and for signups unverified after 30 days only credentials and tokens (proved: the
       same address can sign up again). **`pdf.render`**: Playwright Chromium (JavaScript and network off, shared
-      browser, `PDF_CONCURRENCY`), bundled Noto fonts (Nastaliq, Naskh, Sans; SIL OFL) in `packages/templates`,
-      `sample` document (Urdu + English), S3 storage under `tenants/{tenantId}/pdf/...` (SeaweedFS S3 gateway locally on :9100,
+      browser, `PDF_CONCURRENCY`), bundled Noto Sans (SIL OFL) in `packages/templates` (the Urdu fonts were removed: English-only MVP),
+      `sample` document (English), S3 storage under `tenants/{tenantId}/pdf/...` (SeaweedFS S3 gateway locally on :9100,
       image pinned by digest, IAM task role in production), fixed failure codes, the kind records the key.
       **Dead letters**: `ops.dead-letter-check` every 5 min logs `dead letters present`, the ops script
       `packages/db/scripts/dead-letters.mjs` (list, show, redrive, discard; dry run unless `--apply`) and the
@@ -157,14 +157,13 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       `country`, `currency`, `timezone`, `defaultLocale`; `EMAIL_NOT_VERIFIED_REASON` is exported from shared.
       `packages/api-client` now ships the `openapi-fetch` client (adds `X-Requested-With: venueos` to every
       non-GET); features call it from `features/<module>/api.ts` (TanStack Query); errors become `ApiError`, and a
-      toast maps the code to `Errors.<CODE>` (a test checks that en and ur cover every `ERROR_CODES` entry).
-      next-intl en + ur without a URL segment, RTL by logical CSS only (an ESLint rule bans `ml-/mr-/pl-/pr-/left-/
-      right-/text-left/text-right/...` outside the generated `components/ui`). **Urdu UI font: Noto Naskh Arabic**
-      (Nastaliq is too tall for dense controls), self-hosted with Noto Sans Latin (`src/fonts/NOTICE.md`), Latin
-      digits in both languages. `lib/format.ts`: money by currency minor units (string-safe), dates in an explicit
-      IANA zone. Tests: Vitest (format, errors, messages parity, token once-guard, venue scope) and Playwright
+      toast maps the code to `Errors.<CODE>` (a test checks that en.json covers every `ERROR_CODES` entry).
+      next-intl, English only, without a URL segment (RTL/Arabic planned later), logical CSS only (an ESLint rule bans `ml-/mr-/pl-/pr-/left-/
+      right-/text-left/text-right/...` outside the generated `components/ui`). **UI font: Noto Sans** (self-hosted,
+      `src/fonts/NOTICE.md`), Latin digits in every language. `lib/format.ts`: money by currency minor units (string-safe), dates in an explicit
+      IANA zone. Tests: Vitest (format, errors, messages vs `ERROR_CODES`, token once-guard, venue scope) and Playwright
       (`pnpm --filter @venueos/web e2e`): signup -> verify (Mailpit) -> login -> invite -> accept (new and existing
-      account) -> switch workspace -> logout, the last-Owner rule, in en and ur, plus an opt-in screenshot run
+      account) -> switch workspace -> logout, the last-Owner rule, in English, plus an opt-in screenshot run
       (`e2e:screenshots`) that also checks that no page is wider than 360 px. **Not built:** a venue picker and
       venue-scope editing (needs the venues module), the venue's own time zone in `format.ts` callers (the
       tenant's is used until venues exist), profile / password change UI, translated names of the system roles
@@ -344,7 +343,7 @@ Task: P0-1 Monorepo skeleton for venueOS.
 Read CLAUDE.md, docs/02-system-design.md and docs/09-phase-0-plan.md first.
 
 Create a pnpm + Turborepo monorepo (Node 24, TypeScript strict, pinned dependency versions) with:
-- apps/web: Next.js App Router, Tailwind, shadcn/ui initialised, next-intl with en/ur (no
+- apps/web: Next.js App Router, Tailwind, shadcn/ui initialised, next-intl, English only (no
   /[locale] URL segment), a placeholder home page, /api/* rewrite to API_INTERNAL_URL
 - apps/api: NestJS on port 4000 with GET /health and Swagger at /docs
 - apps/worker: NestJS standalone app that boots and logs "worker ready"
@@ -363,6 +362,18 @@ GET localhost:4000/health returns 200; pnpm --filter @venueos/db test:constraint
 the docker-compose Postgres.
 Do not implement auth or business modules yet. Do not touch git.
 ```
+
+### English-only MVP (decision after P0-7)
+
+The MVP is **English-only; RTL/Arabic (Gulf market) is planned later via next-intl.** Urdu was removed: the `ur`
+messages file, the language switcher and the `NEXT_LOCALE` cookie, the Naskh UI font, the Urdu variants of the email
+templates, the Urdu PDF fonts (Nastaliq, Naskh) and the Urdu e2e runs and screenshots. **Kept** so that Arabic needs
+only a messages file and a font: next-intl with a single `en` locale and every text in `messages/en.json`
+(`src/i18n/config.ts`, `request.ts`), the logical-CSS lint rule, the template `locales` maps with the `en` fallback
+and `dir="rtl"` for Arabic (`packages/templates/src/direction.ts`), `customers.preferred_locale` and the tenant's
+`defaultLocale` (default `en`, no migration; signup stores `en`), and the `ERROR_CODES` / `en.json` parity test.
+Adding Arabic: `messages/ar.json` (same keys, a test checks it), the language in `LOCALES` and `RTL_LOCALES`, an
+Arabic font in `apps/web/src/fonts` and `packages/templates/fonts`, the Arabic template versions.
 
 ### Handoff from P0-7
 

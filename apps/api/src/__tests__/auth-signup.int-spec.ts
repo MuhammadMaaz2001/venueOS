@@ -97,10 +97,10 @@ describe('signup and email verification', () => {
     });
 
     it('queues the verification mail in the same transaction; the link is sealed, never stored in plain text', async () => {
-      const body = signupBody({ defaultLocale: 'ur' });
+      const body = signupBody({ defaultLocale: 'ar' });
       await signup(body);
       const mail = await h.lastMail(body.email, 'auth.verify-email');
-      expect(mail.locale).toBe('ur');
+      expect(mail.locale).toBe('ar'); // the chosen language is kept on the message; the template falls back to English
       expect(mail.event).toBe('auth.verify_email');
       expect(mail.vars).toMatchObject({ name: 'Ali Khan', hours: 24 });
       expect(String(mail.vars.verifyUrl)).toMatch(

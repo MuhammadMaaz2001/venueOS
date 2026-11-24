@@ -27,7 +27,7 @@ Build order matters: each module depends on the ones above it.
 | 6 | Availability calendar | Space × date × slot grid, month/week views, free/held/confirmed colours, quick hold |
 | 7 | Quotations | Server-side price calculation, PDF, email to customer, "share on WhatsApp" link (wa.me, no API), versions |
 | 8 | Bookings | Multi-session bookings (Mehndi, Barat, Walima), tentative holds with expiry, confirm, change, cancel, frozen prices |
-| 9 | Payments and receipts | Payment schedule (token → advance → balance), cash/bank/cheque/wallet/card entry (cheques pending → cleared/bounced), receipt PDF (English/Urdu), refund requests with approval, reversals |
+| 9 | Payments and receipts | Payment schedule (token → advance → balance), cash/bank/cheque/wallet/card entry (cheques pending → cleared/bounced), receipt PDF (English), refund requests with approval, reversals |
 | 10 | Event sheet | Printable and mobile run sheet per session: date, slot, space, guest count, menu, setup and kitchen notes, assigned vendors, issued inventory; updates live when the booking changes |
 | 11 | Vendors | Vendor directory, assign vendors to sessions, agreed cost, commission due and received |
 | 12 | Expenses and inventory | Event and overhead expenses, event profit, inventory items, issue/return/damage ledger per event, stock on hand, low-stock alert |
@@ -67,8 +67,8 @@ migrator role.
 ## Planned markets
 
 Pakistan first, then the Gulf. Money therefore supports 0-, 2- and 3-decimal currencies
-(`Decimal(18,3)` + an ISO 4217 minor-unit map); right-to-left layout and Urdu/Arabic are
-first-class.
+(`Decimal(18,3)` + an ISO 4217 minor-unit map); the MVP is English-only; RTL/Arabic (Gulf) is planned later via next-intl (the i18n scaffolding stays, so
+adding Arabic needs a messages file and a font).
 
 ## Explicitly out of scope for MVP
 

@@ -5,8 +5,8 @@ import { defineConfig, devices } from '@playwright/test';
 // the docker Postgres + Mailpit (`docker compose up -d postgres mailpit`). `pnpm dev` of the repository root
 // starts the three apps; a stack that is already running is reused.
 //
-//   pnpm --filter @venueos/web e2e                 the journeys, in English and Urdu
-//   pnpm --filter @venueos/web e2e:screenshots     the report screenshots (login, shell, staff; en/ur; desktop/360 px)
+//   pnpm --filter @venueos/web e2e                 the journeys (English)
+//   pnpm --filter @venueos/web e2e:screenshots     the report screenshots (login, shell, staff; desktop/360 px)
 const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
 
 export default defineConfig({

@@ -6,9 +6,10 @@
   `X-Requested-With: venueos` on mutations. Editable forms keep the resource's `rev` and send it
   back; handle `VERSION_CONFLICT` by reloading.
 - Forms: react-hook-form + `zodResolver` with schemas from `@venueos/shared`.
-- All text through next-intl (`messages/en.json`, `messages/ur.json`), no `/[locale]` URL
-  segment (locale from user preference/cookie); use logical CSS (`ms-`, `me-`, `start`, `end`)
-  so RTL works.
+- All text through next-intl (`messages/en.json`; English-only MVP, RTL/Arabic planned later via
+  next-intl), no hard-coded text, no `/[locale]` URL segment (`src/i18n/config.ts` and `request.ts` are the
+  single place a language is added); use logical CSS (`ms-`, `me-`, `start`, `end`; a lint rule enforces
+  it) so RTL works when Arabic arrives.
 - Money/dates only via `src/lib/format.ts` (tenant currency with its ISO 4217 minor units,
   venue timezone). Payment/expense amounts from the API are always positive; show the entry
   type, not a sign.

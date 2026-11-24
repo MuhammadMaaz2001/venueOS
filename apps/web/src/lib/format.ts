@@ -9,14 +9,14 @@ import { formatMoney as toMoneyString, minorUnits } from '@venueos/shared';
  * - Dates: an instant (ISO 8601 UTC) is shown in an explicit IANA time zone (the venue's, or the tenant's until
  *   venues exist), never in the browser's or the server's. A date-only value (`YYYY-MM-DD`) has no zone and is
  *   never shifted.
- * - Digits are Latin (0-9) in every language, so amounts and dates read the same in English and Urdu.
+ * - Digits are Latin (0-9) in every language (also Arabic, planned), so amounts and dates always read the same.
  */
 
 /**
  * Regional variant used for `Intl`: day-month-year and 24-hour time for English (the markets of venueOS write
- * dates that way), Pakistani Urdu for Urdu. Anything else is used as it is.
+ * dates that way). Another language is used as it is, or gets its own entry here when it is added.
  */
-const REGIONAL: Readonly<Record<string, string>> = { en: 'en-GB', ur: 'ur-PK' };
+const REGIONAL: Readonly<Record<string, string>> = { en: 'en-GB' };
 
 /** BCP 47 tag for `Intl`, with Latin digits and the Gregorian calendar forced. */
 function intlLocale(locale: string): string {

@@ -5,7 +5,7 @@ import { getLocale, getTranslations } from 'next-intl/server';
 import { Toaster } from '@/components/ui/sonner';
 import { directionOf, type Locale } from '@/i18n/config';
 import { QueryProvider } from '@/lib/api/query-provider';
-import { latinFont, urduFont } from './fonts';
+import { latinFont } from './fonts';
 import './globals.css';
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -23,7 +23,7 @@ export default async function RootLayout({ children }: { children: ReactNode }) 
   const dir = directionOf(locale);
 
   return (
-    <html lang={locale} dir={dir} className={`${latinFont.variable} ${urduFont.variable}`}>
+    <html lang={locale} dir={dir} className={latinFont.variable}>
       <body className="bg-background text-foreground min-h-dvh antialiased">
         <NextIntlClientProvider>
           <QueryProvider>

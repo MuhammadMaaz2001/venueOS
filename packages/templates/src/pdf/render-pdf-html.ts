@@ -1,3 +1,4 @@
+import { textDirection } from '../direction.js';
 import { escapeHtml, renderTemplate } from '../render.js';
 import { pdfFontFaceCss } from './fonts.js';
 import { sampleDocument } from './sample.js';
@@ -15,7 +16,6 @@ const REGISTRY: Readonly<Record<string, PdfTemplateDefinition>> = Object.freeze(
   sample: sampleDocument,
 });
 
-const RTL_LANGUAGES = new Set(['ar', 'fa', 'he', 'ur']);
 const LOCALE = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i;
 
 export function hasPdfTemplate(name: string): boolean {
@@ -35,7 +35,7 @@ export function renderPdfHtml(name: string, locale: string, vars: unknown): Rend
   if (!definition) throw new UnknownPdfTemplateError(name);
 
   const language = (LOCALE.test(locale) ? locale : 'en').toLowerCase().split('-')[0] ?? 'en';
-  const dir = RTL_LANGUAGES.has(language) ? 'rtl' : 'ltr';
+  const dir = textDirection(language);
   const body = renderTemplate(definition.body, vars, escapeHtml);
   const title = renderTemplate(definition.title, vars, escapeHtml);
 

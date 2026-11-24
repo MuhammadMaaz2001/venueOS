@@ -8,8 +8,7 @@
     "back": "Back",
     "loading": "Loading…",
     "showPassword": "Show password",
-    "hidePassword": "Hide password",
-    "changeLanguage": "Change language"
+    "hidePassword": "Hide password"
   },
   "Validation": {
     "required": "This field is required",
@@ -64,9 +63,7 @@
       "tenantNameHint": "The venue or company name your customers know",
       "country": "Country",
       "currency": "Currency",
-      "timezone": "Time zone",
-      "workspaceLanguage": "Workspace language",
-      "workspaceLanguageHint": "The language of your workspace and its first emails"
+      "timezone": "Time zone"
     },
     "login": {
       "title": "Log in",
@@ -152,7 +149,6 @@
     },
     "user": {
       "menu": "Account menu",
-      "language": "Language",
       "logout": "Log out",
       "logoutAll": "Log out everywhere"
     }

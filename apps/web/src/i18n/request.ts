@@ -1,11 +1,11 @@
-import { cookies } from 'next/headers';
 import { getRequestConfig } from 'next-intl/server';
-import { DEFAULT_LOCALE, LOCALE_COOKIE, isLocale } from './config';
+import { DEFAULT_LOCALE } from './config';
 
-// Locale comes from the user's cookie (later: their saved preference), never from the URL.
+// English only. There is no /[locale] URL segment and no language cookie: when a second language is added, the
+// locale is read here (from the user's saved preference, falling back to the workspace's `defaultLocale`) and
+// its messages file is loaded by name, exactly as below.
 export default getRequestConfig(async () => {
-  const cookieLocale = (await cookies()).get(LOCALE_COOKIE)?.value;
-  const locale = isLocale(cookieLocale) ? cookieLocale : DEFAULT_LOCALE;
+  const locale = DEFAULT_LOCALE;
 
   return {
     locale,

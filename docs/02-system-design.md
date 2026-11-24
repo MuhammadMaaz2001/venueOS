@@ -158,7 +158,7 @@ dev over HTTPS.
 | `reminders.event` | Daily | Event reminder to customer N days before; event sheet email to ops staff the day before |
 | `leads.follow-up` | Every 15 min | Internal email to assignee when `nextFollowUpAt` passes |
 | `email.send` | Enqueued by API (same transaction as the business change), payload `{ tenantId, messageKey }` only | Loads the `queued` `message_logs` row (recipient, template, locale, variables, reply-to), renders the template in its locale, sends via the configured provider (SES, or SMTP/Mailpit in development), appends `sent` / `failed` rows. Unknown template or invalid payload: final `failed` row and dead-letter at once |
-| `pdf.render` | Enqueued by API, payload `{ tenantId, kind, entityId }` only | Loads the document's data for that `kind` in a short tenant transaction, fills the `packages/templates` HTML, renders it to PDF in headless Chromium (bundled Urdu/Latin fonts, JavaScript and network off), uploads it to `tenants/{tenantId}/pdf/{kind}/{entityId}.pdf` and lets the kind record the **key** (`quotations.pdf_key`, ...). Kinds are registered by their modules (`PdfKindHandler`); only `sample` ships with P0-6b. Fixed failure codes; unknown kind, missing entity, template error and oversize are dead-lettered at once |
+| `pdf.render` | Enqueued by API, payload `{ tenantId, kind, entityId }` only | Loads the document's data for that `kind` in a short tenant transaction, fills the `packages/templates` HTML, renders it to PDF in headless Chromium (bundled Latin font, JavaScript and network off), uploads it to `tenants/{tenantId}/pdf/{kind}/{entityId}.pdf` and lets the kind record the **key** (`quotations.pdf_key`, ...). Kinds are registered by their modules (`PdfKindHandler`); only `sample` ships with P0-6b. Fixed failure codes; unknown kind, missing entity, template error and oversize are dead-lettered at once |
 | `inventory.low-stock` | Daily | Internal email when `on_hand` < `reorderLevel` |
 | `inventory.reconcile` | Nightly | Scanner (`venueos_jobs`, tenants only) enqueues one job per tenant; the job (as `venueos_app` in that tenant) compares each item's `on_hand` with `SUM(stock_delta)` and emails the venue's branch manager(s) on any mismatch, plus a SYSTEM audit entry. Report only, never auto-corrects |
 | `auth.purge` | Daily 03:00 Asia/Karachi | System job (no tenant), the only worker code that uses `AuthDb`. Deletes sessions ended or revoked > 1 day ago or idle > 2 days, used or expired `auth_tokens`, invitations accepted/revoked/expired > 30 days ago, `login_attempts` > 30 days and `auth_requests` > 1 day, and for signups never verified after 30 days (no session) only the `user_credentials` and `auth_tokens`: the `users` row, the tenant and the audit rows stay |
@@ -195,7 +195,7 @@ without retries.
 ## Documents and email
 
 - PDFs: HTML templates in `packages/templates`, rendered by headless Chromium (Playwright) in
-  the worker. Chromium shapes Urdu (Nastaliq/Naskh fonts) and RTL correctly; bundle the fonts.
+  the worker. English-only MVP; Chromium also shapes Arabic and RTL correctly when it is added (bundle its font).
 - Email: `EmailProvider` interface with SES and SMTP implementations (`EMAIL_PROVIDER=smtp|ses`;
   Mailpit in development). Sender is `EMAIL_FROM_ADDRESS` (`bookings@venueos.app`) with the tenant
   name as display name (sanitized for the header) and an optional per-message `Reply-To` (the tenant
@@ -206,7 +206,7 @@ without retries.
   PDFs come later.
 - Language: customer emails and receipts use `customers.preferred_locale`, falling back to the
   tenant's `default_locale`.
-- PDFs are rendered with JavaScript off and every network request blocked; fonts (Noto Nastaliq Urdu, Noto Naskh Arabic, Noto Sans, SIL OFL) are bundled in `packages/templates/fonts` and inlined into each document. Details and the worker image requirements: docs/08, "PDF rendering".
+- PDFs are rendered with JavaScript off and every network request blocked; fonts (Noto Sans, SIL OFL; an Arabic family is added with the Arabic templates) are bundled in `packages/templates/fonts` and inlined into each document. Details and the worker image requirements: docs/08, "PDF rendering".
 - Files (venue photos, expense bill photos, generated PDFs) go to a private S3 bucket under
   `tenants/{tenantId}/...`. The database stores the object **key** (`pdf_key`, `receipt_key`,
   `photo_keys`), never a URL; the browser gets short-lived pre-signed URLs only.
@@ -219,9 +219,11 @@ without retries.
   the same Zod schemas the API uses.
 - Calendar: custom grid (spaces as rows, dates as columns, slots as cells). Do not use
   FullCalendar's paid resource views.
-- i18n with next-intl: `en` and `ur`; the locale comes from the user's preference/cookie, there
-  is **no `/[locale]` URL segment**; RTL layout via `dir` and logical CSS properties
-  (`ms-*`, `me-*`), never hard-coded left/right.
+- i18n with next-intl: **English-only MVP; RTL/Arabic planned later via next-intl.** All text is in
+  `messages/en.json` (no hard-coded text), the locale is fixed to `en` in `src/i18n/request.ts` and there is
+  **no `/[locale]` URL segment**; a second language is added with a messages file, a font and its entry in
+  `src/i18n/config.ts`. Layout uses logical CSS properties (`ms-*`, `me-*`, enforced by a lint rule) and `dir`,
+  never hard-coded left/right, so RTL works when Arabic arrives.
 - Mobile-first: every screen must work at 360 px width; the event sheet has a print layout.
 
 ## Observability

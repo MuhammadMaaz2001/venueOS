@@ -1,3 +1,4 @@
+import { textDirection } from '../direction.js';
 import { escapeHtml, escapeSubject, escapeText, renderTemplate } from '../render.js';
 import { accountExists, passwordReset, staffInvite, verifyEmail } from './auth.js';
 import { sampleHello } from './sample.js';
@@ -22,7 +23,6 @@ const REGISTRY: Readonly<Record<string, EmailTemplateDefinition>> = Object.freez
 /** The sender name of mail that is not sent under a tenant's name. */
 export const PRODUCT_NAME = 'venueOS';
 
-const RTL_LANGUAGES = new Set(['ar', 'fa', 'he', 'ur']);
 const LOCALE = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i;
 
 export function hasEmailTemplate(name: string): boolean {
@@ -61,7 +61,7 @@ export function renderEmail(name: string, locale: string, vars: unknown): Render
   const body = renderTemplate(source.html, vars, escapeHtml);
   const text = renderTemplate(source.text, vars, escapeText);
   const language = used.split('-')[0] ?? used;
-  const dir = RTL_LANGUAGES.has(language) ? 'rtl' : 'ltr';
+  const dir = textDirection(language);
   const html =
     `<!doctype html><html lang="${used}" dir="${dir}"><head><meta charset="utf-8">` +
     `<title>${escapeHtml(subject)}</title></head><body>${body}</body></html>`;

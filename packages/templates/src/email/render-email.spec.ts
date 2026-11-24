@@ -29,12 +29,10 @@ describe('renderEmail', () => {
     expect(mail.subject).not.toMatch(/[\r\n]/);
   });
 
-  it('uses the Urdu version right-to-left, and falls back to English', () => {
-    const ur = renderEmail('sample.hello', 'ur', vars);
-    expect(ur.locale).toBe('ur');
-    expect(ur.html).toContain('lang="ur" dir="rtl"');
-    expect(renderEmail('sample.hello', 'ur-PK', vars).locale).toBe('ur');
+  it('has only an English version in the MVP: every other language falls back to it', () => {
+    expect(renderEmail('sample.hello', 'en-GB', vars).locale).toBe('en');
     expect(renderEmail('sample.hello', 'fr', vars).locale).toBe('en');
+    expect(renderEmail('sample.hello', 'ar', vars).locale).toBe('en');
     expect(renderEmail('sample.hello', 'EN', vars).locale).toBe('en');
   });
 

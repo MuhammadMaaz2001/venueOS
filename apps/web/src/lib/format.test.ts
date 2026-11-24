@@ -13,8 +13,8 @@ describe('formatMoney', () => {
     expect(plain(formatMoney('5000', 'JPY', 'en'))).toBe('JPY 5,000');
   });
 
-  it('shows Latin digits in Urdu too', () => {
-    const text = plain(formatMoney('1234567.50', 'PKR', 'ur'));
+  it('shows Latin digits in Arabic too (planned)', () => {
+    const text = plain(formatMoney('1234567.50', 'PKR', 'ar'));
     expect(text).toMatch(/1,234,567\.50/);
     expect(text).not.toMatch(/[٠-٩۰-۹]/);
   });
@@ -45,7 +45,7 @@ describe('dates in an explicit time zone', () => {
     expect(plain(formatDateTime(instant, { locale: 'en', timeZone: 'Asia/Karachi' }))).toMatch(
       /15 Feb 2027.*01:30/,
     );
-    expect(formatTime(instant, { locale: 'ur', timeZone: 'Asia/Karachi' })).toMatch(/^[0-9:]+$/);
+    expect(formatTime(instant, { locale: 'ar', timeZone: 'Asia/Karachi' })).toMatch(/^[0-9:]+$/);
   });
 
   it('never shifts a date-only value', () => {

@@ -8,18 +8,18 @@ import { UnknownPdfTemplateError, hasPdfTemplate, renderPdfHtml } from './render
 const vars = { tenantName: 'Royal Hall', reference: 'ent_1', issuedOn: '2026-11-25' };
 
 describe('renderPdfHtml', () => {
-  it('renders the sample as a self-contained document with Urdu and English', () => {
+  it('renders the sample as a self-contained English document', () => {
     expect(hasPdfTemplate('sample')).toBe(true);
     const out = renderPdfHtml('sample', 'en', vars);
     expect(out).toMatchObject({ lang: 'en', dir: 'ltr' });
     expect(out.html).toContain('<html lang="en" dir="ltr">');
     expect(out.html).toContain('Royal Hall');
-    expect(out.html).toContain('نمونہ دستاویز');
+    expect(out.html).toContain('Sample document');
     expect(out.html).toContain('PKR 150,000.00');
   });
 
-  it('sets rtl for Urdu and falls back to English for a malformed locale', () => {
-    expect(renderPdfHtml('sample', 'ur-PK', vars)).toMatchObject({ lang: 'ur', dir: 'rtl' });
+  it('sets rtl for Arabic (planned) and falls back to English for a malformed locale', () => {
+    expect(renderPdfHtml('sample', 'ar-AE', vars)).toMatchObject({ lang: 'ar', dir: 'rtl' });
     expect(renderPdfHtml('sample', '"><x', vars)).toMatchObject({ lang: 'en', dir: 'ltr' });
   });
 
@@ -36,7 +36,7 @@ describe('renderPdfHtml', () => {
   });
 
   it('references nothing outside the document: no scripts, no URLs except data:', () => {
-    const { html } = renderPdfHtml('sample', 'ur', vars);
+    const { html } = renderPdfHtml('sample', 'en', vars);
     expect(html).not.toMatch(/<script/i);
     expect(html).not.toMatch(/https?:\/\//i);
     expect(html).not.toMatch(/url\((?!data:)/i);
@@ -57,12 +57,7 @@ describe('bundled fonts', () => {
     for (const file of BUNDLED_FONT_FILES)
       expect(existsSync(path.join(dir, file)), file).toBe(true);
     const files = readdirSync(dir);
-    for (const licence of [
-      'OFL-noto-sans.txt',
-      'OFL-noto-naskh-arabic.txt',
-      'OFL-noto-nastaliq-urdu.txt',
-      'NOTICE.md',
-    ]) {
+    for (const licence of ['OFL-noto-sans.txt', 'NOTICE.md']) {
       expect(files).toContain(licence);
     }
   });
@@ -70,7 +65,7 @@ describe('bundled fonts', () => {
   it('inlines the fonts as data: URLs', () => {
     const css = pdfFontFaceCss();
     expect(css.match(/@font-face/g)).toHaveLength(BUNDLED_FONT_FILES.length);
-    expect(css).toContain('Noto Nastaliq Urdu');
+    expect(css).toContain('Noto Sans');
     expect(css).not.toMatch(/url\((?!data:)/);
   });
 });

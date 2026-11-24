@@ -68,7 +68,7 @@ model Tenant {
   country         String       @db.Char(2)
   currency        String       @db.Char(3) // ISO 4217; minor units come from the shared currency map
   timezone        String       // IANA, e.g. Asia/Karachi
-  defaultLocale   String       @default("en") @map("default_locale") // en, ur, ar ...
+  defaultLocale   String       @default("en") @map("default_locale") // en (MVP), ar later ...
   status          TenantStatus @default(TRIAL)
   trialEndsAt     DateTime?    @map("trial_ends_at") @db.Timestamptz(6)
   // Typed by TenantSettings (Zod, packages/shared) with defaults: holdHours, advancePct,
@@ -674,7 +674,7 @@ model Customer {
   altPhone        String?   @map("alt_phone")
   email           String?
   address         String?
-  preferredLocale String?   @map("preferred_locale") // en, ur ...; null = tenant default
+  preferredLocale String?   @map("preferred_locale") // en (MVP), ar later; null = tenant default
   customFields    Json      @default("{}") @map("custom_fields")
   notes           String?
   rev             Int       @default(1)

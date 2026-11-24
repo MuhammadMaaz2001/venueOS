@@ -48,18 +48,20 @@ describe('account and staff email templates', () => {
 
   for (const c of CASES) {
     describe(c.name, () => {
-      it(`renders in English and Urdu, sent under the ${c.sender} name`, () => {
-        for (const locale of ['en', 'ur']) {
-          const mail = renderEmail(c.name, locale, c.vars);
-          expect(mail.locale).toBe(locale);
-          expect(mail.sender).toBe(c.sender);
-          expect(mail.subject.length).toBeGreaterThan(0);
-          expect(mail.subject).not.toMatch(/[\r\n]/);
-          expect(mail.text).toContain((c.vars as Record<string, string>)[c.link]);
-          expect(mail.html).toContain(locale === 'ur' ? 'dir="rtl"' : 'dir="ltr"');
-          expect(mail.html).not.toContain('{{');
-          expect(mail.text).not.toContain('{{');
-        }
+      it(`renders in English, sent under the ${c.sender} name`, () => {
+        const mail = renderEmail(c.name, 'en', c.vars);
+        expect(mail.locale).toBe('en');
+        expect(mail.sender).toBe(c.sender);
+        expect(mail.subject.length).toBeGreaterThan(0);
+        expect(mail.subject).not.toMatch(/[\r\n]/);
+        expect(mail.text).toContain((c.vars as Record<string, string>)[c.link]);
+        expect(mail.html).toContain('dir="ltr"');
+        expect(mail.html).not.toContain('{{');
+        expect(mail.text).not.toContain('{{');
+      });
+
+      it('falls back to English for a language it has no version of', () => {
+        expect(renderEmail(c.name, 'ar', c.vars).locale).toBe('en');
       });
 
       it('escapes the link inside the href attribute and every other variable', () => {

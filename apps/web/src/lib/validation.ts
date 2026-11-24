@@ -38,7 +38,7 @@ export function issueText(t: Translate, issue: IssueLike): string {
 
 /**
  * `zodResolver` for a schema of `@venueos/shared`, with the messages translated into the current language
- * (so a form in Urdu says its errors in Urdu). Explicit messages written inside a schema stay as they are.
+ * (the language of the page). Explicit messages written inside a schema stay as they are.
  */
 export function useZodResolver<Input extends FieldValues, Output>(
   schema: z.ZodType<Output, Input>,

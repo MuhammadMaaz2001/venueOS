@@ -12,7 +12,7 @@ import {
   registerAndLogin,
 } from './support/flows';
 
-// Screenshots for the P0-7 report: login, the dashboard shell and the staff page, in English and Urdu, on a
+// Screenshots for the P0-7 report: login, the dashboard shell and the staff page, in English, on a
 // desktop (1280 px) and a phone (360 px). Opt-in (`pnpm --filter @venueos/web e2e:screenshots`); the pictures go to
 // e2e/.screenshots (not committed) or E2E_SCREENSHOT_DIR.
 const OUT = process.env.E2E_SCREENSHOT_DIR ?? path.resolve(__dirname, '.screenshots');
@@ -28,20 +28,20 @@ async function expectFitsWidth(page: Page, width: number): Promise<void> {
   expect(scrollWidth, `${page.url()} is wider than ${width}px`).toBeLessThanOrEqual(width);
 }
 
-for (const locale of ['en', 'ur'] as const) {
+for (const locale of ['en'] as const) {
   test(`report screenshots (${locale})`, async ({ browser }) => {
     const m = MESSAGES[locale];
     const stamp = Date.now().toString(36);
     const owner = {
-      name: locale === 'ur' ? 'احمد علی' : 'Ahmed Ali',
+      name: 'Ahmed Ali',
       email: uniqueEmail('shots'),
-      tenantName: locale === 'ur' ? `رائل ہال ${stamp}` : `Royal Hall ${stamp}`,
+      tenantName: `Royal Hall ${stamp}`,
     };
 
     // Data: the owner, one accepted member and one pending invitation.
     const { context: setup, page } = await registerAndLogin(browser, locale, owner);
     const member = {
-      name: locale === 'ur' ? 'سارہ خان' : 'Sara Khan',
+      name: 'Sara Khan',
       email: uniqueEmail('member'),
     };
     await invite(page, locale, member.email, 'Sales agent');
@@ -53,7 +53,7 @@ for (const locale of ['en', 'ur'] as const) {
       const shot = (name: string) => path.join(OUT, `${locale}-${viewportName}-${name}.png`);
 
       // Login (logged out).
-      const anonymous = await newContext(browser, locale, viewport);
+      const anonymous = await newContext(browser, viewport);
       const loginPage = await anonymous.newPage();
       await open(loginPage, '/login');
       await expectFitsWidth(loginPage, viewport.width);
@@ -61,7 +61,7 @@ for (const locale of ['en', 'ur'] as const) {
       await anonymous.close();
 
       // Dashboard shell and staff page (logged in).
-      const context = await newContext(browser, locale, viewport);
+      const context = await newContext(browser, viewport);
       const shell = await context.newPage();
       await login(shell, locale, owner.email);
       await shell.getByTestId('tenant-name').waitFor();

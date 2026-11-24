@@ -3,6 +3,7 @@
 import { SignupSchema } from '@venueos/shared';
 import type { z } from 'zod';
 import { useLocale, useTranslations } from 'next-intl';
+import { DEFAULT_LOCALE } from '@/i18n/config';
 import Link from 'next/link';
 import { useMemo, useState, useSyncExternalStore } from 'react';
 import { useForm } from 'react-hook-form';
@@ -66,7 +67,7 @@ export function SignupForm() {
       country: 'PK',
       currency: 'PKR',
       timezone: 'Asia/Karachi',
-      defaultLocale: locale === 'ur' ? 'ur' : 'en',
+      defaultLocale: DEFAULT_LOCALE,
     },
   });
   const errors = form.formState.errors;
@@ -199,15 +200,6 @@ export function SignupForm() {
               {zone}
             </option>
           ))}
-        </SelectField>
-        <SelectField
-          label={t('Auth.fields.workspaceLanguage')}
-          hint={t('Auth.fields.workspaceLanguageHint')}
-          error={errors.defaultLocale?.message}
-          {...form.register('defaultLocale')}
-        >
-          <option value="en">English</option>
-          <option value="ur">اردو</option>
         </SelectField>
         <SubmitButton pending={signup.isPending}>{t('Auth.signup.submit')}</SubmitButton>
       </form>

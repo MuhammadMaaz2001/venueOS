@@ -1,7 +1,7 @@
 # venueOS — instructions for Claude Code
 
 venueOS is a multi-tenant SaaS for event venues (marriage halls, banquets, lawns, marquees,
-hotel banquets). One tenant = one venue business. Pakistan first (PKR, English/Urdu), Gulf
+hotel banquets). One tenant = one venue business. Pakistan first (PKR, English-only MVP; RTL/Arabic planned later via next-intl), Gulf
 next (3-decimal currencies), but nothing in the code may assume a country, currency, language
 or venue type.
 

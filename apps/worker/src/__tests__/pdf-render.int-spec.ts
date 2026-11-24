@@ -153,9 +153,8 @@ describe('pdf.render', () => {
         const bytes = Buffer.from(await object.Body!.transformToByteArray());
         expect(bytes.subarray(0, 5).toString()).toBe('%PDF-');
         expect(bytes.length).toBe((job.output as { bytes: number }).bytes);
-        // Urdu + English fonts were embedded, and the tenant's own name was printed
+        // the bundled font was embedded
         const raw = bytes.toString('latin1');
-        expect(raw).toContain('NotoNastaliqUrdu');
         expect(raw).toContain('NotoSans');
 
         // running it again (a retry, a second delivery) overwrites the same object: still exactly one

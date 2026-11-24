@@ -25,7 +25,6 @@ import type { Session } from './session';
 import { SidebarNav } from './sidebar-nav';
 import { TenantSwitcher } from './tenant-switcher';
 import { UserMenu } from './user-menu';
-import { LanguageSwitcher } from '@/components/language-switcher';
 
 function Brand() {
   const t = useTranslations('Meta');
@@ -123,9 +122,6 @@ export function AppShell({ children }: { children: ReactNode }) {
               </SheetHeader>
               <div className="px-4">
                 <SidebarNav onNavigate={() => setMenuOpen(false)} />
-              </div>
-              <div className="mt-auto p-4">
-                <LanguageSwitcher />
               </div>
             </SheetContent>
           </Sheet>

@@ -79,7 +79,7 @@ apps/web/src/
 ├── features/<module>/            # components, hooks, query keys, forms
 ├── components/ui/                # shadcn/ui primitives (generated, lightly edited)
 ├── lib/                          # api client setup, formatting, i18n
-└── messages/{en,ur}.json         # translations
+└── messages/en.json              # translations (English-only MVP; add ar.json for Arabic)
 ```
 
 - Data fetching only through hooks in `features/<module>/api.ts` wrapping

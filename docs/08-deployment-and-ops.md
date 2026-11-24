@@ -167,7 +167,7 @@ pg-boss, so retry settings and singleton rules stay correct).
 - `pdf.render` renders HTML from `packages/templates` with Playwright's headless Chromium, in the worker, and
   stores the PDF in the private bucket under `tenants/{tenantId}/pdf/{kind}/{entityId}.pdf`. The database keeps the
   **key**; the browser gets a short-lived pre-signed URL from the API.
-- **Fonts are bundled** (`packages/templates/fonts`, SIL OFL: Noto Nastaliq Urdu, Noto Naskh Arabic, Noto Sans) and
+- **Fonts are bundled** (`packages/templates/fonts`, SIL OFL: Noto Sans; English-only MVP, an Arabic family joins with the Arabic templates) and
   embedded in each document, so output does not depend on the machine's fonts.
 - **Chromium is locked down**: JavaScript off, every network request aborted, no service workers, a fresh
   context per document, 30 s timeout (`PDF_RENDER_TIMEOUT_MS`), 10 MB output limit, at most `PDF_CONCURRENCY`
@@ -176,7 +176,7 @@ pg-boss, so retry settings and singleton rules stay correct).
   (`playwright install --with-deps chromium` in the build, or an OS Chromium with `PDF_CHROMIUM_PATH`), run as the
   non-root user, and give the task enough memory for `PDF_CONCURRENCY` pages (start with 1 GB of headroom per
   page) and a writable `/tmp`. The worker logs `chromium started` on the first render.
-- Smoke test of a machine or image: `pnpm --filter @venueos/worker pdf:sample` writes the bilingual sample PDF
+- Smoke test of a machine or image: `pnpm --filter @venueos/worker pdf:sample` writes the English sample PDF
   (`apps/worker/.artifacts/sample.pdf`, git-ignored) with no database or S3.
 
 ### Object storage (S3)

@@ -17,7 +17,7 @@ export type EmailSender = 'product' | 'tenant';
 
 export interface EmailTemplateDefinition {
   sender: EmailSender;
-  /** By language code (`en`, `ur`); `en` is the fallback for every other locale. */
+  /** By language code (only `en` in the MVP); `en` is the fallback for every other locale, so a language is added by adding its version here. */
   locales: Readonly<Record<string, EmailTemplateSource>>;
 }
 

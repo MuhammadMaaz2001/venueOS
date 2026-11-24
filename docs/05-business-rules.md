@@ -251,7 +251,7 @@ Event profit = revenue (line items excluding tax)
 | New lead / follow-up due / hold expiring | Assigned agent | On event |
 | Low stock | Branch manager | Daily digest |
 
-Customer emails and PDFs use `customers.preferred_locale`, else the tenant's `defaultLocale`.
+Customer emails and PDFs use `customers.preferred_locale`, else the tenant's `defaultLocale`. The MVP is English-only (`en`, the fallback of every template); the columns stay so that Arabic can be added later without a migration.
 
 ## 15. Tenant settings (`tenants.settings`)
 

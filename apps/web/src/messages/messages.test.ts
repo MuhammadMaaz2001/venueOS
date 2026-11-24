@@ -1,7 +1,7 @@
 import { ERROR_CODES } from '@venueos/shared';
 import { describe, expect, it } from 'vitest';
+import { LOCALES } from '@/i18n/config';
 import en from './en.json';
-import ur from './ur.json';
 
 interface Tree {
   [key: string]: string | Tree;
@@ -18,34 +18,24 @@ function flatten(tree: Tree, prefix = ''): Record<string, string> {
 }
 
 const english = flatten(en as Tree);
-const urdu = flatten(ur as Tree);
 
-/** `{name}`, `{count, plural, ...}` -> the argument names a message needs. */
-function placeholders(message: string): string[] {
-  const names = new Set<string>();
-  for (const match of message.matchAll(/\{(\w+)(?:,|\})/g)) names.add(match[1] as string);
-  return [...names].sort();
-}
-
-describe('messages', () => {
-  it('Urdu has exactly the keys English has', () => {
-    expect(Object.keys(urdu).sort()).toEqual(Object.keys(english).sort());
+describe('messages (English-only MVP; the checks below also guard a language added later)', () => {
+  it('every language of the app has a messages file with exactly the keys of English', async () => {
+    for (const locale of LOCALES) {
+      const messages = flatten((await import(`./${locale}.json`)).default as Tree);
+      expect(Object.keys(messages).sort(), locale).toEqual(Object.keys(english).sort());
+    }
   });
 
-  it('every message is filled in, and both languages use the same placeholders', () => {
+  it('every message is filled in', () => {
     for (const [key, message] of Object.entries(english)) {
       expect(message.trim(), `en ${key}`).not.toBe('');
-      expect(urdu[key]?.trim(), `ur ${key}`).not.toBe('');
-      expect(placeholders(urdu[key] ?? ''), `placeholders of ${key}`).toEqual(
-        placeholders(message),
-      );
     }
   });
 
   it('translates every error code of the API (and the browser-side NETWORK)', () => {
     for (const code of [...ERROR_CODES, 'NETWORK']) {
       expect(english[`Errors.${code}`], `en Errors.${code}`).toBeTruthy();
-      expect(urdu[`Errors.${code}`], `ur Errors.${code}`).toBeTruthy();
     }
   });
 
