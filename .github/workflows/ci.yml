@@ -91,6 +91,12 @@ jobs:
         run: docker compose up -d --wait postgres mailpit s3
       - name: Migrate the database (as venueos_migrator, like staging and production)
         run: pnpm --filter @venueos/db db:deploy
+      # A fresh checkout has nothing built. The seed imports `@venueos/shared` as compiled `dist` and the Prisma client
+      # that `prisma generate` writes to packages/db/src/generated (not committed); no db script generates it (see
+      # turbo.json). The migration above needs neither (prisma.config.ts only), `pnpm dev` below builds what the apps
+      # need itself. turbo runs shared's build, `@venueos/db#generate`, then db's build, in that order.
+      - name: Build the workspace packages the seed imports (shared, db)
+        run: pnpm turbo run build --filter=@venueos/db...
       # Signup creates the workspace's subscription on the `starter` plan, and the plans are platform data that only
       # the seed writes (docs/08: "it always writes the plans"). NODE_ENV=production seeds the plans ONLY: no demo
       # tenant and no owner credentials, exactly what staging and production get.
