@@ -188,6 +188,34 @@ describe('signup and email verification', () => {
       expect((await h.login(t, body.email, 'a different long password 77')).status).toBe(200);
     });
 
+    it('an abandoned signup whose credentials auth.purge removed can sign up again: same user, same workspace, new password', async () => {
+      const body = signupBody();
+      await signup(body);
+      const user = await h.authDb.client.user.findUniqueOrThrow({ where: { email: body.email } });
+      // What the worker's auth.purge leaves of an unverified signup after 30 days: the user row and its
+      // workspace stay, the password hash and the tokens are gone (apps/worker auth-purge.job.ts).
+      await h.authDb.tx(async (tx) => {
+        await tx.authToken.deleteMany({ where: { userId: user.id } });
+        await tx.userCredential.deleteMany({ where: { userId: user.id } });
+      });
+      expect((await h.login(t, body.email, TEST_PASSWORD)).status).toBe(401);
+
+      expect((await signup({ ...body, password: 'a fresh long password 91' })).status).toBe(202);
+      const token = (await h.mails(body.email, 'auth.verify-email')).at(-1)?.token as string;
+      const verified = await t
+        .http()
+        .post('/v1/auth/verify-email')
+        .set(t.csrfHeaders)
+        .send({ token });
+      expect(verified.status).toBe(204);
+      expect((await h.login(t, body.email, 'a fresh long password 91')).status).toBe(200);
+      const again = await h.authDb.client.user.findUniqueOrThrow({ where: { email: body.email } });
+      expect(again.id).toBe(user.id);
+      expect(
+        await world.db.asUser(user.id, (tx) => tx.membership.count({ where: { userId: user.id } })),
+      ).toBe(1);
+    });
+
     it('rejects invalid input with 400 VALIDATION_ERROR and creates nothing', async () => {
       const cases: Record<string, unknown>[] = [
         { email: 'not-an-email' },

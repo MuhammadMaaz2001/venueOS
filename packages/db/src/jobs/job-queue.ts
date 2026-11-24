@@ -1,13 +1,15 @@
 import { randomUUID } from 'node:crypto';
 import {
   EMAIL_SEND_EXPIRE_SECONDS,
+  PDF_RENDER_EXPIRE_SECONDS,
   SEALED_VARS_KEY,
   JOB_NAMES,
   JOB_RETRY,
   emailSendPayloadSchema,
   enqueueEmailInputSchema,
+  pdfRenderPayloadSchema,
 } from '@venueos/shared';
-import type { EmailSendPayload, EnqueueEmailInput } from '@venueos/shared';
+import type { EmailSendPayload, EnqueueEmailInput, PdfRenderPayload } from '@venueos/shared';
 import { PgBoss } from 'pg-boss';
 import pg from 'pg';
 import type { DbTx } from '../client.js';
@@ -18,19 +20,23 @@ import { sealedVarsAad } from './sealed-vars.js';
 /** Job name -> payload type. A job whose payload is not listed here cannot be enqueued. */
 export interface JobPayloads {
   [JOB_NAMES.EMAIL_SEND]: EmailSendPayload;
+  [JOB_NAMES.PDF_RENDER]: PdfRenderPayload;
 }
 export type EnqueueableJob = keyof JobPayloads;
 
 const PAYLOAD_SCHEMAS = {
   [JOB_NAMES.EMAIL_SEND]: emailSendPayloadSchema,
+  [JOB_NAMES.PDF_RENDER]: pdfRenderPayloadSchema,
 } as const;
 
 const DEAD_LETTER_OF: Record<EnqueueableJob, string> = {
   [JOB_NAMES.EMAIL_SEND]: JOB_NAMES.EMAIL_SEND_DEAD,
+  [JOB_NAMES.PDF_RENDER]: JOB_NAMES.PDF_RENDER_DEAD,
 };
 
 const EXPIRE_SECONDS_OF: Record<EnqueueableJob, number> = {
   [JOB_NAMES.EMAIL_SEND]: EMAIL_SEND_EXPIRE_SECONDS,
+  [JOB_NAMES.PDF_RENDER]: PDF_RENDER_EXPIRE_SECONDS,
 };
 
 export interface RetryPolicy {
@@ -38,6 +44,11 @@ export interface RetryPolicy {
   retryDelaySeconds: number;
   retryDelayMaxSeconds: number;
   retryBackoff: boolean;
+}
+
+/** Options of `JobQueue.send`. The singleton key is mandatory: see `send`. */
+export interface SendOptions {
+  singletonKey: string;
 }
 
 export interface JobQueueOptions {
@@ -99,23 +110,28 @@ export class JobQueue {
   }
 
   /**
-   * Insert a job in `tx`. `singletonKey` makes the enqueue idempotent: while a job with the same key is
-   * still queued (queue policy `short`), a second send returns `null` instead of adding another.
+   * Insert a job in `tx`. `singletonKey` is REQUIRED (a type error to leave out) and makes the enqueue
+   * idempotent: while a job with the same key is still queued, a second send returns `null` instead of adding
+   * another. It is required because every queue uses the `short` policy, which allows ONE queued job per key and
+   * one when there is no key: a keyless job would silently drop every later job of its queue (docs/08). Use a key
+   * that names the thing the job is about (`messageKey`, `kind:entityId`).
    * The payload is validated against the job's schema; extra keys are rejected, so customer data cannot
    * leak into `pgboss.job`.
    *
    * @returns the job id, or `null` when a job with the same singleton key is already queued
+   * @throws Error when the key is empty (the type cannot tell `''` from a real key)
    */
   async send<N extends EnqueueableJob>(
     tx: DbTx,
     name: N,
     payload: JobPayloads[N],
-    options: { singletonKey?: string } = {},
+    options: SendOptions,
   ): Promise<string | null> {
+    if (!options.singletonKey) throw new Error('JobQueue.send: singletonKey must not be empty');
     const data = PAYLOAD_SCHEMAS[name].parse(payload);
     return this.boss.send(name, data, {
       db: pgBossDb(tx),
-      ...(options.singletonKey ? { singletonKey: options.singletonKey } : {}),
+      singletonKey: options.singletonKey,
       retryLimit: this.retry.retryLimit,
       retryDelay: this.retry.retryDelaySeconds,
       retryBackoff: this.retry.retryBackoff,

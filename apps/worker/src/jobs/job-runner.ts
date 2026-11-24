@@ -6,20 +6,20 @@ import type { WorkerConfig } from '../config/config.module';
 import { LOGGER } from '../logging/logging.module';
 import type { Logger } from '../logging/logging.module';
 import { PgBossService } from '../queue/pg-boss.service';
-import type { TenantJob } from './tenant-job';
+import type { RegisteredJob } from './registered-job';
 
 /** Injection token for the list of jobs this worker runs (see JobsModule). */
 export const JOBS = Symbol('JOBS');
 
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-export type AnyTenantJob = TenantJob<any>;
+/** Anything the runner can register: tenant jobs, system jobs, scanners. */
+export type AnyJob = RegisteredJob;
 
 /** Registers every job with pg-boss once the queue is up. */
 @Injectable()
 export class JobRunner implements OnApplicationBootstrap {
   constructor(
     private readonly pgBoss: PgBossService,
-    @Inject(JOBS) private readonly jobs: AnyTenantJob[],
+    @Inject(JOBS) private readonly jobs: AnyJob[],
     @Inject(WORKER_CONFIG) private readonly config: WorkerConfig,
     @Inject(LOGGER) private readonly logger: Logger,
   ) {}

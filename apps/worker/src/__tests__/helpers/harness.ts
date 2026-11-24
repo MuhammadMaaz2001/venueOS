@@ -2,7 +2,8 @@ import { randomUUID } from 'node:crypto';
 import { Writable } from 'node:stream';
 import { Test } from '@nestjs/testing';
 import type { TestingModule } from '@nestjs/testing';
-import { JobQueue, TenantDb, createSealer } from '@venueos/db';
+import { CreateBucketCommand, S3Client } from '@aws-sdk/client-s3';
+import { AuthDb, JobQueue, TenantDb, createSealer } from '@venueos/db';
 import type { JobQueueOptions, Sealer } from '@venueos/db';
 import pg from 'pg';
 import { WORKER_CONFIG } from '../../config/config.module';
@@ -10,7 +11,19 @@ import type { WorkerConfig } from '../../config/config.module';
 import { loadEnv } from '../../config/load-env';
 import { EMAIL_PROVIDER } from '../../email/email-provider';
 import type { EmailProvider } from '../../email/email-provider';
+import { JOBS } from '../../jobs/job-runner';
+import type { AnyJob } from '../../jobs/job-runner';
+import { BASE_JOBS } from '../../jobs/jobs.module';
 import { LOGGER, createLogger } from '../../logging/logging.module';
+import { PDF_RENDERER } from '../../pdf/chromium-renderer';
+import type { PdfRenderer } from '../../pdf/chromium-renderer';
+import { PDF_KIND_HANDLERS } from '../../pdf/pdf-kind';
+import type { PdfKindHandler } from '../../pdf/pdf-kind';
+import { sampleKind } from '../../pdf/sample-kind';
+import { PgBossService } from '../../queue/pg-boss.service';
+import { ScannerDb } from '../../scanners/scanner-db';
+import { OBJECT_STORAGE } from '../../storage/object-storage';
+import type { ObjectStorage } from '../../storage/object-storage';
 import { WorkerModule } from '../../worker.module';
 
 // vitest does not read .env files. Variables already in the environment win (CI sets them).
@@ -25,6 +38,9 @@ for (const file of ['.env', '.env.example']) {
 /** Test-only keyring (32 bytes of 7). The worker under test and the enqueue side share it, like in production. */
 export const TEST_KEYRING = { active: 'k1', keys: { k1: Buffer.alloc(32, 7).toString('base64') } };
 
+/** Bucket of the PDF storage test (created on demand in the local S3). */
+export const TEST_BUCKET = 'venueos-test';
+
 export const MAILPIT_API = process.env.MAILPIT_API_URL ?? 'http://localhost:8025';
 
 /** Valid test configuration; `overrides` replace single variables. */
@@ -33,6 +49,13 @@ export function testConfig(overrides: Record<string, string> = {}): WorkerConfig
     NODE_ENV: 'test',
     DATABASE_URL: process.env.DATABASE_URL,
     JOBS_DATABASE_URL: process.env.JOBS_DATABASE_URL,
+    AUTH_DATABASE_URL: process.env.AUTH_DATABASE_URL,
+    S3_BUCKET: TEST_BUCKET,
+    S3_ENDPOINT: process.env.S3_ENDPOINT ?? 'http://localhost:9100',
+    S3_FORCE_PATH_STYLE: 'true',
+    S3_SSE: 'none',
+    // Tests that need cron turn it on; everything else must not have a schedule fire under it.
+    SCHEDULER_ENABLED: 'false',
     FIELD_ENCRYPTION_KEYS: JSON.stringify(TEST_KEYRING),
     EMAIL_PROVIDER: 'smtp',
     SMTP_URL: process.env.SMTP_URL ?? 'smtp://localhost:1025',
@@ -44,7 +67,27 @@ export function testConfig(overrides: Record<string, string> = {}): WorkerConfig
   });
 }
 
+/** What a test-only job (a scanner, a probe) can be built from. */
+export interface ExtraJobDeps {
+  scannerDb: ScannerDb;
+  pgBoss: PgBossService;
+  tenantDb: TenantDb;
+}
+
+export interface StartWorkerOptions {
+  env?: Record<string, string>;
+  provider?: EmailProvider;
+  renderer?: PdfRenderer;
+  storage?: ObjectStorage;
+  /** Document kinds in addition to `sample`. */
+  kinds?: PdfKindHandler[];
+  /** Test-only jobs registered next to the real ones. */
+  extraJobs?: (deps: ExtraJobDeps) => AnyJob[];
+}
+
 export interface RunningWorker {
+  /** A provider of the running worker, to call or inspect it. */
+  get: <T>(token: unknown) => T;
   /** Parsed JSON log lines written so far. */
   logLines: () => Record<string, unknown>[];
   /** Raw log output, for "this never appears anywhere" assertions. */
@@ -53,9 +96,7 @@ export interface RunningWorker {
 }
 
 /** Boot the real WorkerModule (pg-boss as venueos_jobs, handlers as venueos_app). */
-export async function startWorker(
-  options: { env?: Record<string, string>; provider?: EmailProvider } = {},
-): Promise<RunningWorker> {
+export async function startWorker(options: StartWorkerOptions = {}): Promise<RunningWorker> {
   let output = '';
   const stream = new Writable({
     write(chunk: Buffer, _encoding, callback) {
@@ -71,21 +112,45 @@ export async function startWorker(
     .useValue(createLogger(config.LOG_LEVEL, stream));
   if (options.provider)
     builder = builder.overrideProvider(EMAIL_PROVIDER).useValue(options.provider);
+  if (options.renderer) builder = builder.overrideProvider(PDF_RENDERER).useValue(options.renderer);
+  if (options.storage) builder = builder.overrideProvider(OBJECT_STORAGE).useValue(options.storage);
+  if (options.kinds)
+    builder = builder.overrideProvider(PDF_KIND_HANDLERS).useValue([sampleKind, ...options.kinds]);
+  if (options.extraJobs) {
+    const extra = options.extraJobs;
+    builder = builder.overrideProvider(JOBS).useFactory({
+      inject: [...BASE_JOBS, ScannerDb, PgBossService, TenantDb],
+      factory: (...args: unknown[]) => {
+        const base = args.slice(0, BASE_JOBS.length) as AnyJob[];
+        const [scannerDb, pgBoss, tenantDb] = args.slice(BASE_JOBS.length) as [
+          ScannerDb,
+          PgBossService,
+          TenantDb,
+        ];
+        return [...base, ...extra({ scannerDb, pgBoss, tenantDb })];
+      },
+    });
+  }
   const moduleRef: TestingModule = await builder.compile();
   await moduleRef.init();
+  let stopping: Promise<void> | undefined;
   return {
+    get: <T>(token: unknown): T => moduleRef.get<T>(token as never, { strict: false }),
     logLines: () =>
       output
         .split('\n')
         .filter(Boolean)
         .map((line) => JSON.parse(line) as Record<string, unknown>),
     rawLogs: () => output,
-    stop: () => moduleRef.close(),
+    // idempotent: a test may stop the worker early and its afterAll stops it again
+    stop: () => (stopping ??= moduleRef.close()),
   };
 }
 
 export interface Fixture {
   tenantDb: TenantDb;
+  /** Auth tables as venueos_auth (the way the API's AuthModule writes them), for auth.purge tests. */
+  authDb: AuthDb;
   /** Seals secret variables the way the API does. */
   sealer: Sealer;
   queue: JobQueue;
@@ -97,6 +162,7 @@ export interface Fixture {
 /** Database access for a test file: the enqueue side (as the API does it) plus an assertion client. */
 export async function createFixture(retry?: JobQueueOptions['retry']): Promise<Fixture> {
   const tenantDb = new TenantDb({ connectionString: process.env.DATABASE_URL ?? '', poolMax: 4 });
+  const authDb = new AuthDb({ connectionString: process.env.AUTH_DATABASE_URL ?? '', poolMax: 2 });
   const queue = new JobQueue({
     connectionString: process.env.DATABASE_URL ?? '',
     ...(retry ? { retry } : {}),
@@ -105,12 +171,14 @@ export async function createFixture(retry?: JobQueueOptions['retry']): Promise<F
   await admin.connect();
   return {
     tenantDb,
+    authDb,
     sealer: createSealer(TEST_KEYRING),
     queue,
     admin,
     close: async () => {
       await queue.close();
       await tenantDb.close();
+      await authDb.close();
       await admin.end();
     },
   };
@@ -224,6 +292,42 @@ export async function jobsFor(admin: pg.Client, messageKey: string): Promise<Job
     `SELECT name, state, retry_count, data, output FROM pgboss.job
       WHERE data->>'messageKey' = $1 ORDER BY created_on, name`,
     [messageKey],
+  );
+  return rows;
+}
+
+/** An S3 client for the local S3 (SeaweedFS), to read back what the worker stored. */
+export function testS3(): S3Client {
+  return new S3Client({
+    region: 'us-east-1',
+    endpoint: process.env.S3_ENDPOINT ?? 'http://localhost:9100',
+    forcePathStyle: true,
+  });
+}
+
+/** Create the test bucket when it does not exist yet. */
+export async function ensureTestBucket(): Promise<void> {
+  const s3 = testS3();
+  try {
+    await s3.send(new CreateBucketCommand({ Bucket: TEST_BUCKET }));
+  } catch (error) {
+    const name = (error as { name?: string }).name;
+    if (name !== 'BucketAlreadyOwnedByYou' && name !== 'BucketAlreadyExists') throw error;
+  } finally {
+    s3.destroy();
+  }
+}
+
+/** The `pgboss.job` rows of one queue whose payload field `key` equals `value`, oldest first. */
+export async function jobsOfQueue(
+  admin: pg.Client,
+  queue: string,
+  where: { key: string; value: string },
+): Promise<JobRow[]> {
+  const { rows } = await admin.query<JobRow>(
+    `SELECT name, state, retry_count, data, output FROM pgboss.job
+      WHERE name = $1 AND data->>$2 = $3 ORDER BY created_on`,
+    [queue, where.key, where.value],
   );
   return rows;
 }

@@ -2,7 +2,8 @@
 //
 // Same prerequisites as `pnpm --filter @venueos/db test:constraints` (docker Postgres that ran the role
 // script, VENUEOS_TEST_ADMIN_URL read from packages/db/.env when not already set), plus Mailpit
-// (docker compose up -d mailpit: SMTP on :1025, HTTP API on :8025) for the delivery tests.
+// (docker compose up -d mailpit: SMTP on :1025, HTTP API on :8025) for the delivery tests, and the local S3
+// (docker compose up -d s3: SeaweedFS, S3 API on :9100) for the PDF storage test.
 //
 // The code under test connects as venueos_app (tenant work) and venueos_jobs (the pg-boss connection),
 // so RLS and grants apply for real.
@@ -32,6 +33,8 @@ export async function setup() {
 
   process.env.DATABASE_URL = urlFor('venueos_app', dbName);
   process.env.JOBS_DATABASE_URL = urlFor('venueos_jobs', dbName);
+  // auth.purge only (role venueos_auth, through AuthDb).
+  process.env.AUTH_DATABASE_URL = urlFor('venueos_auth', dbName);
   // Admin URL of the throwaway database (migrator), for assertions on pgboss.* from the tests.
   process.env.VENUEOS_TEST_MIGRATOR_URL = urlFor('venueos_migrator', dbName);
 }

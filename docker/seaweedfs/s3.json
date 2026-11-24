@@ -1,0 +1,9 @@
+{
+  "identities": [
+    {
+      "name": "venueos-local",
+      "credentials": [{ "accessKey": "venueos", "secretKey": "venueos-local-secret" }],
+      "actions": ["Admin", "Read", "Write", "List", "Tagging"]
+    }
+  ]
+}

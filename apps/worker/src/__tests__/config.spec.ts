@@ -4,6 +4,8 @@ import { ConfigError, loadEnv } from '../config/load-env';
 const valid = {
   DATABASE_URL: 'postgresql://venueos_app:secret-app@localhost:5432/venueos',
   JOBS_DATABASE_URL: 'postgresql://venueos_jobs:secret-jobs@localhost:5432/venueos',
+  AUTH_DATABASE_URL: 'postgresql://venueos_auth:secret-auth@localhost:5432/venueos',
+  S3_BUCKET: 'venueos-test',
   FIELD_ENCRYPTION_KEYS:
     '{"active":"k1","keys":{"k1":"AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA="}}',
   EMAIL_PROVIDER: 'smtp',
@@ -22,8 +24,28 @@ describe('worker configuration', () => {
     });
   });
 
+  it('defaults the storage and PDF settings, and parses the booleans', () => {
+    expect(loadEnv(valid)).toMatchObject({
+      S3_FORCE_PATH_STYLE: false,
+      S3_SSE: 'AES256',
+      SCHEDULER_ENABLED: true,
+      PDF_CONCURRENCY: 2,
+      PDF_RENDER_TIMEOUT_MS: 30_000,
+    });
+    expect(
+      loadEnv({
+        ...valid,
+        S3_ENDPOINT: 'http://localhost:9100',
+        S3_FORCE_PATH_STYLE: 'true',
+        S3_SSE: 'none',
+        SCHEDULER_ENABLED: 'false',
+      }),
+    ).toMatchObject({ S3_FORCE_PATH_STYLE: true, S3_SSE: 'none', SCHEDULER_ENABLED: false });
+    expect(() => loadEnv({ ...valid, S3_ENDPOINT: 'localhost:9100' })).toThrow(/S3_ENDPOINT/);
+  });
+
   it('treats an empty variable as unset', () => {
-    expect(loadEnv({ ...valid, SENTRY_DSN: '', AUTH_DATABASE_URL: '' }).SENTRY_DSN).toBeUndefined();
+    expect(loadEnv({ ...valid, SENTRY_DSN: '' }).SENTRY_DSN).toBeUndefined();
   });
 
   it('requires SMTP_URL for smtp and AWS_REGION for ses', () => {
@@ -44,6 +66,8 @@ describe('worker configuration', () => {
       'EMAIL_PROVIDER',
       'DATABASE_URL',
       'JOBS_DATABASE_URL',
+      'AUTH_DATABASE_URL',
+      'S3_BUCKET',
       'EMAIL_FROM_ADDRESS',
     ]) {
       const copy: Record<string, string> = { ...valid };

@@ -7,6 +7,15 @@ export const JOB_NAMES = {
   EMAIL_SEND: 'email.send',
   /** Dead-letter queue of `email.send`: jobs whose retries ran out, or that can never succeed. */
   EMAIL_SEND_DEAD: 'email.send.dead',
+  /** Renders one document (quotation, receipt, event sheet) to PDF and stores it in S3. */
+  PDF_RENDER: 'pdf.render',
+  PDF_RENDER_DEAD: 'pdf.render.dead',
+  /** Daily cleanup of expired auth rows (system job, runs through AuthDb). */
+  AUTH_PURGE: 'auth.purge',
+  AUTH_PURGE_DEAD: 'auth.purge.dead',
+  /** Every few minutes: logs an error line for each dead-letter queue that holds jobs. */
+  OPS_DEAD_LETTER_CHECK: 'ops.dead-letter-check',
+  OPS_DEAD_LETTER_CHECK_DEAD: 'ops.dead-letter-check.dead',
 } as const;
 export type JobName = (typeof JOB_NAMES)[keyof typeof JOB_NAMES];
 
@@ -24,6 +33,12 @@ export const JOB_RETRY = {
 
 /** How long a worker may hold one `email.send` job before pg-boss gives it to another worker. */
 export const EMAIL_SEND_EXPIRE_SECONDS = 300;
+
+/** How long a worker may hold one `pdf.render` job (Chromium start + render + upload) before it is given away. */
+export const PDF_RENDER_EXPIRE_SECONDS = 180;
+
+/** How long a worker may hold one system job (`auth.purge`, the dead-letter check). */
+export const SYSTEM_JOB_EXPIRE_SECONDS = 900;
 
 /** Where the sealed secret variables live inside `message_logs.template_vars`. */
 export const SEALED_VARS_KEY = '__sealed';
@@ -127,3 +142,42 @@ export const PERMANENT_EMAIL_FAILURE_CODES: readonly EmailFailureCode[] = [
   'INVALID_PAYLOAD',
   'UNKNOWN_TEMPLATE',
 ];
+
+/**
+ * Payload of `pdf.render`: identifiers only (`pgboss.job` has no RLS). The kind says which document, the
+ * entity says which row; everything printed on the PDF is loaded inside the tenant's transaction.
+ *
+ * `kind` is any well-formed name; the worker answers an unregistered one with the permanent code
+ * `UNKNOWN_KIND` (so a rolled-back deploy cannot wedge the queue). `PDF_KINDS` lists the kinds that ship.
+ */
+export const PDF_KINDS = ['sample'] as const;
+export const pdfRenderPayloadSchema = z
+  .object({ tenantId: id, kind: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/), entityId: id })
+  .strict();
+export type PdfRenderPayload = z.infer<typeof pdfRenderPayloadSchema>;
+
+/**
+ * Failure codes of `pdf.render` (job output and logs; never raw browser or S3 text).
+ * Retried: RENDER_TIMEOUT, BROWSER_UNAVAILABLE, STORAGE_UNAVAILABLE, UNEXPECTED.
+ * Permanent (dead letter at once): INVALID_PAYLOAD, UNKNOWN_KIND, ENTITY_NOT_FOUND, TEMPLATE_ERROR, TOO_LARGE.
+ */
+export const PDF_FAILURE_CODES = [
+  'INVALID_PAYLOAD',
+  'UNKNOWN_KIND',
+  'ENTITY_NOT_FOUND',
+  'TEMPLATE_ERROR',
+  'TOO_LARGE',
+  'RENDER_TIMEOUT',
+  'BROWSER_UNAVAILABLE',
+  'STORAGE_UNAVAILABLE',
+  'UNEXPECTED',
+] as const;
+export type PdfFailureCode = (typeof PDF_FAILURE_CODES)[number];
+
+/** Largest PDF a job may store (docs/04 section 6: files up to 10 MB). */
+export const PDF_MAX_BYTES = 10 * 1024 * 1024;
+
+/** S3 object key of a generated PDF. A key, never a URL (docs/02, Documents and email). */
+export function pdfObjectKey(tenantId: string, kind: string, entityId: string): string {
+  return `tenants/${tenantId}/pdf/${kind}/${entityId}.pdf`;
+}

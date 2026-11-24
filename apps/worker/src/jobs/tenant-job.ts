@@ -2,6 +2,7 @@ import type { DbTx, TenantDb } from '@venueos/db';
 import type { JobResult } from 'pg-boss';
 import type { z } from 'zod';
 import type { Logger } from '../logging/logging.module';
+import type { JobOutput, RegisteredJob, RunnableJob } from './registered-job';
 
 /**
  * Base class of every job (apps/worker/CLAUDE.md).
@@ -61,14 +62,6 @@ export interface InvalidPayloadInfo {
   tx<T>(fn: (tx: DbTx) => Promise<T>): Promise<T>;
 }
 
-/** The part of a pg-boss job (with metadata) the runner needs. */
-export interface RunnableJob {
-  id: string;
-  data: unknown;
-  retryCount: number;
-  retryLimit: number;
-}
-
 const ID_PATTERN = /^[A-Za-z0-9_-]{1,128}$/;
 
 function readId(data: unknown, key: string): string | undefined {
@@ -87,14 +80,14 @@ export function describeError(error: unknown): { errorName: string; errorCode?: 
   };
 }
 
-export abstract class TenantJob<P extends { tenantId: string }> {
+export abstract class TenantJob<P extends { tenantId: string }> implements RegisteredJob {
   /** pg-boss queue name; also the job's name in logs. */
   abstract readonly queue: string;
   protected abstract readonly payloadSchema: z.ZodType<P>;
 
   constructor(protected readonly tenantDb: TenantDb) {}
 
-  protected abstract handle(ctx: JobContext<P>): Promise<void>;
+  protected abstract handle(ctx: JobContext<P>): Promise<JobOutput | void>;
 
   /**
    * The payload failed validation. Record the permanent failure if that is possible (the default does
@@ -156,8 +149,8 @@ export abstract class TenantJob<P extends { tenantId: string }> {
     };
 
     try {
-      await this.handle(ctx);
-      return { id: job.id, status: 'completed' };
+      const output = await this.handle(ctx);
+      return { id: job.id, status: 'completed', ...(output ? { output } : {}) };
     } catch (error) {
       if (error instanceof PermanentJobError) {
         log.error({ code: error.code }, 'job failed permanently, dead-lettering');

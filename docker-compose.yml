@@ -24,5 +24,26 @@ services:
   mailpit:
     image: axllent/mailpit:v1.34.0
     ports: ['1025:1025', '8025:8025']
+  # S3-compatible store for generated files (PDFs). Local development and CI only: staging/production use S3.
+  # SeaweedFS (Apache-2.0, weekly releases) in single-container mode with its S3 gateway. Pinned by public tag
+  # AND digest (`docker pull` works on any machine). To upgrade: pick a tag from
+  # https://hub.docker.com/r/chrislusf/seaweedfs/tags, copy its digest, rerun the worker tests.
+  # Host ports 9100 = S3 API (container 8333), 9101 = filer web UI (8888, browse buckets and objects); not
+  # 9000/9001, which other local S3 stores often use. Credentials come from docker/seaweedfs/s3.json (local-development placeholders).
+  # Worker .env: S3_ENDPOINT=http://localhost:9100, S3_FORCE_PATH_STYLE=true, S3_SSE=none and
+  # AWS_ACCESS_KEY_ID / AWS_SECRET_ACCESS_KEY equal to the key in that file. Those keys are for local S3 only.
+  s3:
+    image: chrislusf/seaweedfs:4.54@sha256:4b42c212543a0acd4c0e675215ecdcaf62a186ef98def76c7e12701871222d15
+    command: server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data -master.volumeSizeLimitMB=128 -volume.max=100
+    ports: ['9100:8333', '9101:8888']
+    volumes:
+      - ./docker/seaweedfs/s3.json:/etc/seaweedfs/s3.json:ro
+      - s3data:/data
+    healthcheck:
+      test: ['CMD-SHELL', 'nc -z 127.0.0.1 8333']
+      interval: 5s
+      timeout: 3s
+      retries: 20
 volumes:
   pgdata:
+  s3data:

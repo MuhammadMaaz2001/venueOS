@@ -44,7 +44,7 @@ cp packages/db/.env.example packages/db/.env
 cp .env.example .env                     # only read by docker compose; set POSTGRES_PORT if 5432 is taken
 # Optional: opt out of Turborepo telemetry. Turbo ignores .env files, so export it in your shell
 # ($env:TURBO_TELEMETRY_DISABLED = "1" in PowerShell) or run `pnpm exec turbo telemetry disable` once.
-docker compose up -d postgres mailpit   # Postgres :5432 (roles created on first start), local email inbox :8025
+docker compose up -d postgres mailpit s3   # Postgres :5432 (roles created on first start), local email inbox :8025, S3 (SeaweedFS) :9100
 pnpm db:migrate && pnpm db:seed          # run as venueos_migrator (MIGRATE_DATABASE_URL)
 pnpm dev
 ```

@@ -26,7 +26,8 @@
     "db:seed": "prisma db seed",
     "test": "node --env-file-if-exists=.env --import tsx --test \"tests/*.test.ts\"",
     "test:gate": "node --env-file-if-exists=.env --import tsx --test tests/gate-set-config.test.ts",
-    "test:constraints": "node --env-file-if-exists=.env --test \"tests/*.test.mjs\""
+    "test:constraints": "node --env-file-if-exists=.env --test \"tests/*.test.mjs\"",
+    "db:dead-letters": "node --env-file-if-exists=.env scripts/dead-letters.mjs"
   },
   "dependencies": {
     "@prisma/adapter-pg": "7.10.1",

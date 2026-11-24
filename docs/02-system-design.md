@@ -158,10 +158,15 @@ dev over HTTPS.
 | `reminders.event` | Daily | Event reminder to customer N days before; event sheet email to ops staff the day before |
 | `leads.follow-up` | Every 15 min | Internal email to assignee when `nextFollowUpAt` passes |
 | `email.send` | Enqueued by API (same transaction as the business change), payload `{ tenantId, messageKey }` only | Loads the `queued` `message_logs` row (recipient, template, locale, variables, reply-to), renders the template in its locale, sends via the configured provider (SES, or SMTP/Mailpit in development), appends `sent` / `failed` rows. Unknown template or invalid payload: final `failed` row and dead-letter at once |
-| `pdf.render` | Enqueued by API | Renders quotation / receipt / event sheet HTML to PDF (headless Chromium), stores in S3 and records the key (`pdf_key`) |
+| `pdf.render` | Enqueued by API, payload `{ tenantId, kind, entityId }` only | Loads the document's data for that `kind` in a short tenant transaction, fills the `packages/templates` HTML, renders it to PDF in headless Chromium (bundled Urdu/Latin fonts, JavaScript and network off), uploads it to `tenants/{tenantId}/pdf/{kind}/{entityId}.pdf` and lets the kind record the **key** (`quotations.pdf_key`, ...). Kinds are registered by their modules (`PdfKindHandler`); only `sample` ships with P0-6b. Fixed failure codes; unknown kind, missing entity, template error and oversize are dead-lettered at once |
 | `inventory.low-stock` | Daily | Internal email when `on_hand` < `reorderLevel` |
 | `inventory.reconcile` | Nightly | Scanner (`venueos_jobs`, tenants only) enqueues one job per tenant; the job (as `venueos_app` in that tenant) compares each item's `on_hand` with `SUM(stock_delta)` and emails the venue's branch manager(s) on any mismatch, plus a SYSTEM audit entry. Report only, never auto-corrects |
-| `auth.purge` | Daily | Deletes expired sessions/tokens and old `login_attempts` (runs through `AuthDb`) |
+| `auth.purge` | Daily 03:00 Asia/Karachi | System job (no tenant), the only worker code that uses `AuthDb`. Deletes sessions ended or revoked > 1 day ago or idle > 2 days, used or expired `auth_tokens`, invitations accepted/revoked/expired > 30 days ago, `login_attempts` > 30 days and `auth_requests` > 1 day, and for signups never verified after 30 days (no session) only the `user_credentials` and `auth_tokens`: the `users` row, the tenant and the audit rows stay |
+| `ops.dead-letter-check` | Every 5 min | System job. Logs an ERROR line `dead letters present` (`queue`, `count`, `oldestSeconds`) per non-empty `*.dead` queue; the alarm hangs on that line (docs/08) |
+
+**Two kinds of job.** A `TenantJob` works inside one tenant (payload has `tenantId`, body runs in `TenantDb.tx` as `venueos_app`). A `SystemJob` belongs to no tenant (`auth.purge`, scanners, the dead-letter check): strict payload (`{}`), and it uses the one connection it was built for (`AuthDb`, `ScannerDb`, the queue). Both use the same fixed failure codes and may declare a cron `schedule`, which the worker registers at start (`pgboss.schedule`).
+
+**Scanners** (cross-tenant "what is due") are scheduled `SystemJob`s built on `Scanner`: they read **identifiers only** through `ScannerDb` (role `venueos_jobs`, SELECT on the seven scanner tables; any column but `id` / `tenant_id` is refused before a value leaves the class), page through the result by key, and enqueue **one job per tenant item** with a singleton key, validating the payload against the target's strict schema. The item job then runs as `venueos_app` in that tenant. No production scanner ships in P0-6b; `holds.expire`, `reminders.*`, `leads.follow-up` and `inventory.*` add theirs with their modules (each adds its queue by migration, and a scanner SELECT grant only with a written reason).
 
 Rules: jobs are idempotent (safe to run twice), carry `tenantId` in the payload, retry with
 exponential backoff (30 s, doubling, capped at 1 h; max 5 retries, so 6 attempts), and failures land
@@ -201,6 +206,7 @@ without retries.
   PDFs come later.
 - Language: customer emails and receipts use `customers.preferred_locale`, falling back to the
   tenant's `default_locale`.
+- PDFs are rendered with JavaScript off and every network request blocked; fonts (Noto Nastaliq Urdu, Noto Naskh Arabic, Noto Sans, SIL OFL) are bundled in `packages/templates/fonts` and inlined into each document. Details and the worker image requirements: docs/08, "PDF rendering".
 - Files (venue photos, expense bill photos, generated PDFs) go to a private S3 bucket under
   `tenants/{tenantId}/...`. The database stores the object **key** (`pdf_key`, `receipt_key`,
   `photo_keys`), never a URL; the browser gets short-lived pre-signed URLs only.

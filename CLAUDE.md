@@ -110,3 +110,8 @@ pnpm api-client:generate # regenerate typed client after any API change
   rule or skip a test to make it pass.
   (These scripts exist from P0-1 onward; before that, validate what exists, e.g. the Prisma
   schema and the constraint SQL against a Docker Postgres.)
+- **Formatting.** Format files by running `pnpm prettier --write <path>` directly. Never pipe, redirect or
+  `tee` a formatter's (or any command's) output into a file that is being formatted or edited: a pipe that
+  closes early (`| head`, `| tail -0`) kills the formatter mid-write and leaves the file empty (this truncated a
+  spec to 0 bytes in P0-6b). Never silence the formatter's stderr either, so a failure is seen. After a bulk
+  format, check `git status` for files that shrank or emptied.

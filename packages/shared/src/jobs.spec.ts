@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { emailSendPayloadSchema, enqueueEmailInputSchema } from './jobs.js';
+import {
+  PDF_FAILURE_CODES,
+  emailSendPayloadSchema,
+  enqueueEmailInputSchema,
+  pdfObjectKey,
+  pdfRenderPayloadSchema,
+} from './jobs.js';
 import { maskEmail } from './mask.js';
 
 describe('emailSendPayloadSchema', () => {
@@ -69,5 +75,34 @@ describe('maskEmail', () => {
     expect(maskEmail('')).toBe('***');
     expect(maskEmail('@example.com')).toBe('***');
     expect(maskEmail('nope')).toBe('***');
+  });
+});
+
+describe('pdfRenderPayloadSchema', () => {
+  const ok = { tenantId: 't1', kind: 'quotation', entityId: 'q-1' };
+
+  it('accepts exactly tenantId, kind and entityId', () => {
+    expect(pdfRenderPayloadSchema.parse(ok)).toEqual(ok);
+  });
+
+  it('rejects extra keys, malformed ids and malformed kinds', () => {
+    expect(pdfRenderPayloadSchema.safeParse({ ...ok, customerName: 'Ali' }).success).toBe(false);
+    expect(pdfRenderPayloadSchema.safeParse({ ...ok, entityId: '../x' }).success).toBe(false);
+    expect(pdfRenderPayloadSchema.safeParse({ ...ok, kind: 'Quotation' }).success).toBe(false);
+    expect(pdfRenderPayloadSchema.safeParse({ ...ok, kind: '' }).success).toBe(false);
+    expect(pdfRenderPayloadSchema.safeParse({ tenantId: 't1', kind: 'sample' }).success).toBe(
+      false,
+    );
+  });
+});
+
+describe('pdfObjectKey', () => {
+  it('is a tenant-prefixed key, never a URL', () => {
+    expect(pdfObjectKey('t1', 'quotation', 'q-1')).toBe('tenants/t1/pdf/quotation/q-1.pdf');
+  });
+
+  it('lists fixed failure codes only', () => {
+    expect(PDF_FAILURE_CODES).toContain('RENDER_TIMEOUT');
+    expect(PDF_FAILURE_CODES.every((c) => /^[A-Z_]+$/.test(c))).toBe(true);
   });
 });

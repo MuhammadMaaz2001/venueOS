@@ -123,8 +123,23 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       `http://localhost` through a Next `/api` rewrite (signup, mail via the worker into Mailpit, verify, login,
       `/me`, switch, logout). **Not built:** bearer auth (`isBearerAuthenticated()` is still a stub), phone OTP,
       platform admin, the `auth.purge` job (P0-6b), the audit-log viewer.
-- [ ] **P0-6b Worker foundation (part 2)**: `pdf.render` skeleton with Playwright and bundled
-      Urdu font, `auth.purge` job, dead-letter handling and runbook.
+- [x] **P0-6b Worker foundation (part 2)** (done): `SystemJob` base (tenant-less jobs) next to `TenantJob`, jobs may
+      return a small output (codes, keys), cron schedules registered at start from a job's `schedule`
+      (`SCHEDULER_ENABLED`), the migration `worker_queues_p0_6b` (queues `pdf.render`, `auth.purge`,
+      `ops.dead-letter-check` and their `.dead` queues, no new grants). **Scanner infrastructure**: `ScannerDb`
+      (`venueos_jobs`, ids only, anything but `id` / `tenant_id` refused, keyset pages) and `Scanner` (one strict,
+      singleton-keyed job per item); no production scanner yet (tests use their own). **`auth.purge`** (daily 03:00
+      Asia/Karachi, the only `AuthDb` user in the worker): sessions, tokens, invitations, `login_attempts` kept 30
+      days, `auth_requests` 1 day, and for signups unverified after 30 days only credentials and tokens (proved: the
+      same address can sign up again). **`pdf.render`**: Playwright Chromium (JavaScript and network off, shared
+      browser, `PDF_CONCURRENCY`), bundled Noto fonts (Nastaliq, Naskh, Sans; SIL OFL) in `packages/templates`,
+      `sample` document (Urdu + English), S3 storage under `tenants/{tenantId}/pdf/...` (SeaweedFS S3 gateway locally on :9100,
+      image pinned by digest, IAM task role in production), fixed failure codes, the kind records the key.
+      **Dead letters**: `ops.dead-letter-check` every 5 min logs `dead letters present`, the ops script
+      `packages/db/scripts/dead-letters.mjs` (list, show, redrive, discard; dry run unless `--apply`) and the
+      runbook in docs/08. Worker config: `AUTH_DATABASE_URL` and `S3_BUCKET` are now required.
+      **Not built:** real document kinds (quotation, receipt, event sheet: with their modules), real scanners
+      (`holds.expire`, reminders, ...), tenant-editable templates, Dockerfiles.
 - [ ] **P0-7 Web foundation**: layout shell (sidebar, tenant switcher, user menu), auth pages,
       `/api` rewrite, api-client wiring with TanStack Query, next-intl (en/ur + RTL, no locale
       URL segment), shadcn/ui, format helpers (currency minor units, venue timezone), error
@@ -215,8 +230,42 @@ same "check your inbox" message. Every state-changing call sends `X-Requested-Wi
 revoked or long-expired `invitations`, and `login_attempts` / `auth_requests` older than a day (it is the only
 worker code that uses `AuthDb`). Also: users who signed up, never verified and have no activity.
 
+**Done in P0-6b (`auth.purge`):** all of the above, with these numbers: sessions 1 day after they ended (or
+2 days idle), invitations 30 days after they ended, `login_attempts` 30 days (incident investigation, docs/04
+section 12), `auth_requests` 1 day. Abandoned unverified signups lose only `user_credentials` and `auth_tokens`
+(30 days); see the follow-ups below for the rest.
+
+**To P0-7 (web) and the modules, from P0-6b:** a module that needs a PDF adds a `PdfKindHandler` (load its data in a
+tenant transaction, name its template in `packages/templates/src/pdf`, `saveKey` writes the key column) to
+`PdfModule`, adds its kind name to `PDF_KINDS` (`packages/shared`), and enqueues `pdf.render` inside the business
+transaction with `JobQueue.send(tx, 'pdf.render', { tenantId, kind, entityId }, { singletonKey: 'kind:entityId' })`
+(the singleton key is a required parameter). The browser gets the file through a pre-signed GET minted by the API from the stored key.
+A module that needs a periodic cross-tenant sweep adds a `Scanner` (queue by migration). Both are described in
+`apps/worker/CLAUDE.md`.
+
+**To P0-8 (CI/CD):** the worker tests need an **S3 service container**: `chrislusf/seaweedfs` (the tag and digest are in
+`docker-compose.yml`), command `server -s3 -s3.config=/etc/seaweedfs/s3.json -dir=/data -master.volumeSizeLimitMB=128
+-volume.max=100` with `docker/seaweedfs/s3.json` mounted, container port 8333 mapped to :9100 (key `venueos` /
+`venueos-local-secret`; `AWS_ACCESS_KEY_ID` / `AWS_SECRET_ACCESS_KEY` set to it, `S3_FORCE_PATH_STYLE=true`,
+`S3_SSE=none`). The image is public and pulls normally and **Playwright's Chromium** (`playwright install --with-deps chromium`),
+next to Postgres and Mailpit. The worker Dockerfile must install Chromium and its libraries (docs/08, "PDF
+rendering"), and the worker's ECS task role needs `s3:PutObject` on `tenants/*` (no access keys in any
+environment).
+
 **To the later modules:** a password-protected action that needs an email uses `EmailOutbox`; anything secret in a
 link goes in `secretVars`. Staff-facing listings of members use `GET /v1/staff`.
+
+### Follow-ups (not built, from P0-6b)
+
+- **Abandoned unverified signups keep their tenant and its slug.** `auth.purge` only removes their credentials and
+  tokens: the `users` row (no DELETE for any runtime role), the tenant (a TRIAL one, with its roles, owner membership
+  and audit rows) and the tenant's slug stay. Release or reclaim them in the tenant offboarding purge (docs/08,
+  Tenant lifecycle): until then the email address is also still on the `users` row.
+- Real document kinds for `pdf.render` (quotation, receipt, event sheet), with their templates and key columns.
+- Real scanners (`holds.expire`, `reminders.*`, `leads.follow-up`, `inventory.*`) in their modules.
+- A schedule whose job is removed from the code is not unscheduled automatically (docs/08).
+- Dockerfiles, the CI S3 (SeaweedFS) and Chromium setup, and the CloudWatch metric filter and alarm for
+  `dead letters present` (P0-8 and infrastructure code).
 
 ## MVP module order (after Phase 0)
 

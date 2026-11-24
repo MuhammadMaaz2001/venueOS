@@ -18,6 +18,7 @@ export type {
   EnqueueableJob,
   JobPayloads,
   JobQueueOptions,
+  SendOptions,
   RetryPolicy,
 } from './jobs/job-queue.js';
 export { SealError, createSealer } from './crypto/seal.js';

@@ -33,7 +33,11 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
   emails): every attempt writes a `login_attempts` row (`email_hash`, `ip`, `succeeded`). 5 failed
   logins per email-hash per 15 min → 15 min lock (`user_credentials.locked_until`); 20 attempts
   per IP per 15 min → 429. Same generic message for wrong email or wrong password. Old rows are
-  purged by a job.
+  purged by the daily `auth.purge` job: `login_attempts` after **30 days** (the limits only look back 15
+  minutes; the rest is for incident investigation, section 12), `auth_requests` after 1 day, ended sessions after
+  1 day, used or expired tokens, old invitations after 30 days. A signup that never verified its email loses
+  its password hash and tokens after 30 days; the user row, the tenant it created and the audit rows stay (no
+  runtime role may delete them: they go with the tenant offboarding purge, section 6).
 - **One-time tokens** (email verify, password reset): 32 random bytes, stored hashed in
   `auth_tokens`, single use, expiry 30 min (reset). Reset request always answers
   "if the account exists, we sent an email".
@@ -165,6 +169,11 @@ item inside that tenant's context. Resource IDs from another tenant return **404
   recipient, template name, locale, variables (customer names, amounts, booking details) and reply-to
   live on the RLS-protected `queued` row of `message_logs`, which the worker reads inside the tenant's
   transaction. Job outputs and logs hold fixed failure codes only, never provider or driver text.
+- **PDF rendering is sandboxed.** Chromium renders a self-contained HTML string with JavaScript off, service
+  workers blocked and every network request aborted (a template cannot reach a metadata endpoint, an internal
+  service or a file), the document's CSP is `default-src 'none'`, output is capped at 10 MB and 30 s, and the object
+  key is derived from the job payload and checked to be `tenants/{tenantId}/...` before the upload. The worker
+  reaches S3 through its IAM task role, never through access keys (docs/08).
 - Email/PDF templates escape every variable (`{{ }}` escapes; triple-stash is banned). Tenant
   template bodies are text with placeholders, not raw HTML.
 - CSV/Excel exports: prefix cells starting with `= + - @` with `'` to stop formula injection.
@@ -292,5 +301,6 @@ path lets one tenant's user act inside another tenant.
 ## 12. Incident basics
 
 If a leak or compromise is suspected: revoke sessions and rotate affected secrets first,
-preserve logs, identify affected tenants from audit and access logs, inform affected tenant
+preserve logs (`login_attempts` keeps 30 days of hashed-email and IP history for exactly this; copy what you
+need out before it ages away), identify affected tenants from audit and access logs, inform affected tenant
 owners in writing, then write a short post-mortem in `docs/incidents/`.

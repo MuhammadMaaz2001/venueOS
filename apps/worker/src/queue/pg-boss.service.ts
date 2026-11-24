@@ -11,7 +11,7 @@ import type { Logger } from '../logging/logging.module';
  * The worker's pg-boss instance, connected as `venueos_jobs` (read/write on the `pgboss` schema only).
  * The schema is created by the migrator: this service never creates or migrates it (`migrate: false`,
  * `createSchema: false`) and refuses to start when the installed library expects another version.
- * Scheduling (`schedule`) stays off until a task needs scheduled jobs (docs/09-phase-0-plan.md).
+ * Cron schedules are registered by `ScheduleRegistrar` from the jobs that declare a `schedule`.
  */
 @Injectable()
 export class PgBossService implements OnModuleInit, OnApplicationShutdown {
@@ -29,7 +29,9 @@ export class PgBossService implements OnModuleInit, OnApplicationShutdown {
       migrate: false,
       createSchema: false,
       supervise: true,
-      schedule: false,
+      // Cron firing is on unless SCHEDULER_ENABLED=false. Any number of workers can run it: pg-boss takes
+      // a lock, so each occurrence is sent once.
+      schedule: config.SCHEDULER_ENABLED,
     });
     // Driver messages can contain connection details: log the error name and code only.
     this.boss.on('error', (error: Error & { code?: string }) => {

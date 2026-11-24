@@ -166,6 +166,55 @@ describe('enqueueEmail', () => {
   });
 });
 
+describe('queues of the worker jobs (migration worker_queues_p0_6b)', () => {
+  const queueRows = async () =>
+    (
+      await jobsClient.query<{ name: string; policy: string; dead_letter: string | null; retry_limit: number }>(
+        'SELECT name, policy, dead_letter, retry_limit FROM pgboss.queue ORDER BY name',
+      )
+    ).rows;
+
+  test('every job has its queue and a dead-letter queue that is never retried', async () => {
+    const queues = new Map((await queueRows()).map((q) => [q.name, q]));
+    for (const name of ['email.send', 'pdf.render', 'auth.purge', 'ops.dead-letter-check']) {
+      assert.equal(queues.get(name)?.dead_letter, `${name}.dead`, name);
+      assert.equal(queues.get(name)?.policy, 'short', name);
+      assert.equal(queues.get(`${name}.dead`)?.retry_limit, 0, `${name}.dead`);
+    }
+  });
+
+  test('pdf.render is enqueued with identifiers only, in the caller transaction, with the dead-letter queue', async () => {
+    const payload = { tenantId: 't1', kind: 'sample', entityId: 'ent-1' };
+    const before = (await jobRows()).length;
+    const id = await tenantDb.tx({ tenantId: 't1' }, (tx) =>
+      queue.send(tx, 'pdf.render', payload, { singletonKey: 'sample:ent-1' }),
+    );
+    assert.ok(id);
+    const job = (await jobRows()).find((j) => j.name === 'pdf.render');
+    assert.deepEqual(job?.data, payload);
+    assert.equal(job?.dead_letter, 'pdf.render.dead');
+    assert.equal((await jobRows()).length, before + 1);
+
+    // an extra key (customer data riding along) is refused before anything is written
+    await assert.rejects(
+      tenantDb.tx({ tenantId: 't1' }, (tx) =>
+        queue.send(tx, 'pdf.render', { ...payload, customerName: 'Ali Khan' } as never, {
+          singletonKey: 'sample:ent-3',
+        }),
+      ),
+    );
+    // so is a rollback: no job survives it
+    await assert.rejects(
+      tenantDb.tx({ tenantId: 't1' }, async (tx) => {
+        await queue.send(tx, 'pdf.render', { ...payload, entityId: 'ent-2' }, { singletonKey: 'sample:ent-2' });
+        throw new Error('rolled back');
+      }),
+      /rolled back/,
+    );
+    assert.equal((await jobRows()).length, before + 1);
+  });
+});
+
 describe('enqueueEmail with secret variables', () => {
   const sealer = createSealer({ active: 'k1', keys: { k1: Buffer.alloc(32, 7).toString('base64') } });
   const secret = 'https://app.example.test/verify-email?token=SECRET-TOKEN-123';
@@ -205,11 +254,32 @@ describe('enqueueEmail with secret variables', () => {
 });
 
 describe('JobQueue.send', () => {
+  test('the singleton key is required: leaving it out is a type error, an empty one is refused', async () => {
+    const payload = { tenantId: 't1', messageKey: 'no-key-1' };
+    const beforeJobs = (await jobRows()).length;
+    await assert.rejects(
+      tenantDb.tx({ tenantId: 't1' }, (tx) =>
+        // @ts-expect-error singletonKey is mandatory: a keyless job would silently drop the next one
+        queue.send(tx, 'email.send', payload),
+      ),
+      /singletonKey/,
+    );
+    await assert.rejects(
+      tenantDb.tx({ tenantId: 't1' }, (tx) =>
+        queue.send(tx, 'email.send', payload, { singletonKey: '' }),
+      ),
+      /singletonKey/,
+    );
+    assert.equal((await jobRows()).length, beforeJobs);
+  });
+
   test('refuses a payload with anything but tenantId and messageKey, and inserts nothing', async () => {
     const beforeJobs = (await jobRows()).length;
     await assert.rejects(
       tenantDb.tx({ tenantId: 't1' }, (tx) =>
-        queue.send(tx, 'email.send', { tenantId: 't1', messageKey: 'm1', to: 'a@b.test' } as never),
+        queue.send(tx, 'email.send', { tenantId: 't1', messageKey: 'm1', to: 'a@b.test' } as never, {
+          singletonKey: 'm1',
+        }),
       ),
     );
     assert.equal((await jobRows()).length, beforeJobs);
@@ -266,25 +336,34 @@ describe('pg-boss schema', () => {
       `SELECT name, policy, retry_limit, retry_delay, retry_backoff, retry_delay_max, dead_letter
          FROM pgboss.queue ORDER BY name`,
     );
+    const dead = (name: string) => ({
+      name,
+      policy: 'standard',
+      retry_limit: 0,
+      retry_delay: 0,
+      retry_backoff: false,
+      retry_delay_max: null,
+      dead_letter: null,
+    });
+    const live = (name: string, retryLimit: number, delayMax: number) => ({
+      name,
+      policy: 'short',
+      retry_limit: retryLimit,
+      retry_delay: 30,
+      retry_backoff: true,
+      retry_delay_max: delayMax,
+      dead_letter: `${name}.dead`,
+    });
+    // email.send (P0-6a), then pdf.render, auth.purge and ops.dead-letter-check (P0-6b)
     assert.deepEqual(rows, [
-      {
-        name: 'email.send',
-        policy: 'short',
-        retry_limit: 5,
-        retry_delay: 30,
-        retry_backoff: true,
-        retry_delay_max: 3600,
-        dead_letter: 'email.send.dead',
-      },
-      {
-        name: 'email.send.dead',
-        policy: 'standard',
-        retry_limit: 0,
-        retry_delay: 0,
-        retry_backoff: false,
-        retry_delay_max: null,
-        dead_letter: null,
-      },
+      live('auth.purge', 5, 3600),
+      dead('auth.purge.dead'),
+      live('email.send', 5, 3600),
+      dead('email.send.dead'),
+      live('ops.dead-letter-check', 2, 300),
+      dead('ops.dead-letter-check.dead'),
+      live('pdf.render', 5, 3600),
+      dead('pdf.render.dead'),
     ]);
   });
 });
