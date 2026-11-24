@@ -141,7 +141,9 @@
     "nav": {
       "label": "Main navigation",
       "dashboard": "Dashboard",
-      "staff": "Staff"
+      "staff": "Staff",
+      "venues": "Venues",
+      "settings": "Settings"
     },
     "tenant": {
       "switch": "Switch workspace",
@@ -176,7 +178,11 @@
     "noAccess": "You do not have access to manage staff.",
     "scope": {
       "all": "All venues",
-      "some": "{count, plural, one {# venue} other {# venues}}"
+      "some": "{count, plural, one {# venue} other {# venues}}",
+      "label": "Venue access",
+      "selected": "Only selected venues",
+      "ownOnly": "You can only give access to your own venues.",
+      "chooseOne": "Tick at least one venue."
     },
     "members": {
       "title": "Members",
@@ -211,7 +217,7 @@
     },
     "edit": {
       "title": "Edit {name}",
-      "description": "Change the role or switch the person off. Venue access can be changed once venues are set up.",
+      "description": "Change the role, the venues or switch the person off.",
       "role": "Role",
       "active": "Active (can log in and work)",
       "save": "Save changes",
@@ -225,6 +231,285 @@
       "cannotInvite": "You cannot give this role or this venue access.",
       "planLimit": "Your plan has no room for another person. Upgrade your plan to invite more.",
       "alreadyAccepted": "This invitation was already accepted."
+    }
+  },
+  "Setup": {
+    "errors": {
+      "planLimit": "Your plan has no room for more. Upgrade your plan to add more.",
+      "duplicate": "Something with this name already exists here.",
+      "invalidState": "This is not possible right now. Check the venue and the spaces that depend on it.",
+      "changedByOthers": "Someone else changed this just now. The latest version has been loaded, please check and try again."
+    },
+    "fields": {
+      "venueName": "Venue name",
+      "city": "City",
+      "address": "Address",
+      "openingHours": "Opening hours",
+      "openingHoursHint": "Used for hourly slots. Leave empty for no restriction; a closing time before the opening time means the next day.",
+      "opensAt": "Opens at",
+      "closesAt": "Closes at",
+      "localRules": "House rules (optional)",
+      "latestEndTime": "Latest end time",
+      "maxGuests": "Most guests",
+      "spaceName": "Space name",
+      "kind": "Type",
+      "capacitySeated": "Seated capacity",
+      "capacityStanding": "Standing capacity",
+      "minGuests": "Minimum guests",
+      "setupBuffer": "Set-up time",
+      "cleanupBuffer": "Clean-up time",
+      "minutes": "In minutes",
+      "baseRent": "Default rent ({currency})",
+      "baseRentHint": "Per slot. You can set a different rent for each slot later.",
+      "combined": "This is a combined space made of other spaces (for example Hall A+B)",
+      "components": "Made of",
+      "componentsHint": "Booking the combined space blocks all of these, and booking one of them blocks the combined space.",
+      "componentsNeedTwo": "Add at least two single spaces first.",
+      "slotName": "Slot name",
+      "mode": "Kind of slot",
+      "startTime": "Starts",
+      "endTime": "Ends",
+      "hourlyDefault": "Empty = the venue's opening hours",
+      "overnightHint": "An end earlier than the start ends the next day.",
+      "minHours": "Minimum hours",
+      "days": "Days",
+      "daysHint": "Leave all unticked for every day."
+    },
+    "kinds": {
+      "HALL": "Hall",
+      "LAWN": "Lawn",
+      "MARQUEE": "Marquee",
+      "ROOFTOP": "Rooftop",
+      "ROOM": "Room",
+      "FARMHOUSE": "Farmhouse",
+      "OTHER": "Other"
+    },
+    "modes": {
+      "FIXED": "Fixed shift",
+      "HOURLY": "Hourly",
+      "FULL_DAY": "Full day"
+    },
+    "modeHelp": {
+      "FIXED": "A named shift with set times, like Lunch or Dinner.",
+      "HOURLY": "Booked by the hour within the venue's opening hours.",
+      "FULL_DAY": "The whole day as one booking."
+    },
+    "days": {
+      "0": "Sunday",
+      "1": "Monday",
+      "2": "Tuesday",
+      "3": "Wednesday",
+      "4": "Thursday",
+      "5": "Friday",
+      "6": "Saturday",
+      "every": "Every day",
+      "short": {
+        "0": "Sun",
+        "1": "Mon",
+        "2": "Tue",
+        "3": "Wed",
+        "4": "Thu",
+        "5": "Fri",
+        "6": "Sat"
+      }
+    },
+    "venue": {
+      "title": "Venue",
+      "noAccess": "You do not have access to manage venues.",
+      "back": "All venues",
+      "notFound": "This venue does not exist or you have no access to it.",
+      "loadFailed": "The venue could not be loaded.",
+      "inactive": "Deactivated",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivated": "Venue deactivated",
+      "reactivated": "Venue reactivated",
+      "save": "Save changes",
+      "saved": "Venue saved"
+    },
+    "venues": {
+      "title": "Venues",
+      "subtitle": "Your halls, banquets and branches.",
+      "noAccess": "You do not have access to manage venues.",
+      "add": "Add venue",
+      "loadFailed": "The venues could not be loaded.",
+      "empty": "No venues yet.",
+      "startSetup": "Start the setup",
+      "inactive": "Deactivated",
+      "noAddress": "No address yet",
+      "addTitle": "Add a venue",
+      "addDescription": "You add its spaces and slots on the next page.",
+      "addSubmit": "Add venue"
+    },
+    "spaces": {
+      "title": "Spaces",
+      "add": "Add space",
+      "loadFailed": "The spaces could not be loaded.",
+      "empty": "No spaces yet. Add the hall, lawn or room people book.",
+      "combined": "Combined",
+      "inactive": "Deactivated",
+      "seated": "{count} seated",
+      "standing": "{count} standing",
+      "baseRent": "Rent {amount}",
+      "madeOf": "Made of {names}",
+      "edit": "Edit",
+      "prices": "Prices",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivated": "Space deactivated",
+      "reactivated": "Space reactivated",
+      "addTitle": "Add a space",
+      "addDescription": "A hall, lawn, room, or a combined space made of several.",
+      "addSubmit": "Add space",
+      "editTitle": "Edit {name}",
+      "editDescription": "Change capacity, buffers, rent or the parts of a combined space.",
+      "save": "Save changes",
+      "pricesTitle": "Prices of {name}",
+      "pricesDescription": "The rent for each slot. Empty means no own price.",
+      "saved": "Space saved"
+    },
+    "slots": {
+      "title": "Slots",
+      "add": "Add slot",
+      "loadFailed": "The slots could not be loaded.",
+      "empty": "No slots yet. Add Lunch, Dinner, or an hourly or full-day slot.",
+      "inactive": "Deactivated",
+      "wholeDay": "Whole day",
+      "nextDay": "(next day)",
+      "minHours": "min. {count, plural, one {# hour} other {# hours}}",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "deactivated": "Slot deactivated",
+      "reactivated": "Slot reactivated",
+      "addTitle": "Add a slot",
+      "editTitle": "Edit {name}",
+      "formDescription": "When this part of the day can be booked.",
+      "addSubmit": "Add slot",
+      "save": "Save changes",
+      "saved": "Slot saved"
+    },
+    "prices": {
+      "loadFailed": "The prices could not be loaded.",
+      "saved": "Prices saved",
+      "perHour": "{currency} per hour",
+      "perSlot": "{currency} per slot",
+      "perSlotOvernight": "{currency} per slot (ends the next day)",
+      "invalid": "Check the amounts: use numbers with at most the decimals of your currency."
+    },
+    "eventTypes": {
+      "title": "Event types",
+      "subtitle": "Mehndi, Barat, Walima, Birthday... used when you take bookings.",
+      "add": "Add event type",
+      "loadFailed": "The event types could not be loaded.",
+      "empty": "No event types yet.",
+      "inactive": "Deactivated",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "editTitle": "Edit event type",
+      "addTitle": "Add an event type",
+      "formDescription": "A name, and optionally a colour for the calendar.",
+      "fields": {
+        "name": "Name",
+        "color": "Colour"
+      },
+      "colorHint": "Optional, like #FF8800.",
+      "save": "Save",
+      "saved": "Event type saved"
+    },
+    "settings": {
+      "title": "Settings",
+      "subtitle": "Your workspace, bookings, payments and reminders.",
+      "noAccess": "You do not have access to change the settings.",
+      "loadFailed": "The settings could not be loaded.",
+      "workspace": "Workspace",
+      "bookings": "Bookings",
+      "payments": "Payments",
+      "reminders": "Reminders",
+      "saved": "Settings saved",
+      "save": "Save settings",
+      "currencyFixed": "Fixed after signup.",
+      "timezoneHint": "For example Asia/Karachi.",
+      "bookingPrefixHint": "Starts every booking number, like BK-2026-0142.",
+      "holdHoursHint": "How long a tentative booking holds the date.",
+      "guestLockDaysHint": "Days before an event after which changes need extra permission.",
+      "minHoursHint": "Default minimum for hourly slots.",
+      "advancePctHint": "Percent of the total needed to confirm a booking.",
+      "tokenAmountHint": "A fixed amount to hold a date. 0 for none.",
+      "balanceDueDaysHint": "Days before the event when the balance is due.",
+      "reminderDaysHint": "Days before a payment is due.",
+      "eventReminderDaysHint": "Days before the event.",
+      "fields": {
+        "name": "Workspace name",
+        "currency": "Currency",
+        "country": "Country",
+        "timezone": "Time zone",
+        "bookingPrefix": "Booking number prefix",
+        "holdHours": "Hold duration (hours)",
+        "advancePct": "Advance to confirm (%)",
+        "tokenAmount": "Token amount ({currency})",
+        "balanceDueDays": "Balance due (days before)",
+        "guestLockDays": "Guest count lock (days before)",
+        "reminderDays": "Payment reminder (days before)",
+        "eventReminderDays": "Event reminder (days before)",
+        "minHours": "Minimum hours for hourly slots"
+      }
+    },
+    "wizard": {
+      "title": "Set up your venue",
+      "subtitle": "A few steps and you can take bookings. You can change everything later.",
+      "noAccess": "Only people with access to all venues can run the setup.",
+      "loadFailed": "The setup could not be loaded. Reload and try again.",
+      "progress": "Setup progress",
+      "stepOf": "Step {current} of {total}: {name}",
+      "back": "Back",
+      "steps": {
+        "venue": "Venue",
+        "spaces": "Spaces",
+        "slots": "Slots",
+        "prices": "Prices"
+      },
+      "venue": {
+        "title": "Your venue",
+        "description": "The name, where it is and, if you like, its opening hours.",
+        "submit": "Save and continue"
+      },
+      "spaces": {
+        "title": "Spaces",
+        "description": "The halls, lawns or rooms people book. Add each one; you can combine them later.",
+        "added": "Spaces added",
+        "addFirst": "Add space",
+        "addAnother": "Add another space",
+        "next": "Continue"
+      },
+      "slots": {
+        "title": "Slots",
+        "description": "The parts of the day you rent out.",
+        "preset": "Add {name} ({start}–{end})",
+        "presets": {
+          "lunch": "Lunch",
+          "dinner": "Dinner"
+        },
+        "added": "{name} added",
+        "addedList": "Slots added",
+        "wholeDay": "Whole day",
+        "custom": "Add another kind of slot",
+        "addCustom": "Add slot",
+        "next": "Continue"
+      },
+      "prices": {
+        "title": "Prices",
+        "description": "What each space costs per slot. You can skip this and set prices later.",
+        "save": "Save prices",
+        "next": "Continue"
+      },
+      "done": {
+        "title": "You're all set",
+        "description": "{name} is ready. Next you can invite your team or open the venue to fine-tune it.",
+        "dashboard": "Go to the dashboard",
+        "openVenue": "Open the venue"
+      }
     }
   }
 }

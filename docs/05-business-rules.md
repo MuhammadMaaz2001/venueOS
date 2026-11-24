@@ -15,7 +15,14 @@ When code and this file disagree, this file wins until it is deliberately change
   - `HOURLY`: any start/end within the venue's opening hours (`venues.opens_at` /
     `closes_at`, venue-local; no value = no restriction; a close earlier than the open means the
     next day), minimum `slot.minHours`, else `[minHours = 2]`.
-  - `FULL_DAY`: the whole day as one unit.
+  - `FULL_DAY`: the whole day as one unit. Stored as `startTime = endTime = "00:00"` (equal times mean 24 hours;
+    a FIXED slot may not have equal times). The API sets it; a client never sends times for it.
+  - An `HOURLY` template's start/end default to the venue's opening hours (no hours = `00:00`-`00:00`, all
+    day) and must lie inside them; changing the venue's hours later does not rewrite existing templates.
+  - Slot names are unique per venue among active templates (case-insensitive).
+- **Plan limits** count active venues (`maxVenues`) and active spaces (`maxSpaces`); deactivating frees a seat and
+  reactivating takes one (402 at the limit). A space that is a component of an active combined space cannot be
+  deactivated first. A caller limited to some venues cannot add venues or change event types (tenant-wide).
 - Each space has `setupBufferMin` and `cleanupBufferMin`. The occupancy range is
   `start − setup buffer` to `end + cleanup buffer`. Back-to-back sessions are allowed when
   ranges touch but do not overlap.

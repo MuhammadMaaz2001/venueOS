@@ -10,17 +10,25 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useVenues } from '../setup/api';
 import { useSession } from '../shell/session';
 import { useFormatters } from '../shell/session';
 import { useInvitations, useRevokeInvitation, useStaff } from './api';
 import { EditMemberDialog } from './edit-member-dialog';
 import { InviteDialog } from './invite-dialog';
 
-/** What a member's venue scope means, in words (venue names arrive with the venues module). */
+/** What a member's venue scope means, in words: the venue names when they can be listed, else a count. */
 function useScopeText() {
   const t = useTranslations('Staff.scope');
-  return (venueIds: readonly string[]) =>
-    venueIds.length === 0 ? t('all') : t('some', { count: venueIds.length });
+  const { can } = useSession();
+  const venues = useVenues({ includeInactive: true, enabled: can('venue.manage') });
+  return (venueIds: readonly string[]) => {
+    if (venueIds.length === 0) return t('all');
+    const names = venueIds.map((id) => venues.data?.data.find((v) => v.id === id)?.name);
+    return names.every((n): n is string => n !== undefined)
+      ? names.join(', ')
+      : t('some', { count: venueIds.length });
+  };
 }
 
 export function StaffPage() {

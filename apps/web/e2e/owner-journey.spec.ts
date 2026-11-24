@@ -64,7 +64,8 @@ for (const locale of ['en'] as const) {
 
       await login(pageA, locale, ownerA.email);
       await expect(pageA.getByTestId('tenant-name')).toHaveText(ownerA.tenantName);
-      await expect(pageA.getByRole('heading', { level: 1 })).toContainText(ownerA.name);
+      // A workspace without a venue starts in the setup wizard (setup-wizard.spec.ts walks through it).
+      await expect(pageA.getByRole('heading', { level: 1 })).toHaveText(m.Setup.wizard.title);
       expect(await pageA.locator('html').getAttribute('dir')).toBe('ltr');
 
       // ── A invites a NEW person; they accept and log in ──────────────────────────────────────────────

@@ -717,6 +717,702 @@
           "staff"
         ]
       }
+    },
+    "/v1/tenant/settings": {
+      "get": {
+        "operationId": "TenantSettingsController_get",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSettingsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Workspace name, time zone and booking/payment settings (defaults filled in)",
+        "tags": [
+          "tenant"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. Only the keys you send change. Currency and country are fixed after signup.",
+        "operationId": "TenantSettingsController_update",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateTenantSettingsDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TenantSettingsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change name, time zone or settings keys",
+        "tags": [
+          "tenant"
+        ]
+      }
+    },
+    "/v1/venues": {
+      "get": {
+        "operationId": "VenuesController_list",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the venues the caller can see (active ones unless asked)",
+        "tags": [
+          "venues"
+        ]
+      },
+      "post": {
+        "description": "Only a caller with access to all venues. 402 at the plan limit.",
+        "operationId": "VenuesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateVenueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a venue",
+        "tags": [
+          "venues"
+        ]
+      }
+    },
+    "/v1/venues/{id}": {
+      "get": {
+        "operationId": "VenuesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "venues"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required (409 VERSION_CONFLICT when stale). `active: false` is the delete.",
+        "operationId": "VenuesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateVenueDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/VenueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit a venue",
+        "tags": [
+          "venues"
+        ]
+      }
+    },
+    "/v1/spaces": {
+      "get": {
+        "operationId": "SpacesController_list",
+        "parameters": [
+          {
+            "name": "venueId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List spaces of the venues the caller can see (optionally one venue)",
+        "tags": [
+          "spaces"
+        ]
+      },
+      "post": {
+        "description": "402 at the plan limit. The venue and every component must belong to the tenant.",
+        "operationId": "SpacesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSpaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a space, or a combined space made of existing ones",
+        "tags": [
+          "spaces"
+        ]
+      }
+    },
+    "/v1/spaces/{id}": {
+      "get": {
+        "operationId": "SpacesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "spaces"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. `active: false` is the delete. `componentIds` replaces the components of a combined space.",
+        "operationId": "SpacesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSpaceDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit a space",
+        "tags": [
+          "spaces"
+        ]
+      }
+    },
+    "/v1/spaces/{id}/slot-prices": {
+      "get": {
+        "operationId": "SpacesController_slotPrices",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceSlotPricesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A space's rent per slot template",
+        "tags": [
+          "spaces"
+        ]
+      },
+      "put": {
+        "description": "A slot that is not listed has no own price. Slots must belong to the space's venue.",
+        "operationId": "SpacesController_replaceSlotPrices",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceSpaceSlotPricesDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SpaceSlotPricesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replace a space's rent per slot template",
+        "tags": [
+          "spaces"
+        ]
+      }
+    },
+    "/v1/slot-templates": {
+      "get": {
+        "operationId": "SlotTemplatesController_list",
+        "parameters": [
+          {
+            "name": "venueId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotTemplateListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List slot templates of the venues the caller can see",
+        "tags": [
+          "slot-templates"
+        ]
+      },
+      "post": {
+        "description": "FIXED needs start and end. HOURLY defaults to the venue opening hours. FULL_DAY has no times.",
+        "operationId": "SlotTemplatesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateSlotTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotTemplateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a slot template to a venue",
+        "tags": [
+          "slot-templates"
+        ]
+      }
+    },
+    "/v1/slot-templates/{id}": {
+      "get": {
+        "operationId": "SlotTemplatesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotTemplateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "slot-templates"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. `active: false` is the delete. Venue and mode are fixed.",
+        "operationId": "SlotTemplatesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSlotTemplateDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SlotTemplateResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit a slot template",
+        "tags": [
+          "slot-templates"
+        ]
+      }
+    },
+    "/v1/event-types": {
+      "get": {
+        "operationId": "EventTypesController_list",
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTypeListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List the event types of the workspace",
+        "tags": [
+          "event-types"
+        ]
+      },
+      "post": {
+        "description": "Tenant-wide, so only a caller with access to all venues. Names are unique (409).",
+        "operationId": "EventTypesController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateEventTypeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTypeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add an event type",
+        "tags": [
+          "event-types"
+        ]
+      }
+    },
+    "/v1/event-types/{id}": {
+      "get": {
+        "operationId": "EventTypesController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTypeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "event-types"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. `active: false` is the delete.",
+        "operationId": "EventTypesController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateEventTypeDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventTypeResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit an event type",
+        "tags": [
+          "event-types"
+        ]
+      }
     }
   },
   "info": {
@@ -1830,6 +2526,1283 @@
           "roleName",
           "venueIds",
           "active",
+          "rev"
+        ]
+      },
+      "TenantSettingsResponseDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string"
+          },
+          "slug": {
+            "type": "string"
+          },
+          "country": {
+            "type": "string"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "defaultLocale": {
+            "type": "string"
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "bookingPrefix": {
+                "default": "BK",
+                "type": "string",
+                "pattern": "^[A-Z0-9]{1,8}$"
+              },
+              "holdHours": {
+                "default": 48,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 720
+              },
+              "advancePct": {
+                "default": 50,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "tokenAmount": {
+                "default": "0",
+                "type": "string",
+                "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+              },
+              "balanceDueDays": {
+                "default": 7,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 365
+              },
+              "guestLockDays": {
+                "default": 3,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 90
+              },
+              "reminderDays": {
+                "default": 3,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60
+              },
+              "eventReminderDays": {
+                "default": 2,
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60
+              },
+              "minHours": {
+                "default": 2,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 24
+              }
+            }
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "name",
+          "slug",
+          "country",
+          "currency",
+          "timezone",
+          "defaultLocale",
+          "settings",
+          "rev"
+        ]
+      },
+      "UpdateTenantSettingsDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64
+          },
+          "settings": {
+            "type": "object",
+            "properties": {
+              "bookingPrefix": {
+                "type": "string",
+                "pattern": "^[A-Z0-9]{1,8}$"
+              },
+              "holdHours": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 720
+              },
+              "advancePct": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 100
+              },
+              "tokenAmount": {
+                "type": "string",
+                "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+              },
+              "balanceDueDays": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 365
+              },
+              "guestLockDays": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 90
+              },
+              "reminderDays": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60
+              },
+              "eventReminderDays": {
+                "type": "integer",
+                "minimum": 0,
+                "maximum": 60
+              },
+              "minHours": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 24
+              }
+            }
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "VenueListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "address": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "city": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "timezone": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "opensAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "closesAt": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "localRules": {
+                  "type": "object",
+                  "properties": {
+                    "latestEndTime": {
+                      "type": "string",
+                      "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                    },
+                    "maxGuests": {
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 100000
+                    }
+                  }
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "address",
+                "city",
+                "timezone",
+                "opensAt",
+                "closesAt",
+                "localRules",
+                "active",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CreateVenueDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "opensAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "nullable": true
+          },
+          "closesAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "nullable": true
+          },
+          "localRules": {
+            "type": "object",
+            "properties": {
+              "latestEndTime": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "maxGuests": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              }
+            }
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "VenueResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "nullable": true
+          },
+          "opensAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "closesAt": {
+            "type": "string",
+            "nullable": true
+          },
+          "localRules": {
+            "type": "object",
+            "properties": {
+              "latestEndTime": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "maxGuests": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              }
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "address",
+          "city",
+          "timezone",
+          "opensAt",
+          "closesAt",
+          "localRules",
+          "active",
+          "rev",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateVenueDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 200,
+            "nullable": true
+          },
+          "city": {
+            "type": "string",
+            "maxLength": 80,
+            "nullable": true
+          },
+          "timezone": {
+            "type": "string",
+            "maxLength": 64,
+            "nullable": true
+          },
+          "opensAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "nullable": true
+          },
+          "closesAt": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$",
+            "nullable": true
+          },
+          "localRules": {
+            "type": "object",
+            "properties": {
+              "latestEndTime": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "maxGuests": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              }
+            }
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "SpaceListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "HALL",
+                    "LAWN",
+                    "MARQUEE",
+                    "ROOFTOP",
+                    "ROOM",
+                    "FARMHOUSE",
+                    "OTHER"
+                  ]
+                },
+                "capacitySeated": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "capacityStanding": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "minGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "isCombined": {
+                  "type": "boolean"
+                },
+                "componentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "setupBufferMin": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "cleanupBufferMin": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "baseRent": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "venueId",
+                "name",
+                "kind",
+                "capacitySeated",
+                "capacityStanding",
+                "minGuests",
+                "isCombined",
+                "componentIds",
+                "setupBufferMin",
+                "cleanupBufferMin",
+                "baseRent",
+                "active",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CreateSpaceDto": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "kind": {
+            "default": "HALL",
+            "type": "string",
+            "enum": [
+              "HALL",
+              "LAWN",
+              "MARQUEE",
+              "ROOFTOP",
+              "ROOM",
+              "FARMHOUSE",
+              "OTHER"
+            ]
+          },
+          "capacitySeated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "capacityStanding": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "minGuests": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "isCombined": {
+            "default": false,
+            "type": "boolean"
+          },
+          "componentIds": {
+            "minItems": 2,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          "setupBufferMin": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "cleanupBufferMin": {
+            "default": 0,
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "baseRent": {
+            "type": "string",
+            "pattern": "^\\d{1,15}(\\.\\d{1,3})?$",
+            "nullable": true
+          }
+        },
+        "required": [
+          "venueId",
+          "name"
+        ]
+      },
+      "SpaceResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "venueId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "HALL",
+              "LAWN",
+              "MARQUEE",
+              "ROOFTOP",
+              "ROOM",
+              "FARMHOUSE",
+              "OTHER"
+            ]
+          },
+          "capacitySeated": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "capacityStanding": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "minGuests": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "isCombined": {
+            "type": "boolean"
+          },
+          "componentIds": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "setupBufferMin": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "cleanupBufferMin": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "baseRent": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "venueId",
+          "name",
+          "kind",
+          "capacitySeated",
+          "capacityStanding",
+          "minGuests",
+          "isCombined",
+          "componentIds",
+          "setupBufferMin",
+          "cleanupBufferMin",
+          "baseRent",
+          "active",
+          "rev",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateSpaceDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "kind": {
+            "type": "string",
+            "enum": [
+              "HALL",
+              "LAWN",
+              "MARQUEE",
+              "ROOFTOP",
+              "ROOM",
+              "FARMHOUSE",
+              "OTHER"
+            ]
+          },
+          "capacitySeated": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "capacityStanding": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "minGuests": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "componentIds": {
+            "minItems": 2,
+            "maxItems": 20,
+            "type": "array",
+            "items": {
+              "type": "string",
+              "pattern": "^[A-Za-z0-9_-]{1,128}$"
+            }
+          },
+          "setupBufferMin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "cleanupBufferMin": {
+            "type": "integer",
+            "minimum": 0,
+            "maximum": 1440
+          },
+          "baseRent": {
+            "type": "string",
+            "pattern": "^\\d{1,15}(\\.\\d{1,3})?$",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "SpaceSlotPricesResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slotId": {
+                  "type": "string"
+                },
+                "rent": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "slotId",
+                "rent"
+              ]
+            }
+          }
+        },
+        "required": [
+          "data"
+        ]
+      },
+      "ReplaceSpaceSlotPricesDto": {
+        "type": "object",
+        "properties": {
+          "prices": {
+            "maxItems": 100,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "slotId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "rent": {
+                  "type": "string",
+                  "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+                }
+              },
+              "required": [
+                "slotId",
+                "rent"
+              ]
+            }
+          }
+        },
+        "required": [
+          "prices"
+        ]
+      },
+      "SlotTemplateListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "FIXED",
+                    "HOURLY",
+                    "FULL_DAY"
+                  ]
+                },
+                "startTime": {
+                  "type": "string"
+                },
+                "endTime": {
+                  "type": "string"
+                },
+                "daysOfWeek": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                },
+                "minHours": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "venueId",
+                "name",
+                "mode",
+                "startTime",
+                "endTime",
+                "daysOfWeek",
+                "minHours",
+                "active",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CreateSlotTemplateDto": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "FIXED",
+              "HOURLY",
+              "FULL_DAY"
+            ]
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "daysOfWeek": {
+            "default": [],
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            }
+          },
+          "minHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24,
+            "nullable": true
+          }
+        },
+        "required": [
+          "venueId",
+          "name",
+          "mode"
+        ]
+      },
+      "SlotTemplateResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "venueId": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "mode": {
+            "type": "string",
+            "enum": [
+              "FIXED",
+              "HOURLY",
+              "FULL_DAY"
+            ]
+          },
+          "startTime": {
+            "type": "string"
+          },
+          "endTime": {
+            "type": "string"
+          },
+          "daysOfWeek": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": -9007199254740991,
+              "maximum": 9007199254740991
+            }
+          },
+          "minHours": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "venueId",
+          "name",
+          "mode",
+          "startTime",
+          "endTime",
+          "daysOfWeek",
+          "minHours",
+          "active",
+          "rev",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateSlotTemplateDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "daysOfWeek": {
+            "maxItems": 7,
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "minimum": 0,
+              "maximum": 6
+            }
+          },
+          "minHours": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 24,
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "EventTypeListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "color": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "color",
+                "active",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CreateEventTypeDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "nullable": true
+          }
+        },
+        "required": [
+          "name"
+        ]
+      },
+      "EventTypeResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "color": {
+            "type": "string",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "color",
+          "active",
+          "rev",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateEventTypeDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 60
+          },
+          "color": {
+            "type": "string",
+            "pattern": "^#[0-9A-Fa-f]{6}$",
+            "nullable": true
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
           "rev"
         ]
       }
