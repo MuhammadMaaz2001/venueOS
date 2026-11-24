@@ -1,4 +1,5 @@
 import { argon2Sync, randomBytes } from 'node:crypto';
+import { EMAIL_NOT_VERIFIED_REASON } from '@venueos/shared';
 import { afterAll, beforeAll, describe, expect, it, vi } from 'vitest';
 import { hashToken } from '../modules/auth/auth.constants';
 import { PasswordService } from '../modules/auth/password.service';
@@ -206,7 +207,7 @@ describe('login', () => {
       const right = await post({ email, password: TEST_PASSWORD });
       expect(right.status).toBe(403);
       expect(right.body.error.code).toBe('FORBIDDEN');
-      expect(right.body.error.details).toEqual({ reason: 'EMAIL_NOT_VERIFIED' });
+      expect(right.body.error.details).toEqual({ reason: EMAIL_NOT_VERIFIED_REASON });
       expect(right.headers['set-cookie']).toBeUndefined();
     });
 

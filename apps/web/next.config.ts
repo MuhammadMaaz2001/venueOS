@@ -8,6 +8,22 @@ const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // The headers that do not depend on the request (the nonce-based CSP is set in src/proxy.ts).
+  // docs/04-security.md section 5.
+  async headers() {
+    return [
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'X-Content-Type-Options', value: 'nosniff' },
+          { key: 'Referrer-Policy', value: 'strict-origin-when-cross-origin' },
+          { key: 'X-Frame-Options', value: 'DENY' },
+          { key: 'Permissions-Policy', value: 'camera=(), microphone=(), geolocation=()' },
+          { key: 'Strict-Transport-Security', value: 'max-age=31536000; includeSubDomains' },
+        ],
+      },
+    ];
+  },
   async rewrites() {
     return [{ source: '/api/:path*', destination: `${apiInternalUrl}/:path*` }];
   },

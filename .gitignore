@@ -14,3 +14,7 @@ next-env.d.ts
 .claude/settings.local.json
 .claude/plans/
 apps/worker/.artifacts/
+
+# Playwright
+apps/web/e2e/.results/
+apps/web/e2e/.screenshots/

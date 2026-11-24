@@ -76,11 +76,12 @@ Messages are user-safe English; the web app maps `code` to translated text.
 | `POST /v1/auth/invitations/accept` | public | `{ token, name, password }` for a NEW user; existing address → 409 |
 | `POST /v1/auth/logout`, `/logout-all` | login | 204, clears the cookie |
 | `POST /v1/auth/password/change` | login | `{ currentPassword, newPassword }` → 204; ends the other sessions |
-| `GET /v1/me`, `GET /v1/me/tenants` | login | identity, permissions of the active workspace; active memberships |
+| `GET /v1/me`, `GET /v1/me/tenants` | login | identity, permissions of the active workspace; active memberships. A workspace (`TenantSummary`) carries `country`, `currency`, `timezone` and `defaultLocale`, which the web app formats money and dates with |
 | `POST /v1/me/switch-tenant` | login | `{ tenantId }`; rotates the cookie; not a member → 404 |
 | `POST /v1/me/invitations/accept` | login | `{ token }` for an existing account |
 | `GET/POST /v1/staff/invitations`, `DELETE /v1/staff/invitations/{id}` | `staff.manage` | create also needs room in the plan |
 | `GET /v1/staff`, `PATCH /v1/staff/{membershipId}` | `staff.manage` | `rev`; one active Owner always remains (422) |
+| `GET /v1/staff/assignable-roles` | `staff.manage` | `{ data: [{ id, name }] }`: the roles the caller may give (no escalation); does not need `role.manage` (the invite and edit pickers of the web app) |
 
 ## Lists
 

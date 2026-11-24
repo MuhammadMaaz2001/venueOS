@@ -1,4 +1,5 @@
 import {
+  AssignableRolesResponseSchema,
   MembershipIdParamSchema,
   StaffListResponseSchema,
   StaffMemberSchema,
@@ -10,3 +11,4 @@ export class MembershipIdParamDto extends createZodDto(MembershipIdParamSchema) 
 export class UpdateStaffDto extends createZodDto(UpdateStaffSchema) {}
 export class StaffMemberResponseDto extends createZodDto(StaffMemberSchema) {}
 export class StaffListResponseDto extends createZodDto(StaffListResponseSchema) {}
+export class AssignableRolesResponseDto extends createZodDto(AssignableRolesResponseSchema) {}

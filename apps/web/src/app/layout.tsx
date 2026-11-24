@@ -1,22 +1,36 @@
-import type { Metadata } from 'next';
+import type { Metadata, Viewport } from 'next';
 import type { ReactNode } from 'react';
 import { NextIntlClientProvider } from 'next-intl';
-import { getLocale } from 'next-intl/server';
+import { getLocale, getTranslations } from 'next-intl/server';
+import { Toaster } from '@/components/ui/sonner';
 import { directionOf, type Locale } from '@/i18n/config';
+import { QueryProvider } from '@/lib/api/query-provider';
+import { latinFont, urduFont } from './fonts';
 import './globals.css';
 
-export const metadata: Metadata = {
-  title: 'venueOS',
-  description: 'Booking and operations for event venues',
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const t = await getTranslations('Meta');
+  return {
+    title: { default: t('title'), template: `%s · ${t('title')}` },
+    description: t('description'),
+  };
+}
+
+export const viewport: Viewport = { width: 'device-width', initialScale: 1 };
 
 export default async function RootLayout({ children }: { children: ReactNode }) {
   const locale = (await getLocale()) as Locale;
+  const dir = directionOf(locale);
 
   return (
-    <html lang={locale} dir={directionOf(locale)}>
+    <html lang={locale} dir={dir} className={`${latinFont.variable} ${urduFont.variable}`}>
       <body className="bg-background text-foreground min-h-dvh antialiased">
-        <NextIntlClientProvider>{children}</NextIntlClientProvider>
+        <NextIntlClientProvider>
+          <QueryProvider>
+            {children}
+            <Toaster dir={dir} position="top-center" richColors closeButton />
+          </QueryProvider>
+        </NextIntlClientProvider>
       </body>
     </html>
   );

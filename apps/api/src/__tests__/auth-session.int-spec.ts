@@ -206,7 +206,14 @@ describe('sessions', () => {
       expect(res.status).toBe(200);
       expect(res.body.data.map((x: { id: string }) => x.id)).toEqual([tenant.id]);
       expect(res.body.activeTenantId).toBe(tenant.id);
-      expect(res.body.data[0]).toMatchObject({ id: tenant.id, status: 'ACTIVE' });
+      expect(res.body.data[0]).toMatchObject({
+        id: tenant.id,
+        status: 'ACTIVE',
+        country: 'PK',
+        currency: 'PKR',
+        timezone: 'Asia/Karachi',
+        defaultLocale: 'en',
+      });
     });
 
     it('reports no access when my membership in the active workspace was deactivated', async () => {

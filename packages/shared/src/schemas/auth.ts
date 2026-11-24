@@ -85,11 +85,24 @@ export const UserSummarySchema = z.object({
 });
 export type UserSummary = z.infer<typeof UserSummarySchema>;
 
+/**
+ * `details.reason` of the 403 that login answers (after the CORRECT password) for an address that has not
+ * confirmed its email. Shared by the API and the web app, so the two cannot drift apart.
+ */
+export const EMAIL_NOT_VERIFIED_REASON = 'EMAIL_NOT_VERIFIED';
+
 export const TenantSummarySchema = z.object({
   id: z.string(),
   name: z.string(),
   slug: z.string(),
   status: z.enum(['TRIAL', 'ACTIVE', 'PAST_DUE', 'SUSPENDED', 'CANCELLED']),
+  /** ISO 3166-1 alpha-2. */
+  country: z.string(),
+  /** ISO 4217 code: the web app formats money with its minor units. */
+  currency: z.string(),
+  /** IANA zone of the tenant (the web app's date fallback until a venue's own zone is available). */
+  timezone: z.string(),
+  defaultLocale: z.string(),
 });
 export type TenantSummary = z.infer<typeof TenantSummarySchema>;
 

@@ -26,6 +26,14 @@ export const StaffListResponseSchema = z.object({
 });
 export type StaffListResponse = z.infer<typeof StaffListResponseSchema>;
 
+/** One entry of GET /v1/staff/assignable-roles: just enough for the invite and role pickers. */
+export const AssignableRoleSchema = z.object({ id: z.string(), name: z.string() });
+export type AssignableRoleDto = z.infer<typeof AssignableRoleSchema>;
+
+/** GET /v1/staff/assignable-roles: the roles the caller may give to someone (no escalation). */
+export const AssignableRolesResponseSchema = z.object({ data: z.array(AssignableRoleSchema) });
+export type AssignableRolesResponse = z.infer<typeof AssignableRolesResponseSchema>;
+
 export const MembershipIdParamSchema = z.object({ membershipId: Id });
 
 /** PATCH /v1/staff/{membershipId}: `rev` is the concurrency token returned by the last read. */

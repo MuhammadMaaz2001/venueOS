@@ -1,8 +1,9 @@
 import { Body, Controller, Get, HttpCode, Param, Patch } from '@nestjs/common';
 import { ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
-import type { StaffListResponse, StaffMemberDto } from '@venueos/shared';
+import type { AssignableRolesResponse, StaffListResponse, StaffMemberDto } from '@venueos/shared';
 import { RequirePermission } from '../../common/access/access.decorators';
 import {
+  AssignableRolesResponseDto,
   MembershipIdParamDto,
   StaffListResponseDto,
   StaffMemberResponseDto,
@@ -22,6 +23,18 @@ export class StaffController {
   @ApiOkResponse({ type: StaffListResponseDto })
   list(): Promise<StaffListResponse> {
     return this.staff.list();
+  }
+
+  @Get('assignable-roles')
+  @RequirePermission('staff.manage')
+  @ApiOperation({
+    summary: 'Roles I may give to someone (for the invite and role pickers)',
+    description:
+      'Only roles whose permissions and discount limit do not exceed my own. Does not need role.manage.',
+  })
+  @ApiOkResponse({ type: AssignableRolesResponseDto })
+  assignableRoles(): Promise<AssignableRolesResponse> {
+    return this.staff.assignableRoles();
   }
 
   @Patch(':membershipId')

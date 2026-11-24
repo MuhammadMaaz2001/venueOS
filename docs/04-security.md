@@ -54,7 +54,7 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
   or not the address has an account; login answers one generic 401 (unknown address, wrong password and locked
   account alike) and always runs a real argon2 verification (a dummy hash for unknown or locked accounts), so the
   response time does not tell either. The only distinguishable answer comes after the CORRECT password: an
-  unverified address gets 403 `FORBIDDEN` with `details.reason = EMAIL_NOT_VERIFIED`.
+  unverified address gets 403 `FORBIDDEN` with `details.reason = EMAIL_NOT_VERIFIED` (the constant `EMAIL_NOT_VERIFIED_REASON` of `@venueos/shared`, used by the API and the web login).
 - **Abuse limits of the mail endpoints** (signup, resend-verification, password/forgot): at most 3 emails per
   address per hour and 20 requests per IP per 15 minutes, counted in `auth_requests` (email hash and IP, never the
   address). Over the limit: the same generic answer, nothing sent, a log line. Refused requests count toward the

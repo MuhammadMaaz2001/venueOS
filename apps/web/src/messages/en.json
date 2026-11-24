@@ -1,7 +1,234 @@
 {
-  "Home": {
+  "Meta": {
     "title": "venueOS",
-    "tagline": "The whole booking business of your venue, in one place.",
-    "status": "Foundation build: sign-in and the dashboard arrive in the next tasks."
+    "description": "Booking and operations for event venues"
+  },
+  "Common": {
+    "close": "Close",
+    "back": "Back",
+    "loading": "Loading…",
+    "showPassword": "Show password",
+    "hidePassword": "Hide password",
+    "changeLanguage": "Change language"
+  },
+  "Validation": {
+    "required": "This field is required",
+    "tooShort": "At least {min} characters",
+    "tooLong": "At most {max} characters",
+    "email": "Enter a valid email address",
+    "invalid": "This value is not valid",
+    "passwordTooCommon": "This password is too common. Choose another one.",
+    "mismatch": "The passwords do not match"
+  },
+  "Errors": {
+    "requestId": "Reference",
+    "VALIDATION_ERROR": "Some fields are not valid. Please check them and try again.",
+    "BAD_REQUEST": "The request could not be processed.",
+    "UNAUTHENTICATED": "Please sign in to continue.",
+    "SESSION_EXPIRED": "Your session has expired. Please sign in again.",
+    "PLAN_LIMIT_REACHED": "Your plan's limit has been reached. Upgrade your plan to add more.",
+    "FORBIDDEN": "You don't have access to do this.",
+    "CSRF_REJECTED": "The request was rejected for security reasons. Reload the page and try again.",
+    "DISCOUNT_LIMIT": "This discount is higher than your role allows.",
+    "TENANT_SUSPENDED": "This workspace is suspended and read-only.",
+    "NOT_FOUND": "We could not find what you asked for.",
+    "METHOD_NOT_ALLOWED": "This action is not available.",
+    "PAYLOAD_TOO_LARGE": "The data you sent is too large.",
+    "SLOT_TAKEN": "That space is already booked for this time.",
+    "VERSION_CONFLICT": "Someone else changed this just now. The latest version has been loaded, please try again.",
+    "DUPLICATE": "This already exists.",
+    "IDEMPOTENCY_CONFLICT": "This request was already sent with different details.",
+    "ADVANCE_REQUIRED": "An advance payment is required first.",
+    "LOCAL_RULE": "A venue rule prevents this action.",
+    "INSUFFICIENT_STOCK": "There is not enough stock.",
+    "INVALID_STATE_TRANSITION": "This is not allowed in the current state.",
+    "RATE_LIMITED": "Too many attempts. Please wait a few minutes and try again.",
+    "INTERNAL": "Something went wrong on our side. Please try again.",
+    "NETWORK": "Cannot reach the server. Check your connection and try again."
+  },
+  "Auth": {
+    "backToLogin": "Back to login",
+    "inbox": {
+      "title": "Check your inbox",
+      "verify": "If this address can be used, we have sent an email with a link to confirm it. The link works for 24 hours.",
+      "reset": "If an account exists for this address, we have sent an email with a link to choose a new password. The link works for 30 minutes."
+    },
+    "fields": {
+      "email": "Email",
+      "password": "Password",
+      "newPassword": "Password",
+      "confirmPassword": "Confirm password",
+      "passwordHint": "At least {min} characters",
+      "name": "Your name",
+      "tenantName": "Business name",
+      "tenantNameHint": "The venue or company name your customers know",
+      "country": "Country",
+      "currency": "Currency",
+      "timezone": "Time zone",
+      "workspaceLanguage": "Workspace language",
+      "workspaceLanguageHint": "The language of your workspace and its first emails"
+    },
+    "login": {
+      "title": "Log in",
+      "description": "Welcome back. Log in to your workspace.",
+      "submit": "Log in",
+      "forgot": "Forgot your password?",
+      "noAccount": "New to venueOS?",
+      "signupLink": "Create an account",
+      "invalidCredentials": "The email or password is not correct.",
+      "sessionExpired": "Your session has expired. Please log in again.",
+      "unverifiedTitle": "Confirm your email",
+      "unverifiedBody": "Your password is right, but {email} is not confirmed yet. Open the link in the email we sent you, or ask for a new one.",
+      "resend": "Send the link again"
+    },
+    "signup": {
+      "title": "Create your workspace",
+      "description": "Start your free trial. No card needed.",
+      "submit": "Create account",
+      "haveAccount": "Already have an account?",
+      "loginLink": "Log in"
+    },
+    "forgot": {
+      "title": "Reset your password",
+      "description": "Enter your email and we will send you a link to choose a new password.",
+      "submit": "Send reset link"
+    },
+    "verify": {
+      "title": "Confirm your email",
+      "working": "Confirming your email…",
+      "doneTitle": "Email confirmed",
+      "doneBody": "Your email address is confirmed. You can log in now.",
+      "toLogin": "Go to login",
+      "failedTitle": "This link does not work",
+      "resendHint": "Enter your email and we will send you a new link.",
+      "resend": "Send a new link"
+    },
+    "reset": {
+      "title": "Choose a new password",
+      "description": "You will be logged out of every device.",
+      "submit": "Save password",
+      "doneTitle": "Password changed",
+      "doneBody": "Your password has been changed. Log in with the new password.",
+      "newLink": "Ask for a new link"
+    },
+    "token": {
+      "invalid": "This link is invalid, has expired, or was already used. Ask for a new one."
+    },
+    "invite": {
+      "title": "Join your team",
+      "description": "Choose your name and a password to accept the invitation.",
+      "submit": "Accept invitation",
+      "invalid": "This invitation is invalid, has expired, or was already used. Ask the person who invited you to send a new one.",
+      "doneTitle": "Welcome aboard",
+      "doneBody": "Your account is ready. Log in to open the workspace.",
+      "existingTitle": "You already have an account",
+      "existingBody": "This email address already has a venueOS account. Log in with it to accept the invitation.",
+      "signIn": "Log in to accept",
+      "haveAccount": "I already have an account",
+      "memberTitle": "Accept the invitation",
+      "memberBody": "You are logged in as {email}. Accept the invitation with this account?",
+      "accept": "Accept invitation",
+      "wrongAccount": "This invitation is not for this account, or it is no longer valid. Log out and open the link again with the right account."
+    },
+    "workspace": {
+      "title": "Choose a workspace",
+      "description": "You belong to more than one workspace.",
+      "none": "You are not a member of any workspace yet. Ask for an invitation."
+    }
+  },
+  "Shell": {
+    "loadFailed": "The page could not be loaded. Reload and try again.",
+    "openMenu": "Open the menu",
+    "menuDescription": "Navigation",
+    "suspended": "This workspace is suspended. You can look at your data but not change it.",
+    "nav": {
+      "label": "Main navigation",
+      "dashboard": "Dashboard",
+      "staff": "Staff"
+    },
+    "tenant": {
+      "switch": "Switch workspace",
+      "label": "Your workspaces"
+    },
+    "user": {
+      "menu": "Account menu",
+      "language": "Language",
+      "logout": "Log out",
+      "logoutAll": "Log out everywhere"
+    }
+  },
+  "Dashboard": {
+    "title": "Dashboard",
+    "welcome": "Welcome, {name}",
+    "subtitle": "You are working in {tenant}.",
+    "workspace": "Workspace",
+    "yourRole": "Your role",
+    "allVenues": "All venues",
+    "someVenues": "{count, plural, one {# venue} other {# venues}}",
+    "comingSoon": "Your calendar, bookings and payments will appear here as they are built.",
+    "status": {
+      "TRIAL": "Trial",
+      "ACTIVE": "Active",
+      "PAST_DUE": "Payment due",
+      "SUSPENDED": "Suspended",
+      "CANCELLED": "Cancelled"
+    }
+  },
+  "Staff": {
+    "title": "Staff",
+    "subtitle": "People who can work in this workspace, and what they may do.",
+    "noAccess": "You do not have access to manage staff.",
+    "scope": {
+      "all": "All venues",
+      "some": "{count, plural, one {# venue} other {# venues}}"
+    },
+    "members": {
+      "title": "Members",
+      "loadFailed": "The staff list could not be loaded.",
+      "you": "You",
+      "inactive": "Inactive",
+      "edit": "Edit",
+      "editNamed": "Edit {name}"
+    },
+    "invitations": {
+      "title": "Pending invitations",
+      "empty": "No pending invitations.",
+      "loadFailed": "The invitations could not be loaded.",
+      "expired": "Expired",
+      "expires": "Expires {date}",
+      "revoke": "Revoke",
+      "revoked": "Invitation revoked"
+    },
+    "invite": {
+      "open": "Invite someone",
+      "title": "Invite someone",
+      "description": "They get an email with a link that works for 3 days.",
+      "email": "Email",
+      "role": "Role",
+      "rolePlaceholder": "Choose a role",
+      "chooseRole": "Choose a role",
+      "scopeAll": "They will have access to all venues.",
+      "scopeOwn": "They will have access to your {count, plural, one {# venue} other {# venues}}, like you.",
+      "rolesFailed": "The roles could not be loaded.",
+      "submit": "Send invitation",
+      "sent": "Invitation sent to {email}"
+    },
+    "edit": {
+      "title": "Edit {name}",
+      "description": "Change the role or switch the person off. Venue access can be changed once venues are set up.",
+      "role": "Role",
+      "active": "Active (can log in and work)",
+      "save": "Save changes",
+      "saved": "Changes saved"
+    },
+    "errors": {
+      "lastOwner": "A workspace must keep at least one active Owner. Make someone else an Owner first.",
+      "cannotManage": "You cannot change someone who has more access than you.",
+      "changedByOthers": "Someone else changed this person just now. The list has been reloaded, please check and try again.",
+      "duplicateInvite": "This person is already a member, or already has a pending invitation.",
+      "cannotInvite": "You cannot give this role or this venue access.",
+      "planLimit": "Your plan has no room for another person. Upgrade your plan to invite more.",
+      "alreadyAccepted": "This invitation was already accepted."
+    }
   }
 }

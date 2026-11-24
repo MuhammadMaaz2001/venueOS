@@ -2,7 +2,7 @@ import { randomBytes, randomUUID } from 'node:crypto';
 import { Injectable } from '@nestjs/common';
 import { AuthDb, TenantDb } from '@venueos/db';
 import type { DbTx } from '@venueos/db';
-import { DEFAULT_ROLES } from '@venueos/shared';
+import { DEFAULT_ROLES, EMAIL_NOT_VERIFIED_REASON } from '@venueos/shared';
 import type {
   ChangePasswordInput,
   LoginInput,
@@ -371,7 +371,7 @@ export class AuthService {
 
     if (!user.emailVerifiedAt) {
       throw new ForbiddenError('Confirm your email address first. Check your inbox.', {
-        reason: 'EMAIL_NOT_VERIFIED',
+        reason: EMAIL_NOT_VERIFIED_REASON,
       });
     }
 

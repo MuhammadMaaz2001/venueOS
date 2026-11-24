@@ -36,6 +36,7 @@ pnpm --filter @venueos/db test:constraints   # double-booking, RLS, privilege te
 pnpm db:migrate          # prisma migrate dev (uses MIGRATE_DATABASE_URL, the venueos_migrator role)
 pnpm db:seed
 pnpm api-client:generate # regenerate typed client after any API change
+pnpm --filter @venueos/web e2e   # Playwright journeys (needs docker postgres + mailpit; starts/reuses pnpm dev)
 ```
 
 ## Non-negotiable rules

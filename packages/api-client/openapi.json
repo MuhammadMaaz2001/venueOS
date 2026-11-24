@@ -652,6 +652,29 @@
         ]
       }
     },
+    "/v1/staff/assignable-roles": {
+      "get": {
+        "description": "Only roles whose permissions and discount limit do not exceed my own. Does not need role.manage.",
+        "operationId": "StaffController_assignableRoles",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AssignableRolesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Roles I may give to someone (for the invite and role pickers)",
+        "tags": [
+          "staff"
+        ]
+      }
+    },
     "/v1/staff/{membershipId}": {
       "patch": {
         "description": "A workspace always keeps at least one active Owner (422 otherwise).",
@@ -912,13 +935,29 @@
                     "SUSPENDED",
                     "CANCELLED"
                   ]
+                },
+                "country": {
+                  "type": "string"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "timezone": {
+                  "type": "string"
+                },
+                "defaultLocale": {
+                  "type": "string"
                 }
               },
               "required": [
                 "id",
                 "name",
                 "slug",
-                "status"
+                "status",
+                "country",
+                "currency",
+                "timezone",
+                "defaultLocale"
               ]
             }
           }
@@ -1072,13 +1111,29 @@
                     "SUSPENDED",
                     "CANCELLED"
                   ]
+                },
+                "country": {
+                  "type": "string"
+                },
+                "currency": {
+                  "type": "string"
+                },
+                "timezone": {
+                  "type": "string"
+                },
+                "defaultLocale": {
+                  "type": "string"
                 }
               },
               "required": [
                 "id",
                 "name",
                 "slug",
-                "status"
+                "status",
+                "country",
+                "currency",
+                "timezone",
+                "defaultLocale"
               ]
             }
           },
@@ -1673,6 +1728,32 @@
         "required": [
           "data",
           "nextCursor"
+        ]
+      },
+      "AssignableRolesResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "id",
+                "name"
+              ]
+            }
+          }
+        },
+        "required": [
+          "data"
         ]
       },
       "UpdateStaffDto": {

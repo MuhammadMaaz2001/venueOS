@@ -140,10 +140,35 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       runbook in docs/08. Worker config: `AUTH_DATABASE_URL` and `S3_BUCKET` are now required.
       **Not built:** real document kinds (quotation, receipt, event sheet: with their modules), real scanners
       (`holds.expire`, reminders, ...), tenant-editable templates, Dockerfiles.
-- [ ] **P0-7 Web foundation**: layout shell (sidebar, tenant switcher, user menu), auth pages,
-      `/api` rewrite, api-client wiring with TanStack Query, next-intl (en/ur + RTL, no locale
-      URL segment), shadcn/ui, format helpers (currency minor units, venue timezone), error
-      toasts mapped from API codes.
+- [x] **P0-7 Web foundation** (done): `(auth)` pages `/login`, `/signup`, `/verify-email`, `/forgot-password`,
+      `/reset-password`, `/accept-invite` (a new person, or an existing account that accepts while logged in; the
+      token waits in `sessionStorage` while the user logs in, never in a URL) and `/select-workspace`, all with
+      enumeration-safe answers (one "check your inbox" screen, one login message; `EMAIL_NOT_VERIFIED_REASON` shows
+      the "confirm your email" screen with a resend button). **One POST per token** under React StrictMode:
+      `lib/submit-once.ts` keeps the in-flight call in a module-level map keyed by (purpose, token), the URL is
+      stripped with `history.replaceState`. `(app)` shell: sidebar (a sheet on a phone), workspace switcher
+      (`GET /me/tenants`, `POST /me/switch-tenant`, cache cleared), user menu (language, logout, log out
+      everywhere), permission-driven navigation, read-only banner for a SUSPENDED tenant; `proxy.ts` redirects a
+      visitor without the session cookie, a 401 anywhere sends the user to `/login?next=`. **Staff page**
+      (`staff.manage`): members, pending invitations (revoke), invite dialog, edit role/active with `rev`
+      (`VERSION_CONFLICT` reloads, the last-Owner 422 is explained in the dialog). **An invitation carries the
+      inviter's own venue scope** (never "all venues" from someone limited to venues; API test and unit test).
+      `GET /v1/staff/assignable-roles` (new) feeds the pickers without `role.manage`; `TenantSummary` gained
+      `country`, `currency`, `timezone`, `defaultLocale`; `EMAIL_NOT_VERIFIED_REASON` is exported from shared.
+      `packages/api-client` now ships the `openapi-fetch` client (adds `X-Requested-With: venueos` to every
+      non-GET); features call it from `features/<module>/api.ts` (TanStack Query); errors become `ApiError`, and a
+      toast maps the code to `Errors.<CODE>` (a test checks that en and ur cover every `ERROR_CODES` entry).
+      next-intl en + ur without a URL segment, RTL by logical CSS only (an ESLint rule bans `ml-/mr-/pl-/pr-/left-/
+      right-/text-left/text-right/...` outside the generated `components/ui`). **Urdu UI font: Noto Naskh Arabic**
+      (Nastaliq is too tall for dense controls), self-hosted with Noto Sans Latin (`src/fonts/NOTICE.md`), Latin
+      digits in both languages. `lib/format.ts`: money by currency minor units (string-safe), dates in an explicit
+      IANA zone. Tests: Vitest (format, errors, messages parity, token once-guard, venue scope) and Playwright
+      (`pnpm --filter @venueos/web e2e`): signup -> verify (Mailpit) -> login -> invite -> accept (new and existing
+      account) -> switch workspace -> logout, the last-Owner rule, in en and ur, plus an opt-in screenshot run
+      (`e2e:screenshots`) that also checks that no page is wider than 360 px. **Not built:** a venue picker and
+      venue-scope editing (needs the venues module), the venue's own time zone in `format.ts` callers (the
+      tenant's is used until venues exist), profile / password change UI, translated names of the system roles
+      (they are data), dark mode, Sentry, the e2e in CI (P0-8).
 - [ ] **P0-8 CI/CD**: GitHub Actions (lint, typecheck, tests, constraint tests with a Postgres
       service container, audit, gitleaks, Docker builds). `pnpm test` of `apps/worker` needs the same
       Postgres **and a Mailpit service container** (SMTP :1025, HTTP API :8025; `SMTP_URL` and
@@ -338,3 +363,18 @@ GET localhost:4000/health returns 200; pnpm --filter @venueos/db test:constraint
 the docker-compose Postgres.
 Do not implement auth or business modules yet. Do not touch git.
 ```
+
+### Handoff from P0-7
+
+**To P0-8 (CI/CD):** the web e2e (`pnpm --filter @venueos/web e2e`) needs the same Postgres and Mailpit as the worker
+tests, plus the three apps running (`pnpm dev`, or built and started: Playwright's `webServer` runs `pnpm dev` when
+nothing listens on :3000) and **Chromium** (`playwright install --with-deps chromium`). `e2e/global-setup.ts` waits for
+`/health/ready` of the API and clears `login_attempts` / `auth_requests` on a LOCAL database so repeated runs do not hit
+the per-IP limits (set `E2E_AUTH_DATABASE_URL`, otherwise it reads `apps/api/.env`); in CI start from an empty database.
+The worker must be running: the e2e reads the emails from Mailpit.
+
+**To the modules:** a page gets its session from `useSession()` (`can(permission)`, tenant currency/time zone) and its
+formatting from `useFormatters()`; a module adds its entry to `features/shell/nav.ts`, its calls to
+`features/<module>/api.ts` (`unwrap(api.GET(...))`), its texts to both message files, and, for a code with a more
+specific meaning, an `errorMessages` override in the mutation's `meta` (see `features/staff/api.ts`). Roles of the
+system (`Owner`, `Sales agent`, ...) are shown as stored: translating them is a follow-up.

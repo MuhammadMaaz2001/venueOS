@@ -1,3 +1,4 @@
+import { DEFAULT_ROLES } from '@venueos/shared';
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { hashToken } from '../modules/auth/auth.constants';
 import { AuthHarness, TEST_ENV, TEST_PASSWORD, freshIp, uniqueEmail } from './helpers/auth-harness';
@@ -179,6 +180,38 @@ describe('staff invitations', () => {
       expect(
         (await invite(headers, { email: uniqueEmail(), roleId, venueIds: [mine] })).status,
       ).toBe(201);
+    });
+
+    it('a venue-limited Branch manager (with staff.manage) invites only into their own venues: "all venues" is refused', async () => {
+      const { tenant } = await workspace();
+      const mine = await world.createVenue(tenant);
+      const theirs = await world.createVenue(tenant);
+      // The default Branch manager role has no staff.manage; a tenant grants it by copying the role.
+      const branchManager = DEFAULT_ROLES.find((r) => r.key === 'branch_manager');
+      if (!branchManager) throw new Error('missing default role');
+      const manager = await h.member(world, tenant, {
+        role: {
+          name: 'Branch manager + staff',
+          permissions: [...branchManager.permissions, 'staff.manage'],
+          limits: branchManager.limits,
+        },
+        venueIds: [mine],
+      });
+      const headers = await h.sessionHeaders(t, manager.email);
+      const roleId = tenant.roles.sales_agent;
+
+      // What the web app sends by default: the inviter's own scope.
+      const own = await invite(headers, { email: uniqueEmail(), roleId, venueIds: [mine] });
+      expect(own.status).toBe(201);
+      expect(own.body.venueIds).toEqual([mine]);
+      // Never "all venues", never a venue outside the scope.
+      expect((await invite(headers, { email: uniqueEmail(), roleId })).status).toBe(403);
+      expect((await invite(headers, { email: uniqueEmail(), roleId, venueIds: [] })).status).toBe(
+        403,
+      );
+      expect(
+        (await invite(headers, { email: uniqueEmail(), roleId, venueIds: [theirs] })).status,
+      ).toBe(403);
     });
 
     it('refuses a second pending invitation for the address (409) and an existing active member (409)', async () => {

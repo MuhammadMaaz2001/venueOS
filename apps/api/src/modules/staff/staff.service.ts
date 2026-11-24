@@ -2,7 +2,12 @@ import { Injectable } from '@nestjs/common';
 import { TenantDb } from '@venueos/db';
 import type { DbTx } from '@venueos/db';
 import { isPermission, parsePlanEntitlements, parseRoleLimits } from '@venueos/shared';
-import type { StaffListResponse, StaffMemberDto, UpdateStaffInput } from '@venueos/shared';
+import type {
+  AssignableRolesResponse,
+  StaffListResponse,
+  StaffMemberDto,
+  UpdateStaffInput,
+} from '@venueos/shared';
 import { ClsService } from 'nestjs-cls';
 import type { TenantAccess } from '../../common/access/access-context';
 import { assertNoEscalation } from '../../common/access/escalation';
@@ -100,6 +105,39 @@ export class StaffService {
       }),
     );
     return { data: rows.map(toDto), nextCursor: null };
+  }
+
+  /**
+   * The roles the caller may give to someone: the same no-escalation rule that inviting and PATCH apply, so the
+   * pickers of the web app never offer a role the API would refuse. Needs only `staff.manage` (`GET /v1/roles`
+   * needs `role.manage` and returns the permission sets, which a staff manager does not need to see).
+   */
+  async assignableRoles(): Promise<AssignableRolesResponse> {
+    const access = this.access;
+    const roles = await this.tenantDb.tx((tx) =>
+      tx.role.findMany({
+        where: { tenantId: access.tenantId },
+        orderBy: [{ isSystem: 'desc' }, { name: 'asc' }, { id: 'asc' }],
+        select: { id: true, name: true, permissions: true, limits: true },
+      }),
+    );
+    const data = roles
+      .filter((role) => {
+        try {
+          assertNoEscalation(
+            access,
+            role.permissions.filter(isPermission),
+            [],
+            parseRoleLimits(role.limits).maxDiscountPct,
+            0,
+          );
+          return true;
+        } catch {
+          return false;
+        }
+      })
+      .map((role) => ({ id: role.id, name: role.name }));
+    return { data };
   }
 
   async update(membershipId: string, input: UpdateStaffInput): Promise<StaffMemberDto> {

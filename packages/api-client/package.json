@@ -2,7 +2,7 @@
   "name": "@venueos/api-client",
   "version": "0.0.0",
   "private": true,
-  "description": "Typed client generated from the API's OpenAPI spec (types now; fetch wiring with TanStack Query arrives in P0-7)",
+  "description": "Typed client generated from the API's OpenAPI spec: generated types plus an openapi-fetch client that adds the CSRF header",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
   "exports": {
@@ -25,5 +25,8 @@
     "@types/node": "24.19.2",
     "openapi-typescript": "7.13.0",
     "typescript": "6.0.3"
+  },
+  "dependencies": {
+    "openapi-fetch": "0.17.0"
   }
 }

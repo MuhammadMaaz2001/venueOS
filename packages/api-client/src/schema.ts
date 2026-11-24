@@ -373,6 +373,26 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/staff/assignable-roles": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Roles I may give to someone (for the invite and role pickers)
+         * @description Only roles whose permissions and discount limit do not exceed my own. Does not need role.manage.
+         */
+        get: operations["StaffController_assignableRoles"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/staff/{membershipId}": {
         parameters: {
             query?: never;
@@ -449,6 +469,10 @@ export interface components {
                 slug: string;
                 /** @enum {string} */
                 status: "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
+                country: string;
+                currency: string;
+                timezone: string;
+                defaultLocale: string;
             }[];
         };
         ResetPasswordDto: {
@@ -484,6 +508,10 @@ export interface components {
                 slug: string;
                 /** @enum {string} */
                 status: "TRIAL" | "ACTIVE" | "PAST_DUE" | "SUSPENDED" | "CANCELLED";
+                country: string;
+                currency: string;
+                timezone: string;
+                defaultLocale: string;
             }[];
             activeTenantId: string | null;
         };
@@ -592,6 +620,12 @@ export interface components {
                 rev: number;
             }[];
             nextCursor: null;
+        };
+        AssignableRolesResponseDto: {
+            data: {
+                id: string;
+                name: string;
+            }[];
         };
         UpdateStaffDto: {
             rev: number;
@@ -1128,6 +1162,25 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffListResponseDto"];
+                };
+            };
+        };
+    };
+    StaffController_assignableRoles: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AssignableRolesResponseDto"];
                 };
             };
         };

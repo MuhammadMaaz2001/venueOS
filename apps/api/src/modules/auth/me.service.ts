@@ -62,7 +62,20 @@ export class MeService {
       const memberships = await tx.membership.findMany({
         where: { userId, active: true },
         orderBy: [{ createdAt: 'asc' }, { id: 'asc' }],
-        select: { tenant: { select: { id: true, name: true, slug: true, status: true } } },
+        select: {
+          tenant: {
+            select: {
+              id: true,
+              name: true,
+              slug: true,
+              status: true,
+              country: true,
+              currency: true,
+              timezone: true,
+              defaultLocale: true,
+            },
+          },
+        },
       });
       return memberships.map((m) => m.tenant);
     });

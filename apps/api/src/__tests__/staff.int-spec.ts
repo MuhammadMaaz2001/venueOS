@@ -101,6 +101,59 @@ describe('staff', () => {
     });
   });
 
+  describe('GET /v1/staff/assignable-roles', () => {
+    const names = (res: { body: { data: { name: string }[] } }) => res.body.data.map((r) => r.name);
+
+    it('an owner may assign every role of the tenant; only id and name are returned', async () => {
+      const { ownerHeaders } = await workspace();
+      const res = await t.http().get('/v1/staff/assignable-roles').set(ownerHeaders);
+      expect(res.status).toBe(200);
+      expect(names(res)).toEqual(
+        expect.arrayContaining(['Owner', 'Branch manager', 'Sales agent', 'Accountant']),
+      );
+      for (const role of res.body.data) expect(Object.keys(role).sort()).toEqual(['id', 'name']);
+    });
+
+    it('works with staff.manage alone (no role.manage) and hides roles above the caller (no escalation)', async () => {
+      const { tenant } = await workspace();
+      const manager = await h.member(world, tenant, {
+        role: { permissions: ['staff.manage', 'customer.view'], limits: { maxDiscountPct: 0 } },
+      });
+      const headers = await as(manager);
+      expect((await t.http().get('/v1/roles').set(headers)).status).toBe(403);
+
+      const res = await t.http().get('/v1/staff/assignable-roles').set(headers);
+      expect(res.status).toBe(200);
+      // Owner, Branch manager, Sales agent, ... all hold permissions the caller lacks; only roles within
+      // {staff.manage, customer.view} remain (none of the defaults, plus the caller's own custom role).
+      expect(names(res)).not.toContain('Owner');
+      expect(names(res)).not.toContain('Sales agent');
+      expect(res.body.data.map((r: { id: string }) => r.id)).toContain(manager.roleId);
+    });
+
+    it("never lists another tenant's roles", async () => {
+      const { ownerHeaders } = await workspace();
+      const stranger = await workspace();
+      const res = await t.http().get('/v1/staff/assignable-roles').set(ownerHeaders);
+      const ids = res.body.data.map((r: { id: string }) => r.id);
+      expect(ids).not.toContain(stranger.tenant.roles.owner);
+    });
+
+    it('needs staff.manage (403) and a login (401)', async () => {
+      const { tenant } = await workspace();
+      const viewer = await h.member(world, tenant, { role: { permissions: ['customer.view'] } });
+      expect(
+        (
+          await t
+            .http()
+            .get('/v1/staff/assignable-roles')
+            .set(await as(viewer))
+        ).status,
+      ).toBe(403);
+      expect((await t.http().get('/v1/staff/assignable-roles')).status).toBe(401);
+    });
+  });
+
   describe('PATCH /v1/staff/:membershipId', () => {
     it('changes role and venues, bumps rev, and audits before/after', async () => {
       const { tenant, ownerHeaders } = await workspace();
