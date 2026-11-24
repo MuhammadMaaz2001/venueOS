@@ -1,0 +1,81 @@
+# The three application images (api, worker, web) running against the local postgres, mailpit and s3 of
+# docker-compose.yml. Use both files:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.apps.yml up --build -d
+#   curl http://localhost:3000/api/health/ready     # {"status":"ok",...}
+#   open http://localhost:3000/login
+#
+# The database must be migrated once (the images do not migrate): `pnpm db:deploy` from the host, with
+# MIGRATE_DATABASE_URL in packages/db/.env pointing at the published Postgres port. See "Run with Docker" in README.md.
+#
+# LOCAL ONLY: every value below is a placeholder for development (the role passwords are the ones of
+# packages/db/docker/init-roles.sql, the key is a throwaway). Staging and production get theirs from a secret store.
+# Browser origin = http://localhost:${WEB_PORT:-3000}; that is also APP_ORIGIN, which the API checks on every write (CSRF).
+x-api-env: &api-env
+  NODE_ENV: production
+  DATABASE_URL: postgresql://venueos_app:app_password@postgres:5432/venueos
+  AUTH_DATABASE_URL: postgresql://venueos_auth:auth_password@postgres:5432/venueos
+  FIELD_ENCRYPTION_KEYS: '{"active":"k1","keys":{"k1":"dmVudWVvcy1sb2NhbC1kZXYta2V5LTAxMjM0NTY3ODk="}}'
+  APP_ORIGIN: http://localhost:${WEB_PORT:-3000}
+  LOG_LEVEL: info
+
+services:
+  api:
+    image: venueos-api:local
+    build:
+      context: .
+      dockerfile: apps/api/Dockerfile
+    environment:
+      <<: *api-env
+      PORT: '4000'
+      # web -> api is one hop that does not add X-Forwarded-For (docs/08, TRUST_PROXY).
+      TRUST_PROXY: '0'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    # No published port: only the web container reaches the API, as in staging and production.
+
+  worker:
+    image: venueos-worker:local
+    build:
+      context: .
+      dockerfile: apps/worker/Dockerfile
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://venueos_app:app_password@postgres:5432/venueos
+      AUTH_DATABASE_URL: postgresql://venueos_auth:auth_password@postgres:5432/venueos
+      JOBS_DATABASE_URL: postgresql://venueos_jobs:jobs_password@postgres:5432/venueos
+      FIELD_ENCRYPTION_KEYS: '{"active":"k1","keys":{"k1":"dmVudWVvcy1sb2NhbC1kZXYta2V5LTAxMjM0NTY3ODk="}}'
+      EMAIL_PROVIDER: smtp
+      SMTP_URL: smtp://mailpit:1025
+      EMAIL_FROM_ADDRESS: bookings@venueos.test
+      # The local S3 (SeaweedFS). In staging/production the task/instance role is used instead of keys.
+      S3_BUCKET: venueos-local
+      S3_REGION: us-east-1
+      S3_ENDPOINT: http://s3:8333
+      S3_FORCE_PATH_STYLE: 'true'
+      S3_SSE: none
+      AWS_ACCESS_KEY_ID: venueos
+      AWS_SECRET_ACCESS_KEY: venueos-local-secret
+      PDF_CONCURRENCY: '1'
+      LOG_LEVEL: info
+    depends_on:
+      postgres:
+        condition: service_healthy
+      mailpit:
+        condition: service_started
+      s3:
+        condition: service_healthy
+
+  web:
+    image: venueos-web:local
+    build:
+      context: .
+      dockerfile: apps/web/Dockerfile
+      args:
+        # Baked into the build (Next.js compiles the /api rewrite): the API is always the service named "api".
+        API_INTERNAL_URL: http://api:4000
+    ports: ['${WEB_PORT:-3000}:3000']
+    depends_on:
+      api:
+        condition: service_healthy

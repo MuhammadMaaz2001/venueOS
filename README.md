@@ -5,7 +5,7 @@ quotations, bookings, availability, payments, event sheets, vendors, expenses an
 Built first for marriage halls and banquets in Pakistan, designed for any venue, country,
 currency and language.
 
-> Status: Phase 0 (foundations); P0-0 (docs + schema fixes) and P0-1 (monorepo skeleton) done, next P0-2. See `docs/09-phase-0-plan.md`.
+> Status: Phase 0 (foundations) is done (P0-0 to P0-8, local scope); the next work is module 1 (setup and onboarding). The AWS deploy comes later. See `docs/09-phase-0-plan.md`.
 
 ## Repository layout
 
@@ -56,6 +56,22 @@ creates the five roles (`venueos_migrator`, `venueos_definer`, `venueos_app`, `v
 - Web: http://localhost:3000 (seeded owner login: see `packages/db/seed.ts`, created in task P0-2)
 - API: http://localhost:4000/v1, OpenAPI docs at http://localhost:4000/docs
 - Emails in development land in Mailpit: http://localhost:8025
+
+## Run with Docker
+
+The three application images (api, worker with Chromium, web) run against the same local postgres, mailpit and s3:
+
+```bash
+pnpm --filter @venueos/db db:deploy        # once: migrate the database (the images do not migrate)
+docker compose -f docker-compose.yml -f docker-compose.apps.yml up --build -d --wait
+curl http://localhost:3000/api/health/ready    # {"status":"ok","checks":{"database":"up","queue":"up"}}
+# open http://localhost:3000/login (emails: http://localhost:8025)
+docker compose -f docker-compose.yml -f docker-compose.apps.yml down
+```
+
+Stop `pnpm dev` first (both use :3000; set `WEB_PORT` to move the container). The API is not published: only the web
+container reaches it, as in staging. `docker-compose.apps.yml` holds local placeholders only. CI is
+`.github/workflows/ci.yml`.
 
 ## Documentation
 

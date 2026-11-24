@@ -1,0 +1,17 @@
+# Secret scanning (CI job "gitleaks"). The default rules apply; this file only allows what is on purpose NOT secret:
+# local-development placeholders and test keys. A real secret in any of these files is still a mistake, so keep the
+# list short and the paths exact.
+title = "venueOS gitleaks config"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Local-development placeholders (docs/04-security.md section 10: only .env.example with fake values is committed)"
+paths = [
+  '''docker-compose\.apps\.yml''',            # throwaway local key and the init-roles.sql passwords
+  '''docker/seaweedfs/s3\.json''',            # local S3 key "venueos-local-secret"
+  '''packages/db/docker/init-roles\.sql''',   # local role passwords
+  '''.*\.env\.example''',                     # fake values by definition
+  '''apps/api/src/modules/auth/data/.*''',   # the breached-password list (public data)
+]

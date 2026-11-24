@@ -1,3 +1,4 @@
+import path from 'node:path';
 import type { NextConfig } from 'next';
 import createNextIntlPlugin from 'next-intl/plugin';
 
@@ -8,6 +9,10 @@ const apiInternalUrl = process.env.API_INTERNAL_URL ?? 'http://localhost:4000';
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  // A self-contained server for the Docker image (apps/web/Dockerfile). The tracing root is the monorepo root, so
+  // the workspace packages the app imports are traced into the output.
+  output: 'standalone',
+  outputFileTracingRoot: path.join(__dirname, '../..'),
   // The headers that do not depend on the request (the nonce-based CSP is set in src/proxy.ts).
   // docs/04-security.md section 5.
   async headers() {
