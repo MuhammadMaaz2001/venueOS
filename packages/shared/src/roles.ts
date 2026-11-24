@@ -40,6 +40,7 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     key: 'branch_manager',
     name: 'Branch manager',
     permissions: [
+      'venue.view',
       'venue.manage',
       'catalogue.manage',
       'pricing.manage',
@@ -78,6 +79,7 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     key: 'sales_agent',
     name: 'Sales agent',
     permissions: [
+      'venue.view',
       'customer.view',
       'customer.manage',
       'lead.view',
@@ -101,6 +103,7 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     key: 'accountant',
     name: 'Accountant',
     permissions: [
+      'venue.view',
       'customer.view',
       'booking.view',
       'booking.view_prices',
@@ -122,6 +125,7 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     key: 'operations',
     name: 'Operations',
     permissions: [
+      'venue.view',
       'eventsheet.view',
       'booking.view',
       'vendor.view',

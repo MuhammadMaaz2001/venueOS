@@ -7,6 +7,7 @@ import {
   makeSlot,
   makeVenue,
   scopedManagerAuth,
+  NO_VENUE_ACCESS,
   setupCaller,
 } from '../../../__tests__/helpers/setup-fixtures';
 import { World } from '../../../__tests__/helpers/world';
@@ -218,7 +219,7 @@ describe('slot template endpoints', () => {
 
       expect((await t.http().get(`/v1/slot-templates/${lunch.id}`).set(a.auth)).status).toBe(200);
       expect((await t.http().get(`/v1/slot-templates/${lunch.id}`).set(b.auth)).status).toBe(404);
-      const agent = await setupCaller(world, t, { role: { role: 'sales_agent' } });
+      const agent = await setupCaller(world, t, NO_VENUE_ACCESS);
       expect((await t.http().get('/v1/slot-templates').set(agent.auth)).status).toBe(403);
     });
   });

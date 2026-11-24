@@ -72,7 +72,7 @@ P0-6a). So authorization and the email plumbing come before auth, and the rest o
       `pnpm api-client:generate` exports the OpenAPI document and generates types
       (`openapi-typescript`). Handed on: bearer-token CSRF exemption hook (P0-4), the queue readiness
       check (P0-6a), the `TRUST_PROXY` staging check (P0-8, see docs/08).
-- [x] **P0-5 Authorization** (done): `permissions.ts` in shared (43 names, typed `Permission`; a test
+- [x] **P0-5 Authorization** (done): `permissions.ts` in shared (43 names, 44 since module 1 added `venue.view`, typed `Permission`; a test
       compares it with the table in `04-security.md`), `DEFAULT_ROLES` (five system roles with permission
       sets and `maxDiscountPct`, mirrored in `01-product-scope.md` and checked by a test), the seed fills
       the placeholder Owner role `seed_role_owner` in place (only while its permissions are empty; no

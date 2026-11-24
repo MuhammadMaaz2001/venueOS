@@ -1,5 +1,11 @@
 import type { TenantStatus } from '@venueos/db';
-import type { SlotTemplateDto, SpaceDto, VenueDto, EventTypeDto } from '@venueos/shared';
+import type {
+  Permission,
+  SlotTemplateDto,
+  SpaceDto,
+  VenueDto,
+  EventTypeDto,
+} from '@venueos/shared';
 import type { TestApp } from './create-test-app';
 import { authHeader } from './test-auth';
 import { World } from './world';
@@ -115,3 +121,8 @@ export async function scopedManagerAuth(
   const member = await world.addMember(tenant, { role: 'branch_manager', venueIds });
   return t.as(authHeader(member.userId, tenant.id));
 }
+
+/** A member who may read nothing of the setup (no `venue.view`, no `venue.manage`). */
+export const NO_VENUE_ACCESS = {
+  role: { role: { name: 'No venue access', permissions: ['customer.view'] as Permission[] } },
+};

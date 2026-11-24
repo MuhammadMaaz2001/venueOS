@@ -14,7 +14,7 @@ export interface NavItem {
 /** The sidebar. Modules add their entry here when they ship (docs/09, "MVP module order"). */
 export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/', label: 'dashboard', icon: LayoutDashboard },
-  { href: '/venues', label: 'venues', icon: Building2, permission: 'venue.manage' },
+  { href: '/venues', label: 'venues', icon: Building2, permission: 'venue.view' },
   { href: '/staff', label: 'staff', icon: Users, permission: 'staff.manage' },
   { href: '/settings', label: 'settings', icon: Settings, permission: 'tenant.settings.manage' },
 ];

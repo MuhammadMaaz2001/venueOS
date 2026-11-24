@@ -21,7 +21,7 @@ import { InviteDialog } from './invite-dialog';
 function useScopeText() {
   const t = useTranslations('Staff.scope');
   const { can } = useSession();
-  const venues = useVenues({ includeInactive: true, enabled: can('venue.manage') });
+  const venues = useVenues({ includeInactive: true, enabled: can('venue.view') });
   return (venueIds: readonly string[]) => {
     if (venueIds.length === 0) return t('all');
     const names = venueIds.map((id) => venues.data?.data.find((v) => v.id === id)?.name);

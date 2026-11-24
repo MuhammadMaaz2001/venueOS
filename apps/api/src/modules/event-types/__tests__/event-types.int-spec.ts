@@ -7,6 +7,7 @@ import {
   makeEventType,
   makeVenue,
   scopedManagerAuth,
+  NO_VENUE_ACCESS,
   setupCaller,
 } from '../../../__tests__/helpers/setup-fixtures';
 import { World } from '../../../__tests__/helpers/world';
@@ -93,7 +94,7 @@ describe('event type endpoints', () => {
       expect(all.body.data).toHaveLength(2);
       expect((await t.http().get(`/v1/event-types/${walima.id}`).set(a.auth)).status).toBe(200);
       expect((await t.http().get(`/v1/event-types/${walima.id}`).set(b.auth)).status).toBe(404);
-      const agent = await setupCaller(world, t, { role: { role: 'sales_agent' } });
+      const agent = await setupCaller(world, t, NO_VENUE_ACCESS);
       expect((await t.http().get('/v1/event-types').set(agent.auth)).status).toBe(403);
     });
   });

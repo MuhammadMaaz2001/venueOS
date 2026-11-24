@@ -27,7 +27,7 @@ export function VenuesPage() {
   const venues = useVenues({ includeInactive: true });
   const [adding, setAdding] = useState(false);
 
-  if (!can('venue.manage')) {
+  if (!can('venue.view')) {
     return (
       <Alert variant="destructive" role="alert" className="mx-auto max-w-3xl">
         <AlertDescription>{t('noAccess')}</AlertDescription>
@@ -35,7 +35,7 @@ export function VenuesPage() {
     );
   }
   // A new venue is outside the scope of someone limited to some venues, so only people with all venues add one.
-  const mayAdd = access.venueIds.length === 0;
+  const mayAdd = can('venue.manage') && access.venueIds.length === 0;
 
   return (
     <div className="mx-auto grid max-w-4xl gap-6">

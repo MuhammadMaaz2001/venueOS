@@ -14,7 +14,7 @@ export const PERMISSION_GROUPS = {
     'audit.view',
     'template.manage',
   ],
-  setup: ['venue.manage', 'catalogue.manage', 'pricing.manage'],
+  setup: ['venue.view', 'venue.manage', 'catalogue.manage', 'pricing.manage'],
   crm: ['customer.view', 'customer.manage', 'customer.view_sensitive', 'lead.view', 'lead.manage'],
   bookings: [
     'quotation.manage',

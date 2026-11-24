@@ -24,7 +24,7 @@ export function VenueScopePicker({
   const t = useTranslations('Staff.scope');
   const { can, access } = useSession();
   const unrestricted = access.venueIds.length === 0;
-  const venues = useVenues({ enabled: can('venue.manage') });
+  const venues = useVenues({ enabled: can('venue.view') });
   const [mode, setMode] = useState<'all' | 'some'>(
     value.length === 0 && unrestricted ? 'all' : 'some',
   );

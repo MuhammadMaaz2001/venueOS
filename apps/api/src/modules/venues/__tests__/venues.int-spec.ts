@@ -6,6 +6,7 @@ import {
   code,
   makeVenue,
   scopedManagerAuth,
+  NO_VENUE_ACCESS,
   setupCaller,
 } from '../../../__tests__/helpers/setup-fixtures';
 import { World } from '../../../__tests__/helpers/world';
@@ -147,8 +148,8 @@ describe('venues endpoints', () => {
       expect(list.body.data.map((v: { id: string }) => v.id)).toEqual([v1.id]);
     });
 
-    it('403: without venue.manage', async () => {
-      const { auth } = await setupCaller(world, t, { role: { role: 'operations' } });
+    it('403: without venue.view', async () => {
+      const { auth } = await setupCaller(world, t, NO_VENUE_ACCESS);
       expect((await t.http().get('/v1/venues').set(auth)).status).toBe(403);
     });
   });
@@ -171,10 +172,10 @@ describe('venues endpoints', () => {
       expect(res.status).toBe(404);
     });
 
-    it('403: without venue.manage', async () => {
+    it('403: without venue.view', async () => {
       const a = await setupCaller(world, t);
       const venue = await makeVenue(t, a.auth);
-      const agent = await setupCaller(world, t, { role: { role: 'sales_agent' } });
+      const agent = await setupCaller(world, t, NO_VENUE_ACCESS);
       expect((await t.http().get(`/v1/venues/${venue.id}`).set(agent.auth)).status).toBe(403);
     });
   });

@@ -8,8 +8,8 @@ import {
 } from './roles.js';
 
 describe('permissions', () => {
-  it('has 43 unique names of the form area.action', () => {
-    expect(PERMISSIONS).toHaveLength(43);
+  it('has 44 unique names of the form area.action', () => {
+    expect(PERMISSIONS).toHaveLength(44);
     expect(new Set(PERMISSIONS).size).toBe(PERMISSIONS.length);
     for (const p of PERMISSIONS) expect(p).toMatch(/^[a-z]+(\.[a-z_]+)+$/);
   });

@@ -116,12 +116,17 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
 | Area | Permissions |
 | --- | --- |
 | Tenant | `tenant.settings.manage`, `billing.manage`, `staff.manage`, `role.manage`, `audit.view`, `template.manage` |
-| Setup | `venue.manage`, `catalogue.manage`, `pricing.manage` |
+| Setup | `venue.view`, `venue.manage`, `catalogue.manage`, `pricing.manage` |
 | CRM | `customer.view`, `customer.manage`, `customer.view_sensitive`, `lead.view`, `lead.manage` |
 | Bookings | `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`, `booking.confirm_override`, `booking.cancel`, `booking.edit_locked`, `booking.override_rules` |
 | Money | `payment.view`, `payment.record`, `payment.reverse`, `payment.refund.request`, `payment.refund.approve` |
 | Operations | `eventsheet.view`, `vendor.view`, `vendor.manage`, `expense.view`, `expense.record`, `expense.reverse`, `inventory.view`, `inventory.record`, `inventory.adjust` |
 | Reports | `report.view`, `report.financial` |
+
+`venue.view` reads venues, spaces, slot templates and event types (every default role has it, so pickers and
+calendars work for everyone); `venue.manage` writes them and also reads the per-slot rent lists. A space's default
+`baseRent` is shown only to callers with `venue.manage` or `booking.view_prices` (others get `null`). Grant
+`venue.view` together with `venue.manage`: the API does not infer one from the other.
 
 `booking.create` / `booking.edit` cover creating and changing bookings and sessions;
 `booking.edit_locked` is the extra permission inside the guest-lock window;

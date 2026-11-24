@@ -12,14 +12,14 @@ import {
 } from './venues.dto';
 import { VenuesService } from './venues.service';
 
-/** Venues / branches (docs/01 module 1). Everything needs `venue.manage`; the caller's venue scope applies. */
+/** Venues / branches (docs/01 module 1). Reads need `venue.view`, writes `venue.manage`; the caller's venue scope applies. */
 @ApiTags('venues')
 @Controller('venues')
 export class VenuesController {
   constructor(private readonly venues: VenuesService) {}
 
   @Get()
-  @RequirePermission('venue.manage')
+  @RequirePermission('venue.view')
   @ApiOperation({ summary: 'List the venues the caller can see (active ones unless asked)' })
   @ApiOkResponse({ type: VenueListResponseDto })
   list(@Query() query: VenueListQueryDto): Promise<VenueListResponse> {
@@ -39,7 +39,7 @@ export class VenuesController {
   }
 
   @Get(':id')
-  @RequirePermission('venue.manage')
+  @RequirePermission('venue.view')
   @ApiOkResponse({ type: VenueResponseDto })
   get(@Param() params: VenueIdParamDto): Promise<VenueDto> {
     return this.venues.get(params.id);

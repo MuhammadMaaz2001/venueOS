@@ -15,7 +15,7 @@ import {
 import { SpaceSlotPricesService } from './space-slot-prices.service';
 import { SpacesService } from './spaces.service';
 
-/** Spaces (halls, lawns, ...) and combined spaces, plus their per-slot rent. Everything needs `venue.manage`. */
+/** Spaces (halls, lawns, ...) and combined spaces, plus their per-slot rent. Reads need `venue.view`, writes `venue.manage`. */
 @ApiTags('spaces')
 @Controller('spaces')
 export class SpacesController {
@@ -25,7 +25,7 @@ export class SpacesController {
   ) {}
 
   @Get()
-  @RequirePermission('venue.manage')
+  @RequirePermission('venue.view')
   @ApiOperation({ summary: 'List spaces of the venues the caller can see (optionally one venue)' })
   @ApiOkResponse({ type: SpaceListResponseDto })
   list(@Query() query: SpaceListQueryDto): Promise<SpaceListResponse> {
@@ -45,7 +45,7 @@ export class SpacesController {
   }
 
   @Get(':id')
-  @RequirePermission('venue.manage')
+  @RequirePermission('venue.view')
   @ApiOkResponse({ type: SpaceResponseDto })
   get(@Param() params: SpaceIdParamDto): Promise<SpaceDto> {
     return this.spaces.get(params.id);

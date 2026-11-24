@@ -24,13 +24,18 @@ interface Victim {
   invitationId: string;
   inviteeEmail: string;
   inviteToken: string;
+  /** Module 1 records of tenant B. */
+  venueId: string;
+  spaceId: string;
+  slotId: string;
+  eventTypeId: string;
 }
 
 interface IsolationCase {
   /** What the Owner of tenant A gets when the request names tenant B's data. */
   owner: number | readonly number[];
   request: (v: Victim) => {
-    method: 'get' | 'post' | 'patch' | 'delete';
+    method: 'get' | 'post' | 'patch' | 'put' | 'delete';
     path: string;
     body?: object;
   };
@@ -113,6 +118,136 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
       body: { token: v.inviteToken },
     }),
   },
+  // ── module 1: setup (venues, spaces, slots, prices, event types, settings) ──────────────────────────────
+  'TenantSettingsController.get': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/tenant/settings' }),
+  },
+  'TenantSettingsController.update': {
+    // Changes the caller's OWN workspace; a tenantId in the body is ignored.
+    owner: 200,
+    request: (v) => ({
+      method: 'patch',
+      path: '/v1/tenant/settings',
+      body: { rev: 1, name: 'Sweep workspace', tenantId: v.tenant.id },
+    }),
+  },
+  'VenuesController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/venues?includeInactive=true' }),
+  },
+  'VenuesController.create': {
+    // Lands in A (the tenant comes from the session): checked in the database afterwards.
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/venues',
+      body: { name: 'Sweep venue', tenantId: v.tenant.id },
+    }),
+  },
+  'VenuesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/venues/${v.venueId}` }),
+  },
+  'VenuesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/venues/${v.venueId}`,
+      body: { rev: 1, name: 'Hijacked' },
+    }),
+  },
+  'SpacesController.list': {
+    // Asking for B's venue only narrows: nothing of B comes back.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/spaces?venueId=${v.venueId}&includeInactive=true`,
+    }),
+  },
+  'SpacesController.create': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/spaces',
+      body: { venueId: v.venueId, name: 'Hijack space' },
+    }),
+  },
+  'SpacesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/spaces/${v.spaceId}` }),
+  },
+  'SpacesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/spaces/${v.spaceId}`,
+      body: { rev: 1, name: 'Hijacked' },
+    }),
+  },
+  'SpacesController.slotPrices': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/spaces/${v.spaceId}/slot-prices` }),
+  },
+  'SpacesController.replaceSlotPrices': {
+    owner: 404,
+    request: (v) => ({
+      method: 'put',
+      path: `/v1/spaces/${v.spaceId}/slot-prices`,
+      body: { prices: [{ slotId: v.slotId, rent: '1' }] },
+    }),
+  },
+  'SlotTemplatesController.list': {
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/slot-templates?venueId=${v.venueId}&includeInactive=true`,
+    }),
+  },
+  'SlotTemplatesController.create': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/slot-templates',
+      body: { venueId: v.venueId, name: 'Hijack slot', mode: 'FULL_DAY' },
+    }),
+  },
+  'SlotTemplatesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/slot-templates/${v.slotId}` }),
+  },
+  'SlotTemplatesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/slot-templates/${v.slotId}`,
+      body: { rev: 1, name: 'Hijacked' },
+    }),
+  },
+  'EventTypesController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/event-types?includeInactive=true' }),
+  },
+  'EventTypesController.create': {
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/event-types',
+      body: { name: 'Sweep event', tenantId: v.tenant.id },
+    }),
+  },
+  'EventTypesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/event-types/${v.eventTypeId}` }),
+  },
+  'EventTypesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/event-types/${v.eventTypeId}`,
+      body: { rev: 1, name: 'Hijacked' },
+    }),
+  },
 };
 
 /** Routes that are not tenant data, with the reason. */
@@ -163,6 +298,23 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
     expect(invited.status).toBe(201);
     const mail = await h.lastMail(inviteeEmail, 'staff.invite');
 
+    // Tenant B's setup records, created through the API like a real user would.
+    const post = async (path: string, body: object) => {
+      const res = await t.http().post(path).set(ownerBHeaders).send(body);
+      expect(res.status, path).toBe(201);
+      return res.body as { id: string };
+    };
+    const venueB = await post('/v1/venues', { name: 'B secret venue' });
+    const spaceB = await post('/v1/spaces', { venueId: venueB.id, name: 'B secret space' });
+    const slotB = await post('/v1/slot-templates', {
+      venueId: venueB.id,
+      name: 'B secret slot',
+      mode: 'FIXED',
+      startTime: '12:00',
+      endTime: '16:00',
+    });
+    const eventB = await post('/v1/event-types', { name: 'B secret event' });
+
     victim = {
       tenant: tenantB,
       roleId: customRole.roleId,
@@ -172,6 +324,10 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       invitationId: invited.body.id,
       inviteeEmail,
       inviteToken: String(mail.token),
+      venueId: venueB.id,
+      spaceId: spaceB.id,
+      slotId: slotB.id,
+      eventTypeId: eventB.id,
     };
     secrets = [
       tenantB.id,
@@ -186,6 +342,16 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       staffB.membershipId,
       invited.body.id,
       inviteeEmail,
+      tenantB.id.replace(/_/g, '-'), // its slug
+      `Test ${tenantB.id}`, // its name
+      venueB.id,
+      spaceB.id,
+      slotB.id,
+      eventB.id,
+      'B secret venue',
+      'B secret space',
+      'B secret slot',
+      'B secret event',
     ];
   });
 
@@ -250,6 +416,38 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
     // And no role was created in B by the copy attempt, nor in A out of B's role.
     const copies = await h.sql<{ id: string }>(`SELECT id FROM roles WHERE name = 'Copy of B'`);
     expect(copies).toEqual([]);
+
+    // Module 1: B's workspace, venue, space, slot and event type are as created.
+    const [tenant] = await h.sql<{ name: string; rev: number }>(
+      `SELECT name, rev FROM tenants WHERE id = $1`,
+      [victim.tenant.id],
+    );
+    expect(tenant).toEqual({ name: `Test ${victim.tenant.id}`, rev: 1 });
+    for (const [table, id, name] of [
+      ['venues', victim.venueId, 'B secret venue'],
+      ['spaces', victim.spaceId, 'B secret space'],
+      ['slot_templates', victim.slotId, 'B secret slot'],
+      ['event_types', victim.eventTypeId, 'B secret event'],
+    ] as const) {
+      const [row] = await h.sql<{ name: string; rev: number }>(
+        `SELECT name, rev FROM ${table} WHERE id = $1`,
+        [id],
+      );
+      expect(row, table).toEqual({ name, rev: 1 });
+    }
+    // Nothing the attacks created landed in B, and no slot price was written for B's space.
+    for (const table of ['venues', 'event_types', 'spaces', 'slot_templates']) {
+      const strays = await h.sql<{ id: string }>(
+        `SELECT id FROM ${table} WHERE tenant_id = $1 AND (name LIKE 'Sweep%' OR name LIKE 'Hijack%')`,
+        [victim.tenant.id],
+      );
+      expect(strays, table).toEqual([]);
+    }
+    const prices = await h.sql<{ rent: string }>(
+      `SELECT rent FROM space_slot_prices WHERE space_id = $1`,
+      [victim.spaceId],
+    );
+    expect(prices).toEqual([]);
   });
 
   it("the workspace list of tenant A's owner holds tenant A only", async () => {

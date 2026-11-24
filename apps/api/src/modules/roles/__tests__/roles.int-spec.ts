@@ -283,6 +283,7 @@ describe('roles endpoints', () => {
     it('201: copying a role within the caller own permissions is fine', async () => {
       const { tenant, auth } = await setup(
         manager([
+          'venue.view',
           'eventsheet.view',
           'booking.view',
           'vendor.view',

@@ -31,7 +31,7 @@ import {
 import { showServerFieldErrors, useSharedSchemaResolver } from './form-resolver';
 import type { Translate } from './form-resolver';
 
-/** Workspace settings (`tenant.settings.manage`) and the event types of the workspace (`venue.manage`). */
+/** Workspace settings (`tenant.settings.manage`) and the event types of the workspace (read with `venue.view`, written with `venue.manage`). */
 export function SettingsPage() {
   const t = useTranslations('Setup.settings');
   const { can } = useSession();
@@ -63,7 +63,7 @@ export function SettingsPage() {
           </CardContent>
         </Card>
       )}
-      {can('venue.manage') ? <EventTypesSection /> : null}
+      {can('venue.view') ? <EventTypesSection /> : null}
     </div>
   );
 }
@@ -216,14 +216,14 @@ function SettingsForm({ settings }: { settings: TenantSettingsResponse }) {
 
 function EventTypesSection() {
   const t = useTranslations('Setup.eventTypes');
-  const { access } = useSession();
+  const { access, can } = useSession();
   const eventTypes = useEventTypes({ includeInactive: true });
   const update = useUpdateEventType();
   const [dialog, setDialog] = useState<
     { kind: 'add' } | { kind: 'edit'; type: EventTypeDto } | null
   >(null);
   // Event types belong to the whole workspace: someone limited to some venues may look, not change.
-  const mayEdit = access.venueIds.length === 0;
+  const mayEdit = can('venue.manage') && access.venueIds.length === 0;
 
   const toggle = async (type: EventTypeDto) => {
     try {

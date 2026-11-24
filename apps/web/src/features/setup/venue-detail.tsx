@@ -39,8 +39,9 @@ export function VenueDetail({ id }: { id: string }) {
   const t = useTranslations('Setup.venue');
   const { can } = useSession();
   const venue = useVenue(id);
+  const canEdit = can('venue.manage');
 
-  if (!can('venue.manage')) {
+  if (!can('venue.view')) {
     return (
       <Alert variant="destructive" role="alert" className="mx-auto max-w-3xl">
         <AlertDescription>{t('noAccess')}</AlertDescription>
@@ -68,17 +69,18 @@ export function VenueDetail({ id }: { id: string }) {
         </Alert>
       ) : (
         <>
-          <VenueSection venue={venue.data} />
-          <SpacesSection venue={venue.data} />
-          <SlotsSection venue={venue.data} />
+          <VenueSection venue={venue.data} canEdit={canEdit} />
+          <SpacesSection venue={venue.data} canEdit={canEdit} />
+          <SlotsSection venue={venue.data} canEdit={canEdit} />
         </>
       )}
     </div>
   );
 }
 
-function VenueSection({ venue }: { venue: VenueDto }) {
+function VenueSection({ venue, canEdit }: { venue: VenueDto; canEdit: boolean }) {
   const t = useTranslations('Setup.venue');
+  const tf = useTranslations('Setup.fields');
   const update = useUpdateVenue();
 
   const toggle = async () => {
@@ -97,23 +99,43 @@ function VenueSection({ venue }: { venue: VenueDto }) {
           {venue.name}
           {!venue.active ? <Badge variant="secondary">{t('inactive')}</Badge> : null}
         </h1>
-        <Button
-          type="button"
-          variant="outline"
-          size="lg"
-          className="h-10"
-          disabled={update.isPending}
-          onClick={toggle}
-          data-testid="venue-toggle"
-        >
-          <Power aria-hidden />
-          {venue.active ? t('deactivate') : t('reactivate')}
-        </Button>
+        {canEdit ? (
+          <Button
+            type="button"
+            variant="outline"
+            size="lg"
+            className="h-10"
+            disabled={update.isPending}
+            onClick={toggle}
+            data-testid="venue-toggle"
+          >
+            <Power aria-hidden />
+            {venue.active ? t('deactivate') : t('reactivate')}
+          </Button>
+        ) : null}
       </div>
       <Card>
         <CardContent>
           {/* Keyed by the version: after a save or a reload the form starts from what the server has. */}
-          <VenueForm key={`${venue.id}:${venue.rev}`} venue={venue} submitLabel={t('save')} />
+          {canEdit ? (
+            <VenueForm key={`${venue.id}:${venue.rev}`} venue={venue} submitLabel={t('save')} />
+          ) : (
+            <dl className="grid gap-2 text-sm" data-testid="venue-readonly">
+              {[
+                [tf('city'), venue.city],
+                [tf('address'), venue.address],
+                [
+                  tf('openingHours'),
+                  venue.opensAt && venue.closesAt ? `${venue.opensAt}–${venue.closesAt}` : null,
+                ],
+              ].map(([label, value]) => (
+                <div key={label} className="flex flex-wrap gap-2">
+                  <dt className="text-muted-foreground">{label}</dt>
+                  <dd>{value ?? '—'}</dd>
+                </div>
+              ))}
+            </dl>
+          )}
         </CardContent>
       </Card>
     </section>
@@ -125,7 +147,7 @@ function VenueSection({ venue }: { venue: VenueDto }) {
 type SpaceDialog =
   { kind: 'add' } | { kind: 'edit'; space: SpaceDto } | { kind: 'prices'; space: SpaceDto };
 
-function SpacesSection({ venue }: { venue: VenueDto }) {
+function SpacesSection({ venue, canEdit }: { venue: VenueDto; canEdit: boolean }) {
   const t = useTranslations('Setup.spaces');
   const tk = useTranslations('Setup.kinds');
   const { money } = useFormatters();
@@ -150,17 +172,19 @@ function SpacesSection({ venue }: { venue: VenueDto }) {
         <h2 id="spaces-heading" className="text-lg font-medium">
           {t('title')}
         </h2>
-        <Button
-          type="button"
-          size="lg"
-          className="h-10"
-          disabled={!venue.active}
-          onClick={() => setDialog({ kind: 'add' })}
-          data-testid="space-add"
-        >
-          <Plus aria-hidden />
-          {t('add')}
-        </Button>
+        {canEdit ? (
+          <Button
+            type="button"
+            size="lg"
+            className="h-10"
+            disabled={!venue.active}
+            onClick={() => setDialog({ kind: 'add' })}
+            data-testid="space-add"
+          >
+            <Plus aria-hidden />
+            {t('add')}
+          </Button>
+        ) : null}
       </div>
       {spaces.isPending ? (
         <Skeleton className="h-16 w-full" aria-busy="true" />
@@ -205,40 +229,42 @@ function SpacesSection({ venue }: { venue: VenueDto }) {
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className="h-9"
-                      onClick={() => setDialog({ kind: 'edit', space })}
-                    >
-                      <Pencil aria-hidden />
-                      {t('edit')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className="h-9"
-                      disabled={!space.active || (slots.data?.data.length ?? 0) === 0}
-                      onClick={() => setDialog({ kind: 'prices', space })}
-                    >
-                      <Tag aria-hidden />
-                      {t('prices')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="lg"
-                      className="h-9"
-                      disabled={update.isPending}
-                      onClick={() => toggle(space)}
-                    >
-                      <Power aria-hidden />
-                      {space.active ? t('deactivate') : t('reactivate')}
-                    </Button>
-                  </div>
+                  {canEdit ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="h-9"
+                        onClick={() => setDialog({ kind: 'edit', space })}
+                      >
+                        <Pencil aria-hidden />
+                        {t('edit')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="h-9"
+                        disabled={!space.active || (slots.data?.data.length ?? 0) === 0}
+                        onClick={() => setDialog({ kind: 'prices', space })}
+                      >
+                        <Tag aria-hidden />
+                        {t('prices')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        className="h-9"
+                        disabled={update.isPending}
+                        onClick={() => toggle(space)}
+                      >
+                        <Power aria-hidden />
+                        {space.active ? t('deactivate') : t('reactivate')}
+                      </Button>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>
@@ -302,7 +328,7 @@ function SpacesSection({ venue }: { venue: VenueDto }) {
 
 type SlotDialog = { kind: 'add' } | { kind: 'edit'; slot: SlotTemplateDto };
 
-function SlotsSection({ venue }: { venue: VenueDto }) {
+function SlotsSection({ venue, canEdit }: { venue: VenueDto; canEdit: boolean }) {
   const t = useTranslations('Setup.slots');
   const tm = useTranslations('Setup.modes');
   const td = useTranslations('Setup.days');
@@ -325,17 +351,19 @@ function SlotsSection({ venue }: { venue: VenueDto }) {
         <h2 id="slots-heading" className="text-lg font-medium">
           {t('title')}
         </h2>
-        <Button
-          type="button"
-          size="lg"
-          className="h-10"
-          disabled={!venue.active}
-          onClick={() => setDialog({ kind: 'add' })}
-          data-testid="slot-add"
-        >
-          <Plus aria-hidden />
-          {t('add')}
-        </Button>
+        {canEdit ? (
+          <Button
+            type="button"
+            size="lg"
+            className="h-10"
+            disabled={!venue.active}
+            onClick={() => setDialog({ kind: 'add' })}
+            data-testid="slot-add"
+          >
+            <Plus aria-hidden />
+            {t('add')}
+          </Button>
+        ) : null}
       </div>
       {slots.isPending ? (
         <Skeleton className="h-16 w-full" aria-busy="true" />
@@ -367,29 +395,31 @@ function SlotsSection({ venue }: { venue: VenueDto }) {
                       .filter(Boolean)
                       .join(' · ')}
                   </p>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="lg"
-                      className="h-9"
-                      onClick={() => setDialog({ kind: 'edit', slot })}
-                    >
-                      <Pencil aria-hidden />
-                      {t('edit')}
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="lg"
-                      className="h-9"
-                      disabled={update.isPending}
-                      onClick={() => toggle(slot)}
-                    >
-                      <Power aria-hidden />
-                      {slot.active ? t('deactivate') : t('reactivate')}
-                    </Button>
-                  </div>
+                  {canEdit ? (
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="lg"
+                        className="h-9"
+                        onClick={() => setDialog({ kind: 'edit', slot })}
+                      >
+                        <Pencil aria-hidden />
+                        {t('edit')}
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="lg"
+                        className="h-9"
+                        disabled={update.isPending}
+                        onClick={() => toggle(slot)}
+                      >
+                        <Power aria-hidden />
+                        {slot.active ? t('deactivate') : t('reactivate')}
+                      </Button>
+                    </div>
+                  ) : null}
                 </li>
               ))}
             </ul>

@@ -12,6 +12,7 @@ import {
   makeSpace,
   makeVenue,
   scopedManagerAuth,
+  NO_VENUE_ACCESS,
   setupCaller,
 } from '../../../__tests__/helpers/setup-fixtures';
 import { World } from '../../../__tests__/helpers/world';
@@ -278,7 +279,7 @@ describe('spaces endpoints', () => {
       const space = await makeSpace(t, a.auth, venue.id);
       expect((await t.http().get(`/v1/spaces/${space.id}`).set(a.auth)).status).toBe(200);
       expect((await t.http().get(`/v1/spaces/${space.id}`).set(b.auth)).status).toBe(404);
-      const agent = await setupCaller(world, t, { role: { role: 'operations' } });
+      const agent = await setupCaller(world, t, NO_VENUE_ACCESS);
       expect((await t.http().get(`/v1/spaces/${space.id}`).set(agent.auth)).status).toBe(403);
     });
   });

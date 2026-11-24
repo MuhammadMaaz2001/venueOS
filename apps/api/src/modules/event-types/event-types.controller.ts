@@ -12,14 +12,14 @@ import {
 } from './event-types.dto';
 import { EventTypesService } from './event-types.service';
 
-/** Event types (Mehndi, Barat, Walima, ...): tenant-wide. Everything needs `venue.manage`. */
+/** Event types (Mehndi, Barat, Walima, ...): tenant-wide. Reads need `venue.view`, writes `venue.manage`. */
 @ApiTags('event-types')
 @Controller('event-types')
 export class EventTypesController {
   constructor(private readonly eventTypes: EventTypesService) {}
 
   @Get()
-  @RequirePermission('venue.manage')
+  @RequirePermission('venue.view')
   @ApiOperation({ summary: 'List the event types of the workspace' })
   @ApiOkResponse({ type: EventTypeListResponseDto })
   list(@Query() query: EventTypeListQueryDto): Promise<EventTypeListResponse> {
@@ -38,7 +38,7 @@ export class EventTypesController {
   }
 
   @Get(':id')
-  @RequirePermission('venue.manage')
+  @RequirePermission('venue.view')
   @ApiOkResponse({ type: EventTypeResponseDto })
   get(@Param() params: EventTypeIdParamDto): Promise<EventTypeDto> {
     return this.eventTypes.get(params.id);

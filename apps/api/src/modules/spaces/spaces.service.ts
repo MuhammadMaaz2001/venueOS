@@ -44,7 +44,7 @@ interface SpaceRow {
 
 const WITH_COMPONENTS = { components: { select: { componentSpaceId: true } } } as const;
 
-function toDto(row: SpaceRow, currency: string): SpaceDto {
+function toDto(row: SpaceRow, currency: string, showRent: boolean): SpaceDto {
   return {
     id: row.id,
     venueId: row.venueId,
@@ -57,7 +57,7 @@ function toDto(row: SpaceRow, currency: string): SpaceDto {
     componentIds: row.components.map((c) => c.componentSpaceId).sort(),
     setupBufferMin: row.setupBufferMin,
     cleanupBufferMin: row.cleanupBufferMin,
-    baseRent: row.baseRent === null ? null : storedMoney(row.baseRent, currency),
+    baseRent: row.baseRent === null || !showRent ? null : storedMoney(row.baseRent, currency),
     active: row.active,
     rev: row.rev,
     createdAt: row.createdAt.toISOString(),
@@ -81,6 +81,15 @@ export class SpacesService {
     return access;
   }
 
+  /**
+   * The default rent is pricing information: callers who only read venues (`venue.view`, e.g. Operations) get
+   * `null` unless they also manage venues or may see booking prices.
+   */
+  private get showRent(): boolean {
+    const permissions = this.access.permissions;
+    return permissions.includes('venue.manage') || permissions.includes('booking.view_prices');
+  }
+
   async list(venueId: string | undefined, includeInactive: boolean): Promise<SpaceListResponse> {
     const { tenantId } = this.access;
     // A venue the caller names only narrows the list; outside their scope it is simply empty.
@@ -96,7 +105,7 @@ export class SpacesService {
         include: WITH_COMPONENTS,
         orderBy: [{ active: 'desc' }, { name: 'asc' }, { id: 'asc' }],
       });
-      return { data: rows.map((r) => toDto(r, currency)), nextCursor: null };
+      return { data: rows.map((r) => toDto(r, currency, this.showRent)), nextCursor: null };
     });
   }
 
@@ -104,7 +113,7 @@ export class SpacesService {
     const { tenantId } = this.access;
     return this.tenantDb.tx(async (tx) => {
       const row = await this.load(tx, id);
-      return toDto(row, await tenantCurrency(tx, tenantId));
+      return toDto(row, await tenantCurrency(tx, tenantId), this.showRent);
     });
   }
 
@@ -152,7 +161,7 @@ export class SpacesService {
           })),
         });
       }
-      const dto = toDto(await this.load(tx, created.id), currency);
+      const dto = toDto(await this.load(tx, created.id), currency, this.showRent);
       await this.audit.record(tx, {
         action: 'space.create',
         entityType: 'space',
@@ -169,7 +178,7 @@ export class SpacesService {
       const current = await this.load(tx, id);
       if (current.rev !== input.rev) throw new VersionConflictError();
       const currency = await tenantCurrency(tx, tenantId);
-      const before = toDto(current, currency);
+      const before = toDto(current, currency, this.showRent);
 
       if (input.componentIds !== undefined) {
         if (!current.isCombined) {
@@ -237,7 +246,7 @@ export class SpacesService {
         });
       }
 
-      const after = toDto(await this.load(tx, id), currency);
+      const after = toDto(await this.load(tx, id), currency, this.showRent);
       await this.audit.record(tx, {
         action: 'space.update',
         entityType: 'space',
