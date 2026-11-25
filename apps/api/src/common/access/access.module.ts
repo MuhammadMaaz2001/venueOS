@@ -1,4 +1,5 @@
 import { Global, Module } from '@nestjs/common';
+import { PlanLimits } from './plan-limits.service';
 import { VenueScope } from './venue-scope.service';
 
 /**
@@ -7,7 +8,7 @@ import { VenueScope } from './venue-scope.service';
  */
 @Global()
 @Module({
-  providers: [VenueScope],
-  exports: [VenueScope],
+  providers: [VenueScope, PlanLimits],
+  exports: [VenueScope, PlanLimits],
 })
 export class AccessModule {}

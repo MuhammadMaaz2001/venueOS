@@ -17,9 +17,15 @@ import { CsrfGuard } from './common/security/csrf.guard';
 import { APP_CONFIG, ConfigModule } from './config/config.module';
 import type { AppConfig } from './config/config.module';
 import { HealthModule } from './health/health.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { AuthModule } from './modules/auth/auth.module';
+import { EventTypesModule } from './modules/event-types/event-types.module';
 import { RolesModule } from './modules/roles/roles.module';
+import { SlotTemplatesModule } from './modules/slot-templates/slot-templates.module';
+import { SpacesModule } from './modules/spaces/spaces.module';
 import { StaffModule } from './modules/staff/staff.module';
+import { TenantSettingsModule } from './modules/tenant-settings/tenant-settings.module';
+import { VenuesModule } from './modules/venues/venues.module';
 @Module({
   imports: [
     ConfigModule,
@@ -40,7 +46,13 @@ import { StaffModule } from './modules/staff/staff.module';
     HealthModule,
     AuthModule,
     RolesModule,
+    AuditLogsModule,
     StaffModule,
+    TenantSettingsModule,
+    VenuesModule,
+    SpacesModule,
+    SlotTemplatesModule,
+    EventTypesModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

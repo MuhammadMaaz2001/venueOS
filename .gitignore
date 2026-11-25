@@ -17,6 +17,7 @@ apps/worker/.artifacts/
 
 # Playwright
 apps/web/e2e/.results/
+/e2e-logs/
 apps/web/e2e/.screenshots/
 
 # turbo prune output (Dockerfiles prune inside the build)

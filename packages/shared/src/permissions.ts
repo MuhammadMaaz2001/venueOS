@@ -14,7 +14,7 @@ export const PERMISSION_GROUPS = {
     'audit.view',
     'template.manage',
   ],
-  setup: ['venue.manage', 'catalogue.manage', 'pricing.manage'],
+  setup: ['venue.view', 'venue.manage', 'catalogue.manage', 'pricing.manage'],
   crm: ['customer.view', 'customer.manage', 'customer.view_sensitive', 'lead.view', 'lead.manage'],
   bookings: [
     'quotation.manage',
@@ -68,3 +68,26 @@ export function isPermission(value: unknown): value is Permission {
 
 // z.enum needs a non-empty tuple type; the list above is non-empty by construction.
 export const PermissionSchema = z.enum(PERMISSIONS as unknown as [Permission, ...Permission[]]);
+
+/**
+ * `<area>.manage` needs `<area>.view` when that permission exists (docs/04-security.md section 2): someone who may
+ * change a venue must be able to see it. Areas without a view permission (staff, role, billing, ...) have no pair.
+ */
+export function requiredViewPermission(permission: Permission): Permission | null {
+  if (!permission.endsWith('.manage')) return null;
+  const view = `${permission.slice(0, -'.manage'.length)}.view`;
+  return isPermission(view) ? view : null;
+}
+
+/** The pairs `[manage, view]` of a permission set where `manage` is held without its `view`. */
+export function missingViewPermissions(
+  permissions: readonly Permission[],
+): { manage: Permission; view: Permission }[] {
+  const held = new Set<Permission>(permissions);
+  const missing: { manage: Permission; view: Permission }[] = [];
+  for (const manage of permissions) {
+    const view = requiredViewPermission(manage);
+    if (view && !held.has(view)) missing.push({ manage, view });
+  }
+  return missing;
+}

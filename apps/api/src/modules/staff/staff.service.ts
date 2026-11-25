@@ -116,7 +116,8 @@ export class StaffService {
     const access = this.access;
     const roles = await this.tenantDb.tx((tx) =>
       tx.role.findMany({
-        where: { tenantId: access.tenantId },
+        // Retired roles are never offered (module 2).
+        where: { tenantId: access.tenantId, active: true },
         orderBy: [{ isSystem: 'desc' }, { name: 'asc' }, { id: 'asc' }],
         select: { id: true, name: true, permissions: true, limits: true },
       }),
@@ -223,12 +224,24 @@ export class StaffService {
     return row;
   }
 
+  /** A role to assign: of this tenant and not retired. Share-locked so a concurrent retire sees the new member. */
   private async loadRole(tx: DbTx, tenantId: string, id: string): Promise<MembershipRow['role']> {
+    await tx.$queryRaw`SELECT id FROM roles WHERE id = ${id} AND tenant_id = ${tenantId} FOR SHARE`;
     const role = await tx.role.findFirst({
       where: { id, tenantId },
-      select: { id: true, name: true, isSystem: true, permissions: true, limits: true },
+      select: {
+        id: true,
+        name: true,
+        isSystem: true,
+        active: true,
+        permissions: true,
+        limits: true,
+      },
     });
     if (!role) throw new NotFoundError();
+    if (!role.active) {
+      throw new InvalidStateTransitionError('This role is retired and cannot be given to anyone.');
+    }
     return role;
   }
 

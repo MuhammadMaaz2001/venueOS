@@ -1,4 +1,4 @@
-import { SlotTakenError } from './domain-errors';
+import { InvalidStateTransitionError, SlotTakenError } from './domain-errors';
 import type { AppError } from './domain-errors';
 
 // SQLSTATE exclusion_violation. CLAUDE.md rule 7: the database decides double bookings; the API only
@@ -37,6 +37,12 @@ export function mapDatabaseError(error: unknown): AppError | undefined {
     (codes.has(EXCLUSION_VIOLATION) || text.includes('exclusion constraint'))
   ) {
     return new SlotTakenError();
+  }
+  // Combined spaces (docs/05 section 1): the services check first; the triggers are the backstop.
+  if (/space_components_(same_venue|no_nesting|parent_not_combined|not_found)/.test(text)) {
+    return new InvalidStateTransitionError(
+      'A combined space must be made of physical spaces of its own venue.',
+    );
   }
   return undefined;
 }

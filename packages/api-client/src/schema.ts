@@ -328,7 +328,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the roles of the current tenant */
+        /**
+         * List the roles of the current tenant
+         * @description Active roles unless `status=retired` or `status=all` is given.
+         */
         get: operations["RolesController_list"];
         put?: never;
         /** Create a custom role as a copy of an existing one */
@@ -352,8 +355,51 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Edit a role: name (custom roles only), permissions, limits */
+        /**
+         * Edit a role: name (custom roles only), permissions, limits; retire or restore it
+         * @description `active: false` retires a custom role that has no active members (422 otherwise); a retired role is frozen until `active: true`. A role that holds `<area>.manage` must hold `<area>.view` where it exists (400).
+         */
         patch: operations["RolesController_update"];
+        trace?: never;
+    };
+    "/v1/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List audit entries, newest first
+         * @description Cursor pagination (`limit` 25, max 100). `from`/`to` are `YYYY-MM-DD` (whole days of the workspace time zone, inclusive) or ISO instants. A caller limited to some venues only sees entries of those venues, never tenant-wide ones.
+         */
+        get: operations["AuditLogsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audit-logs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One audit entry with the full before/after
+         * @description Sensitive fields are masked exactly as they were stored.
+         */
+        get: operations["AuditLogsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/staff": {
@@ -411,6 +457,212 @@ export interface paths {
          * @description A workspace always keeps at least one active Owner (422 otherwise).
          */
         patch: operations["StaffController_update"];
+        trace?: never;
+    };
+    "/v1/tenant/settings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Workspace name, time zone and booking/payment settings (defaults filled in) */
+        get: operations["TenantSettingsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change name, time zone or settings keys
+         * @description `rev` is required. Only the keys you send change. Currency and country are fixed after signup.
+         */
+        patch: operations["TenantSettingsController_update"];
+        trace?: never;
+    };
+    "/v1/venues": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the venues the caller can see (active ones unless asked) */
+        get: operations["VenuesController_list"];
+        put?: never;
+        /**
+         * Add a venue
+         * @description Only a caller with access to all venues. 402 at the plan limit.
+         */
+        post: operations["VenuesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/venues/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["VenuesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a venue
+         * @description `rev` is required (409 VERSION_CONFLICT when stale). `active: false` is the delete.
+         */
+        patch: operations["VenuesController_update"];
+        trace?: never;
+    };
+    "/v1/spaces": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List spaces of the venues the caller can see (optionally one venue) */
+        get: operations["SpacesController_list"];
+        put?: never;
+        /**
+         * Add a space, or a combined space made of existing ones
+         * @description 402 at the plan limit. The venue and every component must belong to the tenant.
+         */
+        post: operations["SpacesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/spaces/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SpacesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a space
+         * @description `rev` is required. `active: false` is the delete. `componentIds` replaces the components of a combined space.
+         */
+        patch: operations["SpacesController_update"];
+        trace?: never;
+    };
+    "/v1/spaces/{id}/slot-prices": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** A space's rent per slot template */
+        get: operations["SpacesController_slotPrices"];
+        /**
+         * Replace a space's rent per slot template
+         * @description A slot that is not listed has no own price. Slots must belong to the space's venue.
+         */
+        put: operations["SpacesController_replaceSlotPrices"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/slot-templates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List slot templates of the venues the caller can see */
+        get: operations["SlotTemplatesController_list"];
+        put?: never;
+        /**
+         * Add a slot template to a venue
+         * @description FIXED needs start and end. HOURLY defaults to the venue opening hours. FULL_DAY has no times.
+         */
+        post: operations["SlotTemplatesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/slot-templates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["SlotTemplatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a slot template
+         * @description `rev` is required. `active: false` is the delete. Venue and mode are fixed.
+         */
+        patch: operations["SlotTemplatesController_update"];
+        trace?: never;
+    };
+    "/v1/event-types": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the event types of the workspace */
+        get: operations["EventTypesController_list"];
+        put?: never;
+        /**
+         * Add an event type
+         * @description Tenant-wide, so only a caller with access to all venues. Names are unique (409).
+         */
+        post: operations["EventTypesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/event-types/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["EventTypesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit an event type
+         * @description `rev` is required. `active: false` is the delete.
+         */
+        patch: operations["EventTypesController_update"];
         trace?: never;
     };
 }
@@ -568,11 +820,13 @@ export interface components {
             data: {
                 id: string;
                 name: string;
-                permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+                permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
                 limits: {
                     maxDiscountPct: number;
                 };
                 isSystem: boolean;
+                active: boolean;
+                memberCount: number;
                 rev: number;
                 /** Format: date-time */
                 createdAt: string;
@@ -584,11 +838,13 @@ export interface components {
         RoleResponseDto: {
             id: string;
             name: string;
-            permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+            permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
             limits: {
                 maxDiscountPct: number;
             };
             isSystem: boolean;
+            active: boolean;
+            memberCount: number;
             rev: number;
             /** Format: date-time */
             createdAt: string;
@@ -602,10 +858,43 @@ export interface components {
         UpdateRoleDto: {
             rev: number;
             name?: string;
-            permissions?: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+            permissions?: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
             limits?: {
                 maxDiscountPct: number;
             };
+            active?: boolean;
+        };
+        AuditLogListResponseDto: {
+            data: {
+                id: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** @enum {string} */
+                actorType: "USER" | "SYSTEM" | "PLATFORM_ADMIN";
+                actorUserId: string | null;
+                actorName: string | null;
+                action: string;
+                entityType: string;
+                entityId: string;
+                venueId: string | null;
+            }[];
+            nextCursor: string | null;
+        };
+        AuditLogDetailResponseDto: {
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            actorType: "USER" | "SYSTEM" | "PLATFORM_ADMIN";
+            actorUserId: string | null;
+            actorName: string | null;
+            action: string;
+            entityType: string;
+            entityId: string;
+            venueId: string | null;
+            before: unknown;
+            after: unknown;
+            ip: string | null;
         };
         StaffListResponseDto: {
             data: {
@@ -643,6 +932,301 @@ export interface components {
             venueIds: string[];
             active: boolean;
             rev: number;
+        };
+        TenantSettingsResponseDto: {
+            name: string;
+            slug: string;
+            country: string;
+            currency: string;
+            timezone: string;
+            defaultLocale: string;
+            settings: {
+                /** @default BK */
+                bookingPrefix: string;
+                /** @default 48 */
+                holdHours: number;
+                /** @default 50 */
+                advancePct: number;
+                /** @default 0 */
+                tokenAmount: string;
+                /** @default 7 */
+                balanceDueDays: number;
+                /** @default 3 */
+                guestLockDays: number;
+                /** @default 3 */
+                reminderDays: number;
+                /** @default 2 */
+                eventReminderDays: number;
+                /** @default 2 */
+                minHours: number;
+            };
+            rev: number;
+        };
+        UpdateTenantSettingsDto: {
+            rev: number;
+            name?: string;
+            timezone?: string;
+            settings?: {
+                bookingPrefix?: string;
+                holdHours?: number;
+                advancePct?: number;
+                tokenAmount?: string;
+                balanceDueDays?: number;
+                guestLockDays?: number;
+                reminderDays?: number;
+                eventReminderDays?: number;
+                minHours?: number;
+            };
+        };
+        VenueListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                address: string | null;
+                city: string | null;
+                timezone: string | null;
+                opensAt: string | null;
+                closesAt: string | null;
+                localRules: {
+                    latestEndTime?: string;
+                    maxGuests?: number;
+                };
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateVenueDto: {
+            name: string;
+            address?: string | null;
+            city?: string | null;
+            timezone?: string | null;
+            opensAt?: string | null;
+            closesAt?: string | null;
+            localRules?: {
+                latestEndTime?: string;
+                maxGuests?: number;
+            };
+        };
+        VenueResponseDto: {
+            id: string;
+            name: string;
+            address: string | null;
+            city: string | null;
+            timezone: string | null;
+            opensAt: string | null;
+            closesAt: string | null;
+            localRules: {
+                latestEndTime?: string;
+                maxGuests?: number;
+            };
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateVenueDto: {
+            rev: number;
+            name?: string;
+            address?: string | null;
+            city?: string | null;
+            timezone?: string | null;
+            opensAt?: string | null;
+            closesAt?: string | null;
+            localRules?: {
+                latestEndTime?: string;
+                maxGuests?: number;
+            };
+            active?: boolean;
+        };
+        SpaceListResponseDto: {
+            data: {
+                id: string;
+                venueId: string;
+                name: string;
+                /** @enum {string} */
+                kind: "HALL" | "LAWN" | "MARQUEE" | "ROOFTOP" | "ROOM" | "FARMHOUSE" | "OTHER";
+                capacitySeated: number | null;
+                capacityStanding: number | null;
+                minGuests: number | null;
+                isCombined: boolean;
+                componentIds: string[];
+                setupBufferMin: number;
+                cleanupBufferMin: number;
+                baseRent: string | null;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateSpaceDto: {
+            venueId: string;
+            name: string;
+            /**
+             * @default HALL
+             * @enum {string}
+             */
+            kind: "HALL" | "LAWN" | "MARQUEE" | "ROOFTOP" | "ROOM" | "FARMHOUSE" | "OTHER";
+            capacitySeated?: number | null;
+            capacityStanding?: number | null;
+            minGuests?: number | null;
+            /** @default false */
+            isCombined: boolean;
+            componentIds?: string[];
+            /** @default 0 */
+            setupBufferMin: number;
+            /** @default 0 */
+            cleanupBufferMin: number;
+            baseRent?: string | null;
+        };
+        SpaceResponseDto: {
+            id: string;
+            venueId: string;
+            name: string;
+            /** @enum {string} */
+            kind: "HALL" | "LAWN" | "MARQUEE" | "ROOFTOP" | "ROOM" | "FARMHOUSE" | "OTHER";
+            capacitySeated: number | null;
+            capacityStanding: number | null;
+            minGuests: number | null;
+            isCombined: boolean;
+            componentIds: string[];
+            setupBufferMin: number;
+            cleanupBufferMin: number;
+            baseRent: string | null;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateSpaceDto: {
+            rev: number;
+            name?: string;
+            /** @enum {string} */
+            kind?: "HALL" | "LAWN" | "MARQUEE" | "ROOFTOP" | "ROOM" | "FARMHOUSE" | "OTHER";
+            capacitySeated?: number | null;
+            capacityStanding?: number | null;
+            minGuests?: number | null;
+            componentIds?: string[];
+            setupBufferMin?: number;
+            cleanupBufferMin?: number;
+            baseRent?: string | null;
+            active?: boolean;
+        };
+        SpaceSlotPricesResponseDto: {
+            data: {
+                slotId: string;
+                rent: string;
+            }[];
+        };
+        ReplaceSpaceSlotPricesDto: {
+            prices: {
+                slotId: string;
+                rent: string;
+            }[];
+        };
+        SlotTemplateListResponseDto: {
+            data: {
+                id: string;
+                venueId: string;
+                name: string;
+                /** @enum {string} */
+                mode: "FIXED" | "HOURLY" | "FULL_DAY";
+                startTime: string;
+                endTime: string;
+                daysOfWeek: number[];
+                minHours: number | null;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateSlotTemplateDto: {
+            venueId: string;
+            name: string;
+            /** @enum {string} */
+            mode: "FIXED" | "HOURLY" | "FULL_DAY";
+            startTime?: string;
+            endTime?: string;
+            /** @default [] */
+            daysOfWeek: number[];
+            minHours?: number | null;
+        };
+        SlotTemplateResponseDto: {
+            id: string;
+            venueId: string;
+            name: string;
+            /** @enum {string} */
+            mode: "FIXED" | "HOURLY" | "FULL_DAY";
+            startTime: string;
+            endTime: string;
+            daysOfWeek: number[];
+            minHours: number | null;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateSlotTemplateDto: {
+            rev: number;
+            name?: string;
+            startTime?: string;
+            endTime?: string;
+            daysOfWeek?: number[];
+            minHours?: number | null;
+            active?: boolean;
+        };
+        EventTypeListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                color: string | null;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateEventTypeDto: {
+            name: string;
+            color?: string | null;
+        };
+        EventTypeResponseDto: {
+            id: string;
+            name: string;
+            color: string | null;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateEventTypeDto: {
+            rev: number;
+            name?: string;
+            color?: string | null;
+            active?: boolean;
         };
     };
     responses: never;
@@ -1061,7 +1645,9 @@ export interface operations {
     };
     RolesController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                status?: "active" | "retired" | "all";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1147,6 +1733,55 @@ export interface operations {
             };
         };
     };
+    AuditLogsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                entityType?: string;
+                entityId?: string;
+                actorUserId?: string;
+                action?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogListResponseDto"];
+                };
+            };
+        };
+    };
+    AuditLogsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogDetailResponseDto"];
+                };
+            };
+        };
+    };
     StaffController_list: {
         parameters: {
             query?: never;
@@ -1206,6 +1841,456 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["StaffMemberResponseDto"];
+                };
+            };
+        };
+    };
+    TenantSettingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSettingsResponseDto"];
+                };
+            };
+        };
+    };
+    TenantSettingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTenantSettingsDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TenantSettingsResponseDto"];
+                };
+            };
+        };
+    };
+    VenuesController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VenueListResponseDto"];
+                };
+            };
+        };
+    };
+    VenuesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateVenueDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VenueResponseDto"];
+                };
+            };
+        };
+    };
+    VenuesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VenueResponseDto"];
+                };
+            };
+        };
+    };
+    VenuesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateVenueDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["VenueResponseDto"];
+                };
+            };
+        };
+    };
+    SpacesController_list: {
+        parameters: {
+            query?: {
+                venueId?: string;
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceListResponseDto"];
+                };
+            };
+        };
+    };
+    SpacesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSpaceDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponseDto"];
+                };
+            };
+        };
+    };
+    SpacesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponseDto"];
+                };
+            };
+        };
+    };
+    SpacesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSpaceDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceResponseDto"];
+                };
+            };
+        };
+    };
+    SpacesController_slotPrices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceSlotPricesResponseDto"];
+                };
+            };
+        };
+    };
+    SpacesController_replaceSlotPrices: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceSpaceSlotPricesDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SpaceSlotPricesResponseDto"];
+                };
+            };
+        };
+    };
+    SlotTemplatesController_list: {
+        parameters: {
+            query?: {
+                venueId?: string;
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotTemplateListResponseDto"];
+                };
+            };
+        };
+    };
+    SlotTemplatesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateSlotTemplateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    SlotTemplatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    SlotTemplatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSlotTemplateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SlotTemplateResponseDto"];
+                };
+            };
+        };
+    };
+    EventTypesController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeListResponseDto"];
+                };
+            };
+        };
+    };
+    EventTypesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateEventTypeDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeResponseDto"];
+                };
+            };
+        };
+    };
+    EventTypesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeResponseDto"];
+                };
+            };
+        };
+    };
+    EventTypesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateEventTypeDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["EventTypeResponseDto"];
                 };
             };
         };

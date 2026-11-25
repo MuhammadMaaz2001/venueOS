@@ -20,7 +20,7 @@ Build order matters: each module depends on the ones above it.
 | # | Module | Includes |
 | --- | --- | --- |
 | 1 | Setup and onboarding | Tenant signup, setup wizard, venues/branches (with opening hours), spaces (halls/lawns) with capacity, combined spaces (Hall A+B), slot templates (Lunch/Dinner, hourly, full day), currency, tax, timezone, language, receipt settings |
-| 2 | Staff, roles and audit | Users, invitations, roles and permissions, discount limits per role, audit log viewer |
+| 2 | Staff, roles and audit | Users, invitations, roles and permissions, discount limits per role, audit log viewer. **Built:** staff + invitations, roles page (copy, edit, retire/restore), audit log page with filters and a before/after detail |
 | 3 | Catalogue and pricing | Menu items, per-head packages with minimum guests, add-ons (fixed / per head / per hour / per unit), price rules (weekday, season, specific dates), tax rates, cancellation policies, custom fields |
 | 4 | Customers | Profile, preferred language, history, duplicate warning by phone (not a hard block), custom fields (sensitive ones encrypted and masked) |
 | 5 | Leads / inquiries | Capture (phone, walk-in, WhatsApp, web form), stages New → Contacted → Site visit → Quoted → Negotiation → Won/Lost, assignment, follow-up reminders |
@@ -51,10 +51,20 @@ Build order matters: each module depends on the ones above it.
 | Role | `maxDiscountPct` | Permissions |
 | --- | --- | --- |
 | Owner | 100 | All of them. Always keeps `role.manage` and `staff.manage` |
-| Branch manager | 15 | `venue.manage`, `catalogue.manage`, `pricing.manage`; `customer.view`, `customer.manage`, `lead.view`, `lead.manage`; `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`, `booking.cancel`, `booking.edit_locked`; `payment.view`, `payment.record`, `payment.refund.request`; `eventsheet.view`, `vendor.view`, `vendor.manage`, `expense.view`, `expense.record`, `inventory.view`, `inventory.record`, `inventory.adjust`; `report.view`, `report.financial` |
-| Sales agent | 5 | `customer.view`, `customer.manage`, `lead.view`, `lead.manage`; `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`; `payment.view`; `eventsheet.view`, `vendor.view`. Not included: payment.record (tenants can add it) |
-| Accountant | 0 | `customer.view`, `booking.view`, `booking.view_prices`; `payment.view`, `payment.record`, `payment.reverse`, `payment.refund.request`, `payment.refund.approve`; `expense.view`, `expense.record`, `expense.reverse`, `vendor.view`; `report.view`, `report.financial` |
-| Operations | 0 | `booking.view`; `eventsheet.view`, `vendor.view`, `inventory.view`, `inventory.record` |
+| Branch manager | 15 | `venue.view`, `venue.manage`, `catalogue.manage`, `pricing.manage`; `customer.view`, `customer.manage`, `lead.view`, `lead.manage`; `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`, `booking.cancel`, `booking.edit_locked`; `payment.view`, `payment.record`, `payment.refund.request`; `eventsheet.view`, `vendor.view`, `vendor.manage`, `expense.view`, `expense.record`, `inventory.view`, `inventory.record`, `inventory.adjust`; `report.view`, `report.financial` |
+| Sales agent | 5 | `venue.view`; `customer.view`, `customer.manage`, `lead.view`, `lead.manage`; `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`; `payment.view`; `eventsheet.view`, `vendor.view`. Not included: payment.record (tenants can add it) |
+| Accountant | 0 | `venue.view`; `customer.view`, `booking.view`, `booking.view_prices`; `payment.view`, `payment.record`, `payment.reverse`, `payment.refund.request`, `payment.refund.approve`; `expense.view`, `expense.record`, `expense.reverse`, `vendor.view`; `report.view`, `report.financial` |
+| Operations | 0 | `venue.view`; `booking.view`; `eventsheet.view`, `vendor.view`, `inventory.view`, `inventory.record` |
+
+**Managing roles (module 2).** A role is created by copying another and then edited (permissions grouped by area, discount
+limit, name for custom roles). A role that holds `<area>.manage` must also hold `<area>.view` where that permission exists
+(`venue.manage` needs `venue.view`; `customer`, `lead` and `vendor` likewise), else the edit is `400 VALIDATION_ERROR`
+naming the missing permission; the role editor ticks the view permission for you. A custom role nobody uses any more is
+**retired**, not deleted: it cannot be edited, copied or given to anyone until it is restored, retiring a role with active
+members is `422`, and system roles cannot be retired. Retired roles are hidden in the list unless asked for.
+The **audit log** (`audit.view`) shows who changed what and when, newest first, filterable by what, action, person and date.
+A person limited to some venues sees only the entries of those venues; entries about the workspace itself (settings, roles,
+staff, event types) need access to all venues.
 
 Owner-only by default: everything under Tenant (`tenant.settings.manage`, `billing.manage`, `staff.manage`,
 `role.manage`, `audit.view`, `template.manage`), plus `customer.view_sensitive`, `booking.confirm_override`

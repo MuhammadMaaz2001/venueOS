@@ -12,9 +12,18 @@ export interface ScannedRoute {
   controller: string;
   handler: string;
   httpMethod: string;
+  /** Path below the global `/v1` prefix, e.g. `/venues/:id` (the first path if a handler has several). */
+  path: string;
   isPublic: boolean;
   isAuthenticatedOnly: boolean;
   permission: unknown;
+}
+
+const firstPath = (value: unknown): string =>
+  (Array.isArray(value) ? String(value[0] ?? '') : String(value ?? '')).replace(/^\/+|\/+$/g, '');
+
+function joinPaths(controllerPath: unknown, handlerPath: unknown): string {
+  return `/${[firstPath(controllerPath), firstPath(handlerPath)].filter(Boolean).join('/')}`;
 }
 
 /** Every HTTP handler of every controller registered in the application, with its access metadata. */
@@ -45,6 +54,10 @@ export function scanRoutes(modules: ModulesContainer): ScannedRoute[] {
           controller: controller.name,
           handler: name,
           httpMethod: method === undefined ? '?' : (HTTP_METHODS[method] ?? '?'),
+          path: joinPaths(
+            Reflect.getMetadata(PATH_METADATA, controller) as unknown,
+            Reflect.getMetadata(PATH_METADATA, handler) as unknown,
+          ),
           isPublic: classPublic || Reflect.getMetadata(IS_PUBLIC_KEY, handler) === true,
           isAuthenticatedOnly:
             classAuthOnly || Reflect.getMetadata(IS_AUTHENTICATED_ONLY_KEY, handler) === true,

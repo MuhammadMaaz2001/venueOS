@@ -71,6 +71,11 @@ export class InvitationsService {
     const prepared = await this.tenantDb.tx(async (tx) => {
       const role = await tx.role.findFirst({ where: { id: input.roleId, tenantId } });
       if (!role) throw new NotFoundError();
+      if (!role.active) {
+        throw new InvalidStateTransitionError(
+          'This role is retired and cannot be given to anyone.',
+        );
+      }
       if (venueIds.length > 0) {
         const found = await tx.venue.count({ where: { tenantId, id: { in: venueIds } } });
         if (found !== venueIds.length) throw new NotFoundError();
@@ -357,6 +362,18 @@ export class InvitationsService {
           select: { status: true },
         });
         if (!tenant || tenant.status === 'CANCELLED') throw new BadRequestError(INVALID);
+        // The role may have been retired since the invitation was sent: share-lock it, then check.
+        await tx.$queryRaw`SELECT id FROM roles WHERE id = ${invitation.roleId} AND tenant_id = ${tenantId} FOR SHARE`;
+        const role = await tx.role.findFirst({
+          where: { id: invitation.roleId, tenantId },
+          select: { active: true },
+        });
+        if (!role) throw new BadRequestError(INVALID);
+        if (!role.active) {
+          throw new InvalidStateTransitionError(
+            'The role of this invitation has been retired. Ask for a new invitation.',
+          );
+        }
         const previous = await tx.membership.findFirst({ where: { tenantId, userId } });
         if (previous) {
           await tx.membership.update({

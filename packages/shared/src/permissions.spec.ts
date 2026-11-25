@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { PERMISSIONS, PermissionSchema, isPermission } from './permissions.js';
+import {
+  PERMISSIONS,
+  PermissionSchema,
+  isPermission,
+  missingViewPermissions,
+  requiredViewPermission,
+} from './permissions.js';
+import { UpdateRoleSchema } from './schemas/roles.js';
 import {
   DEFAULT_ROLES,
   OWNER_REQUIRED_PERMISSIONS,
@@ -8,8 +15,8 @@ import {
 } from './roles.js';
 
 describe('permissions', () => {
-  it('has 43 unique names of the form area.action', () => {
-    expect(PERMISSIONS).toHaveLength(43);
+  it('has 44 unique names of the form area.action', () => {
+    expect(PERMISSIONS).toHaveLength(44);
     expect(new Set(PERMISSIONS).size).toBe(PERMISSIONS.length);
     for (const p of PERMISSIONS) expect(p).toMatch(/^[a-z]+(\.[a-z_]+)+$/);
   });
@@ -94,5 +101,50 @@ describe('limit parsing', () => {
       maxUsers: 5,
     });
     expect(parsePlanEntitlements('garbage')).toMatchObject({ maxVenues: 0, customDomain: false });
+  });
+});
+
+describe('manage needs view', () => {
+  it('pairs <area>.manage with <area>.view only where a view permission exists', () => {
+    expect(requiredViewPermission('venue.manage')).toBe('venue.view');
+    expect(requiredViewPermission('customer.manage')).toBe('customer.view');
+    expect(requiredViewPermission('lead.manage')).toBe('lead.view');
+    expect(requiredViewPermission('vendor.manage')).toBe('vendor.view');
+    for (const p of [
+      'role.manage',
+      'staff.manage',
+      'catalogue.manage',
+      'pricing.manage',
+      'billing.manage',
+      'tenant.settings.manage',
+      'booking.view',
+    ] as const) {
+      expect(requiredViewPermission(p), p).toBeNull();
+    }
+  });
+
+  it('lists every manage held without its view', () => {
+    expect(missingViewPermissions(['venue.manage', 'customer.manage', 'customer.view'])).toEqual([
+      { manage: 'venue.manage', view: 'venue.view' },
+    ]);
+    expect(missingViewPermissions(['venue.manage', 'venue.view'])).toEqual([]);
+    expect(missingViewPermissions([])).toEqual([]);
+  });
+
+  it('is satisfied by every default role', () => {
+    for (const role of DEFAULT_ROLES) {
+      expect(missingViewPermissions(role.permissions), role.name).toEqual([]);
+    }
+  });
+
+  it('is enforced by the role update schema, naming the missing permission', () => {
+    const bad = UpdateRoleSchema.safeParse({ rev: 1, permissions: ['venue.manage'] });
+    expect(bad.success).toBe(false);
+    expect(JSON.stringify(bad.error?.issues)).toContain('venue.view');
+    expect(
+      UpdateRoleSchema.safeParse({ rev: 1, permissions: ['venue.manage', 'venue.view'] }).success,
+    ).toBe(true);
+    expect(UpdateRoleSchema.safeParse({ rev: 1 }).success).toBe(false);
+    expect(UpdateRoleSchema.safeParse({ rev: 1, active: false }).success).toBe(true);
   });
 });

@@ -22,7 +22,7 @@ const Locale = z
   .regex(/^[a-z]{2,3}$/)
   .default('en');
 
-function isTimeZone(value: string): boolean {
+export function isTimeZone(value: string): boolean {
   try {
     new Intl.DateTimeFormat('en', { timeZone: value });
     return true;

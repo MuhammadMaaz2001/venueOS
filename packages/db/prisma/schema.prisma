@@ -304,6 +304,8 @@ model Role {
   // e.g. {"maxDiscountPct":10}
   limits      Json         @default("{}")
   isSystem    Boolean      @default(false) @map("is_system")
+  // false = retired: cannot be assigned, copied or edited; existing members keep working (module 2)
+  active      Boolean      @default(true)
   rev         Int          @default(1)
   createdAt   DateTime     @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime     @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -1321,6 +1323,9 @@ model AuditLog {
   action      String    // booking.confirm, payment.refund, price_rule.update
   entityType  String    @map("entity_type")
   entityId    String    @map("entity_id")
+  // The venue the entity belongs to (venue, space, slot template, later bookings); null = tenant-wide.
+  // Venue-limited readers of the audit log only see rows whose venue is in their scope (module 2).
+  venueId     String?   @map("venue_id")
   before      Json?
   after       Json?
   ip          String?
@@ -1328,5 +1333,6 @@ model AuditLog {
 
   @@index([tenantId, entityType, entityId])
   @@index([tenantId, createdAt])
+  @@index([tenantId, venueId, createdAt])
   @@map("audit_logs")
 }

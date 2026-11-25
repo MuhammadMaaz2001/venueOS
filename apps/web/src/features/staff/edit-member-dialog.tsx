@@ -15,13 +15,15 @@ import {
 } from '@/components/ui/dialog';
 import { errorMessageKey } from '@/lib/api/error-messages';
 import { isApiError } from '@/lib/api/errors';
+import { useRoleName } from '../roles/use-role-name';
 import { UPDATE_MEMBER_MESSAGES, useAssignableRoles, useUpdateStaff } from './api';
+import { VenueScopePicker } from './venue-scope-picker';
 
 /**
  * Change a member's role or active status. The request carries the `rev` the user saw: if someone else changed
  * the member meanwhile (409), the list reloads and the dialog closes with a message. The last-Owner rule (422)
- * stays in the dialog as a message the user cannot miss. Venue scope is shown on the page but edited once the
- * venues module exists (there is nothing to choose from yet).
+ * stays in the dialog as a message the user cannot miss. The venue scope is chosen with the picker (only for people
+ * who may list venues; the API refuses a scope wider than the caller's own).
  */
 export function EditMemberDialog({
   member,
@@ -57,8 +59,11 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
   const t = useTranslations();
   const roles = useAssignableRoles();
   const update = useUpdateStaff();
+  const roleName = useRoleName();
   const [roleId, setRoleId] = useState(member.roleId);
   const [active, setActive] = useState(member.active);
+  // `undefined` = untouched; `null` = "selected venues" with none ticked (cannot be saved).
+  const [venueIds, setVenueIds] = useState<string[] | null | undefined>(undefined);
   const [error, setError] = useState<string | null>(null);
 
   const roleOptions = roles.data?.data ?? [];
@@ -66,7 +71,11 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
   const withCurrent = roleOptions.some((role) => role.id === member.roleId)
     ? roleOptions
     : [{ id: member.roleId, name: member.roleName }, ...roleOptions];
-  const changed = roleId !== member.roleId || active !== member.active;
+  const sameVenues = (a: readonly string[], b: readonly string[]) =>
+    a.length === b.length && a.every((id) => b.includes(id));
+  const venuesChanged =
+    venueIds !== undefined && venueIds !== null && !sameVenues(venueIds, member.venueIds);
+  const changed = roleId !== member.roleId || active !== member.active || venuesChanged;
 
   const onSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
@@ -81,6 +90,7 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
         rev: member.rev,
         ...(roleId !== member.roleId ? { roleId } : {}),
         ...(active !== member.active ? { active } : {}),
+        ...(venuesChanged && venueIds ? { venueIds } : {}),
       });
       toast.success(t('Staff.edit.saved'));
       onClose();
@@ -112,7 +122,7 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
       >
         {withCurrent.map((role) => (
           <option key={role.id} value={role.id}>
-            {role.name}
+            {roleName(role.name)}
           </option>
         ))}
       </SelectField>
@@ -121,7 +131,10 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
         checked={active}
         onChange={(event) => setActive(event.target.checked)}
       />
-      <SubmitButton pending={update.isPending}>{t('Staff.edit.save')}</SubmitButton>
+      <VenueScopePicker value={member.venueIds} onChange={setVenueIds} />
+      <SubmitButton pending={update.isPending} disabled={venueIds === null}>
+        {t('Staff.edit.save')}
+      </SubmitButton>
     </form>
   );
 }
