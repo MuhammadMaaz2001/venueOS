@@ -15,8 +15,8 @@ import {
 } from './roles.js';
 
 describe('permissions', () => {
-  it('has 44 unique names of the form area.action', () => {
-    expect(PERMISSIONS).toHaveLength(44);
+  it('has 46 unique names of the form area.action', () => {
+    expect(PERMISSIONS).toHaveLength(46);
     expect(new Set(PERMISSIONS).size).toBe(PERMISSIONS.length);
     for (const p of PERMISSIONS) expect(p).toMatch(/^[a-z]+(\.[a-z_]+)+$/);
   });
@@ -110,11 +110,11 @@ describe('manage needs view', () => {
     expect(requiredViewPermission('customer.manage')).toBe('customer.view');
     expect(requiredViewPermission('lead.manage')).toBe('lead.view');
     expect(requiredViewPermission('vendor.manage')).toBe('vendor.view');
+    expect(requiredViewPermission('catalogue.manage')).toBe('catalogue.view');
+    expect(requiredViewPermission('pricing.manage')).toBe('pricing.view');
     for (const p of [
       'role.manage',
       'staff.manage',
-      'catalogue.manage',
-      'pricing.manage',
       'billing.manage',
       'tenant.settings.manage',
       'booking.view',

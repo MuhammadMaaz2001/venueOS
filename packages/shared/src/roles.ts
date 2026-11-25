@@ -42,7 +42,9 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     permissions: [
       'venue.view',
       'venue.manage',
+      'catalogue.view',
       'catalogue.manage',
+      'pricing.view',
       'pricing.manage',
       'customer.view',
       'customer.manage',
@@ -80,6 +82,8 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     name: 'Sales agent',
     permissions: [
       'venue.view',
+      'catalogue.view',
+      'pricing.view',
       'customer.view',
       'customer.manage',
       'lead.view',
@@ -104,6 +108,8 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     name: 'Accountant',
     permissions: [
       'venue.view',
+      'catalogue.view',
+      'pricing.view',
       'customer.view',
       'booking.view',
       'booking.view_prices',
@@ -126,6 +132,7 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
     name: 'Operations',
     permissions: [
       'venue.view',
+      'catalogue.view',
       'eventsheet.view',
       'booking.view',
       'vendor.view',

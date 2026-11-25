@@ -39,6 +39,13 @@ describe('route scan: the application', () => {
           'SlotTemplatesController.update',
           'EventTypesController.list',
           'TenantSettingsController.update',
+          'MenuItemsController.create',
+          'PackagesController.update',
+          'AddOnsController.list',
+          'CustomFieldsController.update',
+          'PriceRulesController.rentPreview',
+          'TaxRatesController.create',
+          'CancellationPoliciesController.update',
         ]),
       );
       expect(findAccessViolations(routes)).toEqual([]);

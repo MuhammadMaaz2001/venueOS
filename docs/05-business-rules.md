@@ -65,6 +65,19 @@ Per session, in this order:
 2. **Price rules**: all active rules matching the space, slot and date. `OVERRIDE` rules: the
    highest priority wins and replaces the rent. Then `PERCENT` and `FIXED_AMOUNT` rules apply
    in priority order. Each applied rule is shown as an `ADJUSTMENT` line.
+   *Rule details (module 3, `apps/api/src/pricing`, pure functions the quotation engine reuses):*
+   - A rule matches when its space (null = all) and slot (null = all) fit and its date condition holds: `DAY_OF_WEEK` =
+     the venue-local date's weekday is listed; `DATE_RANGE` = first and last day, both inclusive; `SPECIFIC_DATE` = that day.
+   - Shapes: `DAY_OF_WEEK` has weekdays and no dates; `DATE_RANGE` has both dates (last not before first) and no weekdays;
+     `SPECIFIC_DATE` has one date. `PERCENT` is -100..1000 and not 0, `FIXED_AMOUNT` is signed and not 0, `OVERRIDE` is 0 or more.
+   - `OVERRIDE`: highest `priority` wins; ties go to the more specific kind (`SPECIFIC_DATE` > `DATE_RANGE` >
+     `DAY_OF_WEEK`), then the rule scoped to space and slot, then the lower id. The overrides that lose are reported, not applied.
+   - `PERCENT` and `FIXED_AMOUNT` apply highest priority first, ties: percent before fixed amount, then the same
+     tie-breaks. Each applies to the **running** rent (percentages compound), is rounded half-up to the currency's
+     minor unit on its own line, and the rent never goes below 0 (the line is cut so the lines add up).
+   - An `OVERRIDE` line is the difference to the rent before it (`new rent - rent`), signed.
+   - For an `HOURLY` slot the base rent is the rent per hour times the hours (rounded) and the rules act on that total.
+   - Inactive rules are ignored.
 3. **Package**: `perHeadRate × max(guests, package.minGuests, session.guaranteedGuests)`.
 4. **Add-ons**: FIXED = price; PER_HEAD = price × billed guests; PER_HOUR = price × hours;
    PER_UNIT = price × quantity.
@@ -153,6 +166,9 @@ never alter existing bookings. Any change creates a new quote version
 
 - The booking's cancellation policy (**copied into `cancellation_snapshot` at confirmation**) has
   tiers by days before the first session, e.g. ≥ 60 days → 80% refund, ≥ 30 → 50%, otherwise 0%.
+  Tiers are stored from the longest notice to the shortest: `minDaysBefore` strictly descending (so unique), the last
+  tier is 0 days (every cancellation falls in one tier), `refundPct` 0..100 with at most 2 decimals. A workspace has at
+  most one default policy; deactivating the default leaves it without one.
   Later edits to the policy never change an existing booking.
 - The system computes the suggested refund from received payments; the accountant may lower or
   raise it with a reason (it becomes a refund request). Cancelling frees all occupancies
@@ -285,3 +301,19 @@ the defaults below, so code never reads raw keys or hard-codes these numbers.
   from the signup form; nothing is assumed.
 - The workspace is usable after the owner confirms the email address (login is refused before that).
 - Staff invitations count toward `maxUsers` while they are pending (72 h); an expired or revoked one frees the seat.
+
+## 17. Catalogue (module 3)
+
+- Menu items, packages, add-ons, tax rates, cancellation policies and custom field definitions are **tenant-wide** and are
+  never deleted: `active = false` hides them (a booking keeps its frozen copy). Names are unique among active rows,
+  case-insensitively; reactivating a name that is taken is `409`.
+- A **package** is a per-head rate, a minimum number of guests (billed at least that many, step 3 above) and dishes with a
+  quantity. Only active menu items can be added; a dish deactivated later stays in the package and is shown as inactive.
+- An **add-on** is `FIXED`, `PER_HEAD`, `PER_HOUR` or `PER_UNIT` (step 4 above). The vendor link arrives with the vendors module.
+- **Tax rates** are exclusive (added on top) or inclusive (§3, inclusive rounding) with at most one default; a workspace
+  with no active rate quotes no tax. Several default rates at once are not supported in the MVP.
+- **Custom field definitions** belong to `customer`, `booking`, `session` or `lead`, with a type (`text`, `number`, `date`,
+  `select`, `phone`), choices for `select`, `required` and `sensitive` (text, number and phone only; encrypted and masked
+  when the values are stored, docs/04 section 6). Entity, key, type and sensitivity are fixed after creation, and a key stays
+  reserved for its record type even when the field is deactivated. The values are stored with the records (module 4 onwards).
+- Amounts use the tenant currency's decimals (`PKR` 2, `KWD` 3, `JPY` 0): a client amount with more decimals is `400`.

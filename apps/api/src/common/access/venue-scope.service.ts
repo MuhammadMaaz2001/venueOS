@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
 import { ClsService } from 'nestjs-cls';
 import type { RequestContext } from '../context/request-context';
-import { NotFoundError, UnauthenticatedError } from '../errors/domain-errors';
+import { ForbiddenError, NotFoundError, UnauthenticatedError } from '../errors/domain-errors';
 
 /**
  * Venue scoping (docs/04-security.md section 2): a membership with `venueIds` may only touch those
@@ -21,6 +21,11 @@ export class VenueScope {
   /** True when the caller may see every venue of the tenant. */
   get unrestricted(): boolean {
     return this.venueIds.length === 0;
+  }
+
+  /** Tenant-wide data (catalogue, tax rates, ...) can only be changed by someone with access to all venues. */
+  assertTenantWide(message: string): void {
+    if (!this.unrestricted) throw new ForbiddenError(message);
   }
 
   /** One venue the caller names (path/body). Outside their scope -> 404, never 403. */

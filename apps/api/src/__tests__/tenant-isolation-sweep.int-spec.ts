@@ -31,6 +31,14 @@ interface Victim {
   eventTypeId: string;
   /** Module 2: one audit row of tenant B. */
   auditLogId: string;
+  /** Module 3: B's catalogue and pricing records. */
+  menuItemId: string;
+  packageId: string;
+  addOnId: string;
+  customFieldId: string;
+  priceRuleId: string;
+  taxRateId: string;
+  policyId: string;
 }
 
 interface IsolationCase {
@@ -264,6 +272,206 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
       body: { rev: 1, name: 'Hijacked' },
     }),
   },
+  // ── module 3: catalogue and pricing ─────────────────────────────────────────────────────────────────────
+  'MenuItemsController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/menu-items?includeInactive=true' }),
+  },
+  'MenuItemsController.create': {
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/menu-items',
+      body: { name: 'Sweep dish', tenantId: v.tenant.id },
+    }),
+  },
+  'MenuItemsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/menu-items/${v.menuItemId}` }),
+  },
+  'MenuItemsController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/menu-items/${v.menuItemId}`,
+      body: { rev: 1, name: 'Hijacked', active: false },
+    }),
+  },
+  'PackagesController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/packages?includeInactive=true' }),
+  },
+  'PackagesController.create': {
+    // B's dish in A's package: the dish does not exist for A.
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/packages',
+      body: { name: 'Hijack package', perHeadRate: '1', items: [{ menuItemId: v.menuItemId }] },
+    }),
+  },
+  'PackagesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/packages/${v.packageId}` }),
+  },
+  'PackagesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/packages/${v.packageId}`,
+      body: { rev: 1, name: 'Hijacked', items: [] },
+    }),
+  },
+  'AddOnsController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/add-ons?includeInactive=true' }),
+  },
+  'AddOnsController.create': {
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/add-ons',
+      body: { name: 'Sweep add-on', pricing: 'FIXED', price: '1', tenantId: v.tenant.id },
+    }),
+  },
+  'AddOnsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/add-ons/${v.addOnId}` }),
+  },
+  'AddOnsController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/add-ons/${v.addOnId}`,
+      body: { rev: 1, name: 'Hijacked', price: '1' },
+    }),
+  },
+  'CustomFieldsController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/custom-fields?includeInactive=true' }),
+  },
+  'CustomFieldsController.create': {
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/custom-fields',
+      body: {
+        entity: 'customer',
+        key: 'sweep_field',
+        label: 'Sweep field',
+        type: 'text',
+        tenantId: v.tenant.id,
+      },
+    }),
+  },
+  'CustomFieldsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/custom-fields/${v.customFieldId}` }),
+  },
+  'CustomFieldsController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/custom-fields/${v.customFieldId}`,
+      body: { rev: 1, label: 'Hijacked' },
+    }),
+  },
+  'PriceRulesController.list': {
+    // B's space in the query only filters A's own rules.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/price-rules?includeInactive=true&spaceId=${v.spaceId}`,
+    }),
+  },
+  'PriceRulesController.create': {
+    // A rule for B's space does not exist for A.
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/price-rules',
+      body: {
+        name: 'Hijack rule',
+        kind: 'DAY_OF_WEEK',
+        daysOfWeek: [6],
+        adjustment: 'PERCENT',
+        value: '10',
+        spaceId: v.spaceId,
+      },
+    }),
+  },
+  'PriceRulesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/price-rules/${v.priceRuleId}` }),
+  },
+  'PriceRulesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/price-rules/${v.priceRuleId}`,
+      body: { rev: 1, name: 'Hijacked', active: false },
+    }),
+  },
+  'PriceRulesController.rentPreview': {
+    owner: 404,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/pricing/rent-preview?venueId=${v.venueId}&spaceId=${v.spaceId}&slotId=${v.slotId}&date=2027-01-02`,
+    }),
+  },
+  'TaxRatesController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/tax-rates?includeInactive=true' }),
+  },
+  'TaxRatesController.create': {
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/tax-rates',
+      body: { name: 'Sweep tax', ratePct: '1', isDefault: true, tenantId: v.tenant.id },
+    }),
+  },
+  'TaxRatesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/tax-rates/${v.taxRateId}` }),
+  },
+  'TaxRatesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/tax-rates/${v.taxRateId}`,
+      body: { rev: 1, name: 'Hijacked', isDefault: false },
+    }),
+  },
+  'CancellationPoliciesController.list': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/cancellation-policies?includeInactive=true' }),
+  },
+  'CancellationPoliciesController.create': {
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/cancellation-policies',
+      body: {
+        name: 'Sweep policy',
+        tiers: [{ minDaysBefore: 0, refundPct: 0 }],
+        isDefault: true,
+        tenantId: v.tenant.id,
+      },
+    }),
+  },
+  'CancellationPoliciesController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/cancellation-policies/${v.policyId}` }),
+  },
+  'CancellationPoliciesController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/cancellation-policies/${v.policyId}`,
+      body: { rev: 1, name: 'Hijacked', isDefault: false },
+    }),
+  },
 };
 
 /** Routes that are not tenant data, with the reason. */
@@ -330,6 +538,42 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       endTime: '16:00',
     });
     const eventB = await post('/v1/event-types', { name: 'B secret event' });
+    // Module 3: B's catalogue and pricing records.
+    const menuItemB = await post('/v1/menu-items', { name: 'B secret dish', category: 'Main' });
+    const packageB = await post('/v1/packages', {
+      name: 'B secret package',
+      perHeadRate: '1234.50',
+      items: [{ menuItemId: menuItemB.id }],
+    });
+    const addOnB = await post('/v1/add-ons', {
+      name: 'B secret add-on',
+      pricing: 'FIXED',
+      price: '777',
+    });
+    const fieldB = await post('/v1/custom-fields', {
+      entity: 'customer',
+      key: 'b_secret_field',
+      label: 'B secret field',
+      type: 'text',
+    });
+    const ruleB = await post('/v1/price-rules', {
+      name: 'B secret rule',
+      kind: 'DAY_OF_WEEK',
+      daysOfWeek: [5],
+      adjustment: 'PERCENT',
+      value: '33',
+      spaceId: spaceB.id,
+    });
+    const taxB = await post('/v1/tax-rates', {
+      name: 'B secret tax',
+      ratePct: '9',
+      isDefault: true,
+    });
+    const policyB = await post('/v1/cancellation-policies', {
+      name: 'B secret policy',
+      tiers: [{ minDaysBefore: 0, refundPct: 0 }],
+      isDefault: true,
+    });
 
     victim = {
       tenant: tenantB,
@@ -344,6 +588,13 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       spaceId: spaceB.id,
       slotId: slotB.id,
       eventTypeId: eventB.id,
+      menuItemId: menuItemB.id,
+      packageId: packageB.id,
+      addOnId: addOnB.id,
+      customFieldId: fieldB.id,
+      priceRuleId: ruleB.id,
+      taxRateId: taxB.id,
+      policyId: policyB.id,
       auditLogId: (
         await h.sql<{ id: string }>(
           `SELECT id FROM audit_logs WHERE tenant_id = $1 AND action = 'venue.create'`,
@@ -375,8 +626,26 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       'B secret space',
       'B secret slot',
       'B secret event',
+      menuItemB.id,
+      packageB.id,
+      addOnB.id,
+      fieldB.id,
+      ruleB.id,
+      taxB.id,
+      policyB.id,
+      'B secret dish',
+      'B secret package',
+      'B secret add-on',
+      'b_secret_field',
+      'B secret field',
+      'B secret rule',
+      'B secret tax',
+      'B secret policy',
+      '1234.50',
     ];
-  });
+    // Explicit and generous: this world needs ~10 argon2 logins plus dozens of API calls, which took longer than
+    // the 10 s default when the whole suite ran in parallel.
+  }, 120_000);
 
   afterAll(async () => {
     await t.app.close();
@@ -456,6 +725,12 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       ['spaces', victim.spaceId, 'B secret space'],
       ['slot_templates', victim.slotId, 'B secret slot'],
       ['event_types', victim.eventTypeId, 'B secret event'],
+      ['menu_items', victim.menuItemId, 'B secret dish'],
+      ['packages', victim.packageId, 'B secret package'],
+      ['add_ons', victim.addOnId, 'B secret add-on'],
+      ['price_rules', victim.priceRuleId, 'B secret rule'],
+      ['tax_rates', victim.taxRateId, 'B secret tax'],
+      ['cancellation_policies', victim.policyId, 'B secret policy'],
     ] as const) {
       const [row] = await h.sql<{ name: string; rev: number }>(
         `SELECT name, rev FROM ${table} WHERE id = $1`,
@@ -464,7 +739,18 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       expect(row, table).toEqual({ name, rev: 1 });
     }
     // Nothing the attacks created landed in B, and no slot price was written for B's space.
-    for (const table of ['venues', 'event_types', 'spaces', 'slot_templates']) {
+    for (const table of [
+      'venues',
+      'event_types',
+      'spaces',
+      'slot_templates',
+      'menu_items',
+      'packages',
+      'add_ons',
+      'price_rules',
+      'tax_rates',
+      'cancellation_policies',
+    ]) {
       const strays = await h.sql<{ id: string }>(
         `SELECT id FROM ${table} WHERE tenant_id = $1 AND (name LIKE 'Sweep%' OR name LIKE 'Hijack%')`,
         [victim.tenant.id],
@@ -476,6 +762,31 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       [victim.spaceId],
     );
     expect(prices).toEqual([]);
+
+    // Module 3: B's package still has its one dish; B's default tax rate and policy are still its defaults (the
+    // attacks that "set a default" landed in A); its custom field and price rule are untouched.
+    const items = await h.sql<{ menu_item_id: string }>(
+      `SELECT menu_item_id FROM package_items WHERE package_id = $1`,
+      [victim.packageId],
+    );
+    expect(items).toEqual([{ menu_item_id: victim.menuItemId }]);
+    for (const table of ['tax_rates', 'cancellation_policies']) {
+      const defaults = await h.sql<{ id: string }>(
+        `SELECT id FROM ${table} WHERE tenant_id = $1 AND is_default AND active`,
+        [victim.tenant.id],
+      );
+      expect(defaults, table).toHaveLength(1);
+    }
+    const [field] = await h.sql<{ label: string; rev: number }>(
+      `SELECT label, rev FROM custom_field_defs WHERE id = $1`,
+      [victim.customFieldId],
+    );
+    expect(field).toEqual({ label: 'B secret field', rev: 1 });
+    const [rule] = await h.sql<{ active: boolean }>(
+      `SELECT active FROM price_rules WHERE id = $1`,
+      [victim.priceRuleId],
+    );
+    expect(rule).toEqual({ active: true });
   });
 
   it("the workspace list of tenant A's owner holds tenant A only", async () => {

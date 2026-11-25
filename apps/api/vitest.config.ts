@@ -9,6 +9,9 @@ export default defineConfig({
     globalSetup: ['./test/global-setup.mjs'],
     // Integration tests boot the whole Nest app (and open DB connections); keep them predictable.
     testTimeout: 20_000,
+    // beforeAll hooks build whole worlds (tenants, argon2-hashed logins, sessions); with every spec file running in
+    // parallel on a busy machine the 10 s default flaked (tenant isolation sweep). Tests still fail at 20 s.
+    hookTimeout: 60_000,
   },
   plugins: [
     // esbuild (vitest's default) does not emit decorator metadata, which Nest's constructor

@@ -618,7 +618,9 @@ model TaxRate {
   name      String   // GST, VAT
   ratePct   Decimal  @map("rate_pct") @db.Decimal(5, 2)
   inclusive Boolean  @default(false)
+  // At most one default per tenant (partial unique index); the default is always active (CHECK).
   isDefault Boolean  @default(false) @map("is_default")
+  active    Boolean  @default(true)
   rev       Int      @default(1)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -634,7 +636,9 @@ model CancellationPolicy {
   name      String
   // Ordered tiers, e.g. [{"minDaysBefore":60,"refundPct":80},{"minDaysBefore":30,"refundPct":50},{"minDaysBefore":0,"refundPct":0}]
   tiers     Json
+  // At most one default per tenant (partial unique index); the default is always active (CHECK).
   isDefault Boolean   @default(false) @map("is_default")
+  active    Boolean   @default(true)
   rev       Int       @default(1)
   createdAt DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -657,6 +661,7 @@ model CustomFieldDef {
   // Sensitive values (e.g. CNIC) are encrypted by the API before storage and masked in the UI
   sensitive Boolean  @default(false)
   sortOrder Int      @default(0) @map("sort_order")
+  active    Boolean  @default(true)
   rev       Int      @default(1)
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)

@@ -94,6 +94,11 @@ test.describe('setup wizard (360 px)', () => {
     await expect(page.getByText(m.Setup.prices.saved)).toBeVisible();
     await page.getByTestId('wizard-next').click();
 
+    // Step 5 (optional): the first package. Skipped here; catalogue-pricing.spec.ts adds one.
+    await expect(page.getByTestId('wizard-step-package')).toBeVisible();
+    await expectNoSidewaysScroll(page);
+    await page.getByTestId('wizard-package-next').click();
+
     // Done
     await expect(page.getByTestId('wizard-step-done')).toBeVisible();
     await page.getByTestId('wizard-finish').click();
