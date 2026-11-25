@@ -10,6 +10,8 @@ import { Alert, AlertDescription } from '@/components/ui/alert';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { usePackages } from '../catalogue/api';
+import { QuickPackageForm } from '../catalogue/quick-package-form';
 import { cn } from '@/lib/utils';
 import { useSession } from '../shell/session';
 import { useCreateSlot, useSlots, useSpaces, useVenues } from './api';
@@ -85,7 +87,7 @@ function WizardBody({
 
       {step !== 'done' ? (
         <>
-          <ol className="hidden grid-cols-4 gap-2 sm:grid" aria-label={t('progress')}>
+          <ol className="hidden grid-cols-5 gap-2 sm:grid" aria-label={t('progress')}>
             {FORM_STEPS.map((s, i) => (
               <li
                 key={s}
@@ -128,6 +130,7 @@ function WizardBody({
         {step === 'prices' && venue ? (
           <PricesStep spaces={spaces} onNext={next} onBack={back} />
         ) : null}
+        {step === 'package' ? <PackageStep onNext={next} onBack={back} /> : null}
         {step === 'done' && venue ? <DoneStep venue={venue} /> : null}
       </Card>
     </div>
@@ -381,6 +384,63 @@ function PricesStep({
             ))
           : null}
         <Nav onBack={onBack} onNext={onNext} nextLabel={t('next')} />
+      </CardContent>
+    </>
+  );
+}
+
+/** Optional: a first per-head package (name, price per guest, minimum guests). Dishes come later in the catalogue. */
+function PackageStep({ onNext, onBack }: { onNext: () => void; onBack: () => void }) {
+  const t = useTranslations('Setup.wizard.package');
+  const { can } = useSession();
+  const mayAdd = can('catalogue.manage');
+  const packages = usePackages({ enabled: can('catalogue.view') });
+  const added = packages.data?.data ?? [];
+  // A fresh form after each added package.
+  const [round, setRound] = useState(0);
+
+  return (
+    <>
+      <StepHeader title={t('title')} description={t('description')} />
+      <CardContent className="grid gap-4">
+        {added.length > 0 ? (
+          <ul
+            className="grid gap-1 text-sm"
+            data-testid="wizard-package-list"
+            aria-label={t('added')}
+          >
+            {added.map((pkg) => (
+              <li key={pkg.id} className="flex items-center gap-2">
+                <Check className="size-4 text-green-600" aria-hidden />
+                {pkg.name}
+              </li>
+            ))}
+          </ul>
+        ) : null}
+        {mayAdd ? (
+          <QuickPackageForm
+            key={round}
+            submitLabel={added.length === 0 ? t('addFirst') : t('addAnother')}
+            onDone={() => setRound((r) => r + 1)}
+          />
+        ) : (
+          <p className="text-muted-foreground text-sm">{t('noAccess')}</p>
+        )}
+        <div className="flex flex-wrap items-center justify-between gap-3 pt-2">
+          <Button type="button" variant="ghost" size="lg" className="h-10" onClick={onBack}>
+            {t('back')}
+          </Button>
+          <Button
+            type="button"
+            size="lg"
+            variant={added.length > 0 ? 'default' : 'outline'}
+            className="h-10"
+            onClick={onNext}
+            data-testid="wizard-package-next"
+          >
+            {added.length > 0 ? t('next') : t('skip')}
+          </Button>
+        </div>
       </CardContent>
     </>
   );

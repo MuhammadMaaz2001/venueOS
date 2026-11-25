@@ -308,7 +308,7 @@ link goes in `secretVars`. Staff-facing listings of members use `GET /v1/staff`.
 ## MVP module order (after Phase 0)
 
 1. Setup and onboarding (venues, spaces, combined spaces, slots, settings, wizard)
-2. Catalogue and pricing (menus, packages, add-ons, price rules, tax, cancellation policies, custom fields)
+2. Catalogue and pricing (menus, packages, add-ons, price rules, tax, cancellation policies, custom fields) (done, see below)
 3. Customers
 4. Leads
 5. Pricing engine + quotations (PDF, email, wa.me share)
@@ -415,3 +415,20 @@ filters, venue-scoped through the new `audit_logs.venue_id`); `PATCH /v1/roles/{
 time zone), nav entries by permission, system role names from the messages file. **Tests:** `roles-retire`,
 `audit-logs` integration specs, isolation sweep and route scan extended, shared/web unit tests (label parity, diff,
 toggle rules, zoned days), e2e `roles-audit.spec.ts` (copy Sales agent, edit, invite, accept, audit rows).
+
+## Module 3: catalogue and pricing (done)
+
+Plan and decisions: `.claude/plans/module-3.md`. **Database:** migration `module3_catalogue_pricing` (`active` on tax rates,
+cancellation policies and custom field definitions; one default per tenant; unique active names; CHECKs; back-fill of the new
+permissions into existing roles). **Permissions:** `catalogue.view` and `pricing.view` (manage needs view; `DEFAULT_ROLES`,
+docs/01 and docs/04 updated). **Backend:** `modules/catalogue` (menu items, packages, add-ons, custom fields), `modules/pricing`
+(price rules, tax rates, cancellation policies, rent preview) and the pure, unit-tested `src/pricing/` folder (rule matching,
+ordering, rent) that module 5's quotation engine reuses; shared schemas in `schemas/catalogue.ts` and `schemas/pricing.ts`
+(`priceRuleShapeIssues`, `cancellationTierIssues`). **Web:** `/catalogue` (menu items, packages with a dish picker, add-ons),
+`/pricing` (price rules with the rent preview panel, tax rates, cancellation policies with a tier editor, custom fields),
+nav entries by permission, and an optional "first package" step in the setup wizard. **Tests:** `catalogue` and `pricing`
+integration specs on a shared access matrix (`__tests__/helpers/crud-matrix.ts`: 2xx, 400, 401, 403, other-tenant 404, rev,
+audit), `src/pricing/price-rules.spec.ts`, shared schema specs, constraint tests, isolation sweep and route scan extended, web
+logic tests, e2e `catalogue-pricing.spec.ts`. **Test stability:** the isolation sweep's `beforeAll` has an explicit 120 s
+timeout and `vitest.config.ts` a 60 s `hookTimeout` (a world of ten argon2 logins exceeded the 10 s default when the whole
+suite ran in parallel).

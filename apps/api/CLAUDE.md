@@ -87,6 +87,12 @@
   (`common/access/escalation.ts`). Tests: `auth-*.int-spec.ts`, `staff*.int-spec.ts` use `realAuth: true` and
   `helpers/auth-harness.ts` (logins, cookies, sealed mails opened with the test keyring, a client IP per test
   through `X-Forwarded-For`).
+- **Catalogue and pricing (module 3)** (`modules/catalogue`, `modules/pricing`): inject `Caller` (`common/access/caller.service.ts`:
+  `tenantId`, `has(permission)`, `canSeeCataloguePrices`) and `VenueScope.assertTenantWide()` (tenant-wide writes need access to
+  all venues; price rules scoped to the caller's venues are the exception). `src/pricing/` holds the PURE rent/price-rule logic
+  (no Nest, no DB) that the rent preview uses and the quotation engine (module 5) must reuse; never copy it. Money comes
+  in through `clientMoney()` and goes out through `storedMoney()`. The shared access matrix for tests is
+  `src/__tests__/helpers/crud-matrix.ts`. Every new route goes into the isolation sweep (`ISOLATION_CASES`).
 - Changing endpoints or schemas: run `pnpm api-client:generate` and commit
   `packages/api-client/openapi.json` and `src/schema.ts`.
 - Never run git commit/push/merge/rebase/branch commands; list changed files and suggest a

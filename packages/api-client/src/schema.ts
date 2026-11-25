@@ -665,6 +665,319 @@ export interface paths {
         patch: operations["EventTypesController_update"];
         trace?: never;
     };
+    "/v1/menu-items": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the menu items of the workspace */
+        get: operations["MenuItemsController_list"];
+        put?: never;
+        /**
+         * Add a menu item
+         * @description Tenant-wide, so only a caller with access to all venues. Names are unique among active items (409).
+         */
+        post: operations["MenuItemsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/menu-items/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["MenuItemsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a menu item
+         * @description `rev` is required. `active: false` is the delete.
+         */
+        patch: operations["MenuItemsController_update"];
+        trace?: never;
+    };
+    "/v1/packages": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the packages of the workspace
+         * @description `perHeadRate` is `null` unless the caller has `catalogue.manage` or `booking.view_prices`.
+         */
+        get: operations["PackagesController_list"];
+        put?: never;
+        /**
+         * Add a package
+         * @description Tenant-wide. The dishes must be active menu items of the workspace (404 / 400). Names are unique among active packages (409).
+         */
+        post: operations["PackagesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/packages/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PackagesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a package
+         * @description `rev` is required. `items`, when sent, replaces the whole dish list. `active: false` is the delete. Existing bookings keep their frozen prices.
+         */
+        patch: operations["PackagesController_update"];
+        trace?: never;
+    };
+    "/v1/add-ons": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List the add-ons of the workspace
+         * @description `price` is `null` unless the caller has `catalogue.manage` or `booking.view_prices`.
+         */
+        get: operations["AddOnsController_list"];
+        put?: never;
+        /**
+         * Add an add-on
+         * @description Tenant-wide. Names are unique among active add-ons (409).
+         */
+        post: operations["AddOnsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/add-ons/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["AddOnsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit an add-on
+         * @description `rev` is required. `active: false` is the delete.
+         */
+        patch: operations["AddOnsController_update"];
+        trace?: never;
+    };
+    "/v1/custom-fields": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the custom field definitions, optionally of one record type */
+        get: operations["CustomFieldsController_list"];
+        put?: never;
+        /**
+         * Define a custom field
+         * @description Tenant-wide. The key is unique per record type, also among deactivated fields (409). A choice field needs choices; only text, number and phone fields can be sensitive.
+         */
+        post: operations["CustomFieldsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/custom-fields/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CustomFieldsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a custom field
+         * @description `rev` is required. Record type, key, type and sensitivity are fixed. `active: false` is the delete.
+         */
+        patch: operations["CustomFieldsController_update"];
+        trace?: never;
+    };
+    "/v1/price-rules": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the price rules of the workspace */
+        get: operations["PriceRulesController_list"];
+        put?: never;
+        /**
+         * Add a price rule
+         * @description DAY_OF_WEEK needs weekdays, DATE_RANGE a first and last day, SPECIFIC_DATE one day. A rule that names no space or slot applies everywhere and needs access to all venues; a venue-limited manager may add rules for a space or slot of their venues.
+         */
+        post: operations["PriceRulesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/price-rules/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["PriceRulesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a price rule
+         * @description `rev` is required. The merged rule is validated like a new one. `active: false` is the delete. Existing bookings keep their frozen prices.
+         */
+        patch: operations["PriceRulesController_update"];
+        trace?: never;
+    };
+    "/v1/pricing/rent-preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Preview the rent of a space for a slot on a day
+         * @description Base rent, every matching price rule in the order applied (docs/05 section 3) and the final rent. Read-only. An HOURLY slot needs `hours`.
+         */
+        get: operations["PriceRulesController_rentPreview"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tax-rates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the tax rates of the workspace */
+        get: operations["TaxRatesController_list"];
+        put?: never;
+        /**
+         * Add a tax rate
+         * @description Tenant-wide. `isDefault: true` takes the flag from the current default. Names are unique among active rates (409).
+         */
+        post: operations["TaxRatesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/tax-rates/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["TaxRatesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a tax rate
+         * @description `rev` is required. `active: false` is the delete and also clears the default flag.
+         */
+        patch: operations["TaxRatesController_update"];
+        trace?: never;
+    };
+    "/v1/cancellation-policies": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List the cancellation policies of the workspace */
+        get: operations["CancellationPoliciesController_list"];
+        put?: never;
+        /**
+         * Add a cancellation policy
+         * @description Tiers are sent from the longest notice to the shortest: `minDaysBefore` strictly descending, the last one 0, `refundPct` 0 to 100. `isDefault: true` takes the flag from the current default.
+         */
+        post: operations["CancellationPoliciesController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/cancellation-policies/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["CancellationPoliciesController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a cancellation policy
+         * @description `rev` is required. A booking keeps the copy it took when it was confirmed. `active: false` is the delete and also clears the default flag.
+         */
+        patch: operations["CancellationPoliciesController_update"];
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -820,7 +1133,7 @@ export interface components {
             data: {
                 id: string;
                 name: string;
-                permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+                permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.view" | "catalogue.manage" | "pricing.view" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
                 limits: {
                     maxDiscountPct: number;
                 };
@@ -838,7 +1151,7 @@ export interface components {
         RoleResponseDto: {
             id: string;
             name: string;
-            permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+            permissions: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.view" | "catalogue.manage" | "pricing.view" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
             limits: {
                 maxDiscountPct: number;
             };
@@ -858,7 +1171,7 @@ export interface components {
         UpdateRoleDto: {
             rev: number;
             name?: string;
-            permissions?: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.manage" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
+            permissions?: ("tenant.settings.manage" | "billing.manage" | "staff.manage" | "role.manage" | "audit.view" | "template.manage" | "venue.view" | "venue.manage" | "catalogue.view" | "catalogue.manage" | "pricing.view" | "pricing.manage" | "customer.view" | "customer.manage" | "customer.view_sensitive" | "lead.view" | "lead.manage" | "quotation.manage" | "quotation.send" | "booking.view" | "booking.view_prices" | "booking.create" | "booking.edit" | "booking.hold" | "booking.extend_hold" | "booking.confirm" | "booking.confirm_override" | "booking.cancel" | "booking.edit_locked" | "booking.override_rules" | "payment.view" | "payment.record" | "payment.reverse" | "payment.refund.request" | "payment.refund.approve" | "eventsheet.view" | "vendor.view" | "vendor.manage" | "expense.view" | "expense.record" | "expense.reverse" | "inventory.view" | "inventory.record" | "inventory.adjust" | "report.view" | "report.financial")[];
             limits?: {
                 maxDiscountPct: number;
             };
@@ -1226,6 +1539,424 @@ export interface components {
             rev: number;
             name?: string;
             color?: string | null;
+            active?: boolean;
+        };
+        MenuItemListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                category: string | null;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateMenuItemDto: {
+            name: string;
+            category?: string | null;
+        };
+        MenuItemResponseDto: {
+            id: string;
+            name: string;
+            category: string | null;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateMenuItemDto: {
+            rev: number;
+            name?: string;
+            category?: string | null;
+            active?: boolean;
+        };
+        PackageListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                perHeadRate: string | null;
+                minGuests: number;
+                description: string | null;
+                items: {
+                    menuItemId: string;
+                    name: string;
+                    category: string | null;
+                    quantity: number;
+                    menuItemActive: boolean;
+                }[];
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreatePackageDto: {
+            name: string;
+            perHeadRate: string;
+            /** @default 0 */
+            minGuests: number;
+            description?: string | null;
+            /** @default [] */
+            items: {
+                menuItemId: string;
+                /** @default 1 */
+                quantity: number;
+            }[];
+        };
+        PackageResponseDto: {
+            id: string;
+            name: string;
+            perHeadRate: string | null;
+            minGuests: number;
+            description: string | null;
+            items: {
+                menuItemId: string;
+                name: string;
+                category: string | null;
+                quantity: number;
+                menuItemActive: boolean;
+            }[];
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdatePackageDto: {
+            rev: number;
+            name?: string;
+            perHeadRate?: string;
+            minGuests?: number;
+            description?: string | null;
+            items?: {
+                menuItemId: string;
+                /** @default 1 */
+                quantity: number;
+            }[];
+            active?: boolean;
+        };
+        AddOnListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                /** @enum {string} */
+                pricing: "FIXED" | "PER_HEAD" | "PER_HOUR" | "PER_UNIT";
+                price: string | null;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateAddOnDto: {
+            name: string;
+            /** @enum {string} */
+            pricing: "FIXED" | "PER_HEAD" | "PER_HOUR" | "PER_UNIT";
+            price: string;
+        };
+        AddOnResponseDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            pricing: "FIXED" | "PER_HEAD" | "PER_HOUR" | "PER_UNIT";
+            price: string | null;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateAddOnDto: {
+            rev: number;
+            name?: string;
+            /** @enum {string} */
+            pricing?: "FIXED" | "PER_HEAD" | "PER_HOUR" | "PER_UNIT";
+            price?: string;
+            active?: boolean;
+        };
+        CustomFieldDefListResponseDto: {
+            data: {
+                id: string;
+                /** @enum {string} */
+                entity: "customer" | "booking" | "session" | "lead";
+                key: string;
+                label: string;
+                /** @enum {string} */
+                type: "text" | "number" | "date" | "select" | "phone";
+                options: string[];
+                required: boolean;
+                sensitive: boolean;
+                sortOrder: number;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateCustomFieldDefDto: {
+            /** @enum {string} */
+            entity: "customer" | "booking" | "session" | "lead";
+            key: string;
+            label: string;
+            /** @enum {string} */
+            type: "text" | "number" | "date" | "select" | "phone";
+            /** @default [] */
+            options: string[];
+            /** @default false */
+            required: boolean;
+            /** @default false */
+            sensitive: boolean;
+            /** @default 0 */
+            sortOrder: number;
+        };
+        CustomFieldDefResponseDto: {
+            id: string;
+            /** @enum {string} */
+            entity: "customer" | "booking" | "session" | "lead";
+            key: string;
+            label: string;
+            /** @enum {string} */
+            type: "text" | "number" | "date" | "select" | "phone";
+            options: string[];
+            required: boolean;
+            sensitive: boolean;
+            sortOrder: number;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateCustomFieldDefDto: {
+            rev: number;
+            label?: string;
+            options?: string[];
+            required?: boolean;
+            sortOrder?: number;
+            active?: boolean;
+        };
+        PriceRuleListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                /** @enum {string} */
+                kind: "DAY_OF_WEEK" | "DATE_RANGE" | "SPECIFIC_DATE";
+                spaceId: string | null;
+                slotId: string | null;
+                venueId: string | null;
+                daysOfWeek: number[];
+                startDate: string | null;
+                endDate: string | null;
+                /** @enum {string} */
+                adjustment: "PERCENT" | "FIXED_AMOUNT" | "OVERRIDE";
+                value: string;
+                priority: number;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreatePriceRuleDto: {
+            name: string;
+            /** @enum {string} */
+            kind: "DAY_OF_WEEK" | "DATE_RANGE" | "SPECIFIC_DATE";
+            spaceId?: string | null;
+            slotId?: string | null;
+            daysOfWeek?: number[];
+            startDate?: string | null;
+            endDate?: string | null;
+            /** @enum {string} */
+            adjustment: "PERCENT" | "FIXED_AMOUNT" | "OVERRIDE";
+            value: string;
+            /** @default 0 */
+            priority: number;
+        };
+        PriceRuleResponseDto: {
+            id: string;
+            name: string;
+            /** @enum {string} */
+            kind: "DAY_OF_WEEK" | "DATE_RANGE" | "SPECIFIC_DATE";
+            spaceId: string | null;
+            slotId: string | null;
+            venueId: string | null;
+            daysOfWeek: number[];
+            startDate: string | null;
+            endDate: string | null;
+            /** @enum {string} */
+            adjustment: "PERCENT" | "FIXED_AMOUNT" | "OVERRIDE";
+            value: string;
+            priority: number;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdatePriceRuleDto: {
+            rev: number;
+            name?: string;
+            /** @enum {string} */
+            kind?: "DAY_OF_WEEK" | "DATE_RANGE" | "SPECIFIC_DATE";
+            spaceId?: string | null;
+            slotId?: string | null;
+            daysOfWeek?: number[];
+            startDate?: string | null;
+            endDate?: string | null;
+            /** @enum {string} */
+            adjustment?: "PERCENT" | "FIXED_AMOUNT" | "OVERRIDE";
+            value?: string;
+            priority?: number;
+            active?: boolean;
+        };
+        RentPreviewResponseDto: {
+            currency: string;
+            venueId: string;
+            spaceId: string;
+            slotId: string;
+            date: string;
+            weekday: number;
+            /** @enum {string} */
+            slotMode: "FIXED" | "HOURLY" | "FULL_DAY";
+            hours: string | null;
+            unitRent: string;
+            /** @enum {string} */
+            baseSource: "SLOT_PRICE" | "SPACE_BASE_RENT";
+            baseRent: string;
+            adjustments: {
+                ruleId: string;
+                name: string;
+                /** @enum {string} */
+                kind: "DAY_OF_WEEK" | "DATE_RANGE" | "SPECIFIC_DATE";
+                /** @enum {string} */
+                adjustment: "PERCENT" | "FIXED_AMOUNT" | "OVERRIDE";
+                value: string;
+                amount: string;
+                rentAfter: string;
+            }[];
+            notApplied: {
+                ruleId: string;
+                name: string;
+            }[];
+            finalRent: string;
+        };
+        TaxRateListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                ratePct: string;
+                inclusive: boolean;
+                isDefault: boolean;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateTaxRateDto: {
+            name: string;
+            ratePct: string;
+            /** @default false */
+            inclusive: boolean;
+            /** @default false */
+            isDefault: boolean;
+        };
+        TaxRateResponseDto: {
+            id: string;
+            name: string;
+            ratePct: string;
+            inclusive: boolean;
+            isDefault: boolean;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateTaxRateDto: {
+            rev: number;
+            name?: string;
+            ratePct?: string;
+            inclusive?: boolean;
+            isDefault?: boolean;
+            active?: boolean;
+        };
+        CancellationPolicyListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                tiers: {
+                    minDaysBefore: number;
+                    refundPct: number;
+                }[];
+                isDefault: boolean;
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateCancellationPolicyDto: {
+            name: string;
+            tiers: {
+                minDaysBefore: number;
+                refundPct: number;
+            }[];
+            /** @default false */
+            isDefault: boolean;
+        };
+        CancellationPolicyResponseDto: {
+            id: string;
+            name: string;
+            tiers: {
+                minDaysBefore: number;
+                refundPct: number;
+            }[];
+            isDefault: boolean;
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateCancellationPolicyDto: {
+            rev: number;
+            name?: string;
+            tiers?: {
+                minDaysBefore: number;
+                refundPct: number;
+            }[];
+            isDefault?: boolean;
             active?: boolean;
         };
     };
@@ -2291,6 +3022,665 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["EventTypeResponseDto"];
+                };
+            };
+        };
+    };
+    MenuItemsController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+                category?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuItemListResponseDto"];
+                };
+            };
+        };
+    };
+    MenuItemsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateMenuItemDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuItemResponseDto"];
+                };
+            };
+        };
+    };
+    MenuItemsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuItemResponseDto"];
+                };
+            };
+        };
+    };
+    MenuItemsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateMenuItemDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["MenuItemResponseDto"];
+                };
+            };
+        };
+    };
+    PackagesController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageListResponseDto"];
+                };
+            };
+        };
+    };
+    PackagesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePackageDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageResponseDto"];
+                };
+            };
+        };
+    };
+    PackagesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageResponseDto"];
+                };
+            };
+        };
+    };
+    PackagesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePackageDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PackageResponseDto"];
+                };
+            };
+        };
+    };
+    AddOnsController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnListResponseDto"];
+                };
+            };
+        };
+    };
+    AddOnsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateAddOnDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponseDto"];
+                };
+            };
+        };
+    };
+    AddOnsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponseDto"];
+                };
+            };
+        };
+    };
+    AddOnsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateAddOnDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AddOnResponseDto"];
+                };
+            };
+        };
+    };
+    CustomFieldsController_list: {
+        parameters: {
+            query?: {
+                entity?: "customer" | "booking" | "session" | "lead";
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDefListResponseDto"];
+                };
+            };
+        };
+    };
+    CustomFieldsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomFieldDefDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDefResponseDto"];
+                };
+            };
+        };
+    };
+    CustomFieldsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDefResponseDto"];
+                };
+            };
+        };
+    };
+    CustomFieldsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomFieldDefDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomFieldDefResponseDto"];
+                };
+            };
+        };
+    };
+    PriceRulesController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+                spaceId?: string;
+                slotId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceRuleListResponseDto"];
+                };
+            };
+        };
+    };
+    PriceRulesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreatePriceRuleDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceRuleResponseDto"];
+                };
+            };
+        };
+    };
+    PriceRulesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceRuleResponseDto"];
+                };
+            };
+        };
+    };
+    PriceRulesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdatePriceRuleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PriceRuleResponseDto"];
+                };
+            };
+        };
+    };
+    PriceRulesController_rentPreview: {
+        parameters: {
+            query: {
+                venueId: string;
+                spaceId: string;
+                slotId: string;
+                date: string;
+                hours?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RentPreviewResponseDto"];
+                };
+            };
+        };
+    };
+    TaxRatesController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRateListResponseDto"];
+                };
+            };
+        };
+    };
+    TaxRatesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateTaxRateDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRateResponseDto"];
+                };
+            };
+        };
+    };
+    TaxRatesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRateResponseDto"];
+                };
+            };
+        };
+    };
+    TaxRatesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateTaxRateDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["TaxRateResponseDto"];
+                };
+            };
+        };
+    };
+    CancellationPoliciesController_list: {
+        parameters: {
+            query?: {
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationPolicyListResponseDto"];
+                };
+            };
+        };
+    };
+    CancellationPoliciesController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCancellationPolicyDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationPolicyResponseDto"];
+                };
+            };
+        };
+    };
+    CancellationPoliciesController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationPolicyResponseDto"];
+                };
+            };
+        };
+    };
+    CancellationPoliciesController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCancellationPolicyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancellationPolicyResponseDto"];
                 };
             };
         };

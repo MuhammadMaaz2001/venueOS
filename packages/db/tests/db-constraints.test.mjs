@@ -186,6 +186,7 @@ test('rev + updated_at: every table with a rev column has the touch_row trigger 
 // ───────────────────────────── double booking ─────────────────────────────
 
 const T1 = { tenant: 't1' };
+const T2 = { tenant: 't2' };
 const dinner = ['2027-02-14 18:00+05', '2027-02-15 00:00+05'];
 
 test('bookings: number is required once a booking is held, not for drafts', async () => {
@@ -559,4 +560,157 @@ test('invitations: one pending invitation per tenant and email; accepted or revo
   await ins('pinv3', 'pth3'); // allowed again once the first is revoked
   await sql(auth, {}, `UPDATE invitations SET accepted_at = now() WHERE id = 'pinv3'`);
   await ins('pinv4', 'pth4');
+});
+
+test('module 3: one default tax rate / cancellation policy per tenant, and a default is active', async () => {
+  const tax = (id, name, isDefault) =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO tax_rates (id, tenant_id, name, rate_pct, is_default, updated_at)
+                  VALUES ('${id}','t1','${name}', 16, ${isDefault}, now())`,
+    );
+  await tax('tax1', 'GST', true);
+  await rejects(tax('tax2', 'VAT', true), /tax_rates_one_default_key/);
+  await tax('tax3', 'Service', false);
+  // Another tenant may have its own default.
+  await sql(
+    app,
+    T2,
+    `INSERT INTO tax_rates (id, tenant_id, name, rate_pct, is_default, updated_at) VALUES ('tax_t2','t2','GST', 16, true, now())`,
+  );
+  // A default cannot be inactive.
+  await rejects(
+    sql(app, T1, `UPDATE tax_rates SET active = false WHERE id = 'tax1'`),
+    /tax_rates_default_is_active/,
+  );
+  await sql(app, T1, `UPDATE tax_rates SET is_default = false, active = false WHERE id = 'tax1'`);
+  await sql(app, T1, `UPDATE tax_rates SET is_default = true WHERE id = 'tax3'`);
+  // Range check.
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO tax_rates (id, tenant_id, name, rate_pct, updated_at) VALUES ('tax4','t1','Over', 100.01, now())`,
+    ),
+    /tax_rates_rate_pct_range|numeric field overflow|check/i,
+  );
+
+  const policy = (id, name, def) =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO cancellation_policies (id, tenant_id, name, tiers, is_default, updated_at)
+                  VALUES ('${id}','t1','${name}','[{"minDaysBefore":0,"refundPct":0}]', ${def}, now())`,
+    );
+  await policy('cp1', 'Standard', true);
+  await rejects(policy('cp2', 'Strict', true), /cancellation_policies_one_default_key/);
+  await policy('cp3', 'Strict', false);
+  await rejects(
+    sql(app, T1, `UPDATE cancellation_policies SET active = false WHERE id = 'cp1'`),
+    /cancellation_policies_default_is_active/,
+  );
+});
+
+test('module 3: catalogue names are unique among active rows, case-insensitively', async () => {
+  const item = (id, name, active = true) =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO menu_items (id, tenant_id, name, active, updated_at) VALUES ('${id}','t1','${name}', ${active}, now())`,
+    );
+  await item('mi1', 'Chicken Karahi');
+  await rejects(item('mi2', 'chicken karahi'), /menu_items_active_name_key/);
+  await item('mi3', 'Chicken karahi', false); // an inactive row does not count
+  await rejects(
+    sql(app, T1, `UPDATE menu_items SET active = true WHERE id = 'mi3'`),
+    /menu_items_active_name_key/,
+  );
+  await sql(
+    app,
+    T2,
+    `INSERT INTO menu_items (id, tenant_id, name, updated_at) VALUES ('mi_t2','t2','Chicken Karahi', now())`,
+  );
+
+  await sql(
+    app,
+    T1,
+    `INSERT INTO packages (id, tenant_id, name, per_head_rate, updated_at) VALUES ('pk1','t1','Menu A', 1500, now())`,
+  );
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO packages (id, tenant_id, name, per_head_rate, updated_at) VALUES ('pk2','t1','MENU A', 1500, now())`,
+    ),
+    /packages_active_name_key/,
+  );
+  await sql(
+    app,
+    T1,
+    `INSERT INTO add_ons (id, tenant_id, name, price, updated_at) VALUES ('ad1','t1','DJ', 5000, now())`,
+  );
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO add_ons (id, tenant_id, name, price, updated_at) VALUES ('ad2','t1','dj', 5000, now())`,
+    ),
+    /add_ons_active_name_key/,
+  );
+});
+
+test('module 3: money, quantity and date-range sanity checks', async () => {
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO packages (id, tenant_id, name, per_head_rate, updated_at) VALUES ('pkneg','t1','Negative', -1, now())`,
+    ),
+    /packages_per_head_rate_nonneg/,
+  );
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO packages (id, tenant_id, name, per_head_rate, min_guests, updated_at) VALUES ('pkneg2','t1','Negative guests', 1, -1, now())`,
+    ),
+    /packages_min_guests_nonneg/,
+  );
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO add_ons (id, tenant_id, name, price, updated_at) VALUES ('adneg','t1','Negative', -5, now())`,
+    ),
+    /add_ons_price_nonneg/,
+  );
+  await rejects(
+    sql(
+      app,
+      T1,
+      `INSERT INTO package_items (tenant_id, package_id, menu_item_id, quantity) VALUES ('t1','pk1','mi1', 0)`,
+    ),
+    /package_items_quantity_positive/,
+  );
+  const rule = (id, start, end) =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO price_rules (id, tenant_id, name, kind, days_of_week, start_date, end_date, adjustment, value, updated_at)
+                  VALUES ('${id}','t1','Season','DATE_RANGE','{}','${start}','${end}','PERCENT', 10, now())`,
+    );
+  await rule('pr1', '2027-11-01', '2027-12-31');
+  await rejects(rule('pr2', '2027-12-31', '2027-11-01'), /price_rules_date_order/);
+});
+
+test('module 3: tax rates, cancellation policies and custom field definitions can be deactivated', async () => {
+  const { rows } = await migrator.query(
+    `SELECT table_name FROM information_schema.columns
+      WHERE column_name = 'active' AND table_name IN ('tax_rates','cancellation_policies','custom_field_defs') ORDER BY 1`,
+  );
+  assert.deepEqual(
+    rows.map((r) => r.table_name),
+    ['cancellation_policies', 'custom_field_defs', 'tax_rates'],
+  );
 });

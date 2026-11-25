@@ -1,7 +1,10 @@
 import type { SlotTemplateDto, SpaceDto, VenueDto } from '@venueos/shared';
 
-/** The steps of the setup wizard, in order (docs/01 module 1: venue → spaces → slots → prices → done). */
-export const WIZARD_STEPS = ['venue', 'spaces', 'slots', 'prices', 'done'] as const;
+/**
+ * The steps of the setup wizard, in order (docs/01 modules 1 and 3: venue → spaces → slots → prices → first package →
+ * done). The package step is optional and can be skipped.
+ */
+export const WIZARD_STEPS = ['venue', 'spaces', 'slots', 'prices', 'package', 'done'] as const;
 export type WizardStep = (typeof WIZARD_STEPS)[number];
 
 export interface WizardFacts {

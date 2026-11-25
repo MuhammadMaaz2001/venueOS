@@ -93,6 +93,23 @@ Messages are user-safe English; the web app maps `code` to translated text.
 | `GET /v1/audit-logs` | `audit.view` | cursor list, newest first; filters `entityType`, `entityId`, `actorUserId`, `action`, `from`, `to` (`YYYY-MM-DD` = whole tenant-time-zone days, inclusive, or an ISO instant); venue-limited callers see only their venues' entries |
 | `GET /v1/audit-logs/{id}` | `audit.view` | with `before`, `after`, `ip`; another tenant's or an out-of-scope id is 404 |
 
+## Catalogue and pricing (module 3)
+
+All of these are tenant-wide lists (`{ data, nextCursor: null }`, `?includeInactive=true` shows deactivated rows), `PATCH`
+with `rev`, `active: false` as the delete, no `DELETE`. A write needs access to all venues (403 otherwise), except price rules
+scoped to a space or slot of the caller's venues.
+
+| Endpoint | Access | Notes |
+| --- | --- | --- |
+| `GET/POST /v1/menu-items`, `GET/PATCH /v1/menu-items/{id}` | `catalogue.view` / `catalogue.manage` | `?category=`; names unique among active (409) |
+| `GET/POST /v1/packages`, `GET/PATCH /v1/packages/{id}` | `catalogue.view` / `catalogue.manage` | `items` replaces the whole dish list on PATCH; `perHeadRate` is `null` without `catalogue.manage` or `booking.view_prices`; another tenant's dish is 404 |
+| `GET/POST /v1/add-ons`, `GET/PATCH /v1/add-ons/{id}` | `catalogue.view` / `catalogue.manage` | `pricing` FIXED, PER_HEAD, PER_HOUR, PER_UNIT; `price` hidden like `perHeadRate` |
+| `GET/POST /v1/custom-fields`, `GET/PATCH /v1/custom-fields/{id}` | `catalogue.view` / `catalogue.manage` | `?entity=`; key unique per entity for good (409); entity, key, type, sensitive fixed |
+| `GET/POST /v1/price-rules`, `GET/PATCH /v1/price-rules/{id}` | `pricing.view` / `pricing.manage` | `?spaceId=`, `?slotId=`; the merged rule is validated on PATCH; space and slot of another tenant are 404, of different venues 400 |
+| `GET /v1/pricing/rent-preview?venueId&spaceId&slotId&date[&hours]` | `pricing.view` | base rent, each rule in the order applied (`adjustments`), overrides that lost (`notApplied`), `finalRent`; HOURLY needs `hours`; 400 slot not offered that weekday, 422 no rent set |
+| `GET/POST /v1/tax-rates`, `GET/PATCH /v1/tax-rates/{id}` | `pricing.view` / `pricing.manage` | `isDefault: true` moves the default flag; deactivating the default clears it |
+| `GET/POST /v1/cancellation-policies`, `GET/PATCH /v1/cancellation-policies/{id}` | `pricing.view` / `pricing.manage` | tiers: `minDaysBefore` strictly descending, last one 0, `refundPct` 0..100; default as for tax rates |
+
 ## Lists
 
 - Cursor pagination: `?limit=25&cursor=<opaque>`; response

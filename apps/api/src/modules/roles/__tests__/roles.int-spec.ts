@@ -284,6 +284,7 @@ describe('roles endpoints', () => {
       const { tenant, auth } = await setup(
         manager([
           'venue.view',
+          'catalogue.view',
           'eventsheet.view',
           'booking.view',
           'vendor.view',

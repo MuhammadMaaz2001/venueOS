@@ -101,9 +101,9 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
   be changed. A tenant must also always keep at least one active membership with the Owner role: removing
   or deactivating the last owner is rejected with `422` (enforced by the staff endpoints, P0-4).
 - **A role that may manage an area may also see it.** A role holding `<area>.manage` must hold `<area>.view` where a view
-  permission exists (`venue`, `customer`, `lead`, `vendor`): otherwise the role edit is `400 VALIDATION_ERROR` naming
-  the missing permission (`requiredViewPermission` in `packages/shared`). Areas without a view permission (`staff`,
-  `role`, `catalogue`, `pricing`, `billing`, `template`, `tenant.settings`) have no pair. `DEFAULT_ROLES` satisfy it
+  permission exists (`venue`, `catalogue`, `pricing`, `customer`, `lead`, `vendor`): otherwise the role edit is
+  `400 VALIDATION_ERROR` naming the missing permission (`requiredViewPermission` in `packages/shared`). Areas without a
+  view permission (`staff`, `role`, `billing`, `template`, `tenant.settings`) have no pair. `DEFAULT_ROLES` satisfy it
   (a test proves it).
 - **Retiring roles.** `PATCH /v1/roles/{id}` with `active: false` retires a custom role; `true` restores it. A system
   role cannot be retired and a role with active members cannot be retired (`422 INVALID_STATE_TRANSITION`; the check runs
@@ -130,7 +130,7 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
 | Area | Permissions |
 | --- | --- |
 | Tenant | `tenant.settings.manage`, `billing.manage`, `staff.manage`, `role.manage`, `audit.view`, `template.manage` |
-| Setup | `venue.view`, `venue.manage`, `catalogue.manage`, `pricing.manage` |
+| Setup | `venue.view`, `venue.manage`, `catalogue.view`, `catalogue.manage`, `pricing.view`, `pricing.manage` |
 | CRM | `customer.view`, `customer.manage`, `customer.view_sensitive`, `lead.view`, `lead.manage` |
 | Bookings | `quotation.manage`, `quotation.send`, `booking.view`, `booking.view_prices`, `booking.create`, `booking.edit`, `booking.hold`, `booking.extend_hold`, `booking.confirm`, `booking.confirm_override`, `booking.cancel`, `booking.edit_locked`, `booking.override_rules` |
 | Money | `payment.view`, `payment.record`, `payment.reverse`, `payment.refund.request`, `payment.refund.approve` |
@@ -141,6 +141,18 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
 calendars work for everyone); `venue.manage` writes them and also reads the per-slot rent lists. A space's default
 `baseRent` is shown only to callers with `venue.manage` or `booking.view_prices` (others get `null`). Grant
 `venue.view` together with `venue.manage`: the API does not infer one from the other.
+
+**Catalogue and pricing (module 3).** `catalogue.view` reads menu items, packages, add-ons and custom field definitions,
+`catalogue.manage` writes them; `pricing.view` reads price rules, tax rates, cancellation policies and the rent preview,
+`pricing.manage` writes them (each manage needs its view, see above). Both are tenant-wide data, so **a write needs access
+to all venues** (`403 FORBIDDEN` for a caller limited to some venues, like event types); the one exception is a price
+rule scoped to a space or slot of the caller's own venues, which a venue-limited `pricing.manage` holder may create and
+edit (a rule that applies everywhere, or one of another venue, stays out of reach: 403 / 404). Catalogue prices
+(`packages.perHeadRate`, `add_ons.price`) are `null` for a reader who has neither `catalogue.manage` nor
+`booking.view_prices` (Operations sees the dishes, not the rates), the same rule as `spaces.baseRent`. Every foreign id a
+client sends (menu item, space, slot) is loaded through `TenantDb` first (404). All changes are audited
+(`menu_item.*`, `package.*`, `add_on.*`, `price_rule.*`, `tax_rate.*`, `cancellation_policy.*`, `custom_field.*`;
+price rules scoped to a space or slot carry that venue's id for venue-scoped reading of the audit log).
 
 `booking.create` / `booking.edit` cover creating and changing bookings and sessions;
 `booking.edit_locked` is the extra permission inside the guest-lock window;

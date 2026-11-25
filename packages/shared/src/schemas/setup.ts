@@ -1,14 +1,10 @@
 import { z } from 'zod';
 import { TenantSettings } from '../tenant-settings.js';
 import { isTimeZone } from './auth.js';
+import { Id, IncludeInactive, IsoDateTime, Name, OptionalText, Rev, listOf } from './common.js';
 
 // Module 1, setup and onboarding (docs/01 module 1, docs/05 sections 1 and 15): tenant settings, venues,
 // spaces (also combined ones), slot templates, per-space slot prices and event types.
-
-const Id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/, 'Invalid id');
-const Rev = z.number().int().min(1);
-const Name = (max: number) => z.string().trim().min(1).max(max);
-const OptionalText = (max: number) => z.string().trim().max(max).nullable();
 
 /** Venue-local wall clock time, 24 h. */
 export const LocalTimeSchema = z.string().regex(/^([01]\d|2[0-3]):[0-5]\d$/, 'Use HH:mm (24 h)');
@@ -18,16 +14,7 @@ export const MoneyStringSchema = z
   .regex(/^\d{1,15}(\.\d{1,3})?$/, 'Use a non-negative decimal amount');
 const TimeZoneSchema = z.string().max(64).refine(isTimeZone, 'Unknown IANA time zone');
 
-const IsoDateTime = z.iso.datetime();
-
-/** Unpaged list answer (a tenant has few venues, spaces, slots): `nextCursor` is always null. */
-const listOf = <T extends z.ZodType>(item: T) =>
-  z.object({ data: z.array(item), nextCursor: z.null() });
-
 export const IdParamSchema = z.object({ id: Id });
-
-/** `?includeInactive=true` shows deactivated rows too (settings screens need them to reactivate). */
-const IncludeInactive = z.enum(['true', 'false']).optional();
 
 // ───────────────────────────── tenant settings ─────────────────────────────
 
