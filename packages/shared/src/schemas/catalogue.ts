@@ -252,6 +252,14 @@ export const CreateCustomFieldDefSchema = z
         message: 'Only text, number and phone fields can be sensitive',
       });
     }
+    // Sealing and revealing (module 4) exist for customers; the other records get it when they need it.
+    if (v.sensitive && v.entity !== 'customer') {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['sensitive'],
+        message: 'Only customer fields can be sensitive',
+      });
+    }
   });
 export type CreateCustomFieldDefInput = z.infer<typeof CreateCustomFieldDefSchema>;
 

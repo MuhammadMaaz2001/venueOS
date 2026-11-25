@@ -154,6 +154,8 @@ client sends (menu item, space, slot) is loaded through `TenantDb` first (404). 
 (`menu_item.*`, `package.*`, `add_on.*`, `price_rule.*`, `tax_rate.*`, `cancellation_policy.*`, `custom_field.*`;
 price rules scoped to a space or slot carry that venue's id for venue-scoped reading of the audit log).
 
+**Customers and leads (modules 4 and 5).** `customer.view` reads customers (tenant-wide data), `customer.manage` writes them; a role that manages needs the view. `customer.view_sensitive` is a separate permission: without it a sensitive custom field (a CNIC) is only ever returned masked, and `POST /v1/customers/{id}/reveal/{fieldKey}` is `403`. Holding `customer.manage` lets a person ENTER or replace a sensitive value, not read it back. `lead.view` / `lead.manage` read and write leads, which belong to a venue: **venue scoping applies** (a lead of another venue is `404` on read, edit, activity, and as a target of create / move). An assignee must be an active member of the workspace whose role holds `lead.manage` and whose venues cover the lead's venue (another workspace's member is `404`, an ineligible one `400` on `assigneeId`). Creating a customer inline with a lead also needs `customer.manage`. Audited: `customer.create`, `.update`, `.deactivate`, `.reactivate`, `.reveal_sensitive`, and `lead.create`, `.update`, `.stage_change`, `.assign` (leads carry their venue id for venue-scoped reading of the audit log).
+
 `booking.create` / `booking.edit` cover creating and changing bookings and sessions;
 `booking.edit_locked` is the extra permission inside the guest-lock window;
 `quotation.manage` drafts and prices quotations, `quotation.send` emails/shares them.
@@ -248,6 +250,7 @@ item inside that tenant's context. Resource IDs from another tenant return **404
   shown masked (`*****-*****67-1`) unless the user has `customer.view_sensitive` (audited).
   The key comes from the secret store as a **keyring** (`FIELD_ENCRYPTION_KEYS`: JSON with
   `active` key id + `keys` map); each ciphertext stores its key id so keys can be rotated.
+- **Sensitive custom fields (module 4).** Only customer fields can be marked sensitive (text, number, phone). The value is sealed with the field keyring when it is written (AAD = tenant, customer id and field key, so a blob copied to another customer or field does not open) and stored with its masked hint (`*****-*****67-1`: separators stay, only the last characters show, never more than a third of the value); lists and detail reads return the hint and never decrypt. `reveal` opens one value, needs `customer.view_sensitive` and writes an audit row naming the customer and the field, never the value. The audit rows of a customer write list sensitive keys as `[REDACTED]` or by key only (`sensitiveFieldsChanged`), and nothing logs the clear value.
 - Never put PII in URLs, logs, analytics events, error messages or Sentry. The pino redaction
   list covers `password`, `token`, `cookie`, `authorization`, `cnic`, `phone`, `email`, `body`.
   `login_attempts` stores a hash of the email, not the email.

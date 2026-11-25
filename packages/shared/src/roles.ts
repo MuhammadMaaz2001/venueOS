@@ -48,6 +48,7 @@ export const DEFAULT_ROLES: readonly DefaultRoleDefinition[] = [
       'pricing.manage',
       'customer.view',
       'customer.manage',
+      'customer.view_sensitive',
       'lead.view',
       'lead.manage',
       'quotation.manage',

@@ -93,6 +93,12 @@
   (no Nest, no DB) that the rent preview uses and the quotation engine (module 5) must reuse; never copy it. Money comes
   in through `clientMoney()` and goes out through `storedMoney()`. The shared access matrix for tests is
   `src/__tests__/helpers/crud-matrix.ts`. Every new route goes into the isolation sweep (`ISOLATION_CASES`).
+- **Customers and leads (modules 4 and 5)** (`modules/customers`, `modules/leads`, `common/custom-fields`): custom field values go through
+  `CustomFieldValuesService` (type / choices / required validation, sealing of sensitive values; reads return the masked hint and
+  never decrypt, only `reveal` opens one and only after the permission check and with an audit row). Phones go through
+  `phoneOrThrow` (workspace country), never regexes in a service. Lead stage rules come from `checkLeadStageChange`
+  (`@venueos/shared`), venue scoping from `VenueScope` (`scopeWhere()` in the lead queries, 404 outside it). Search terms go
+  through `searchTerm()` (Prisma does not escape `%`). The new-lead email uses `EmailOutbox` in the lead's transaction.
 - Changing endpoints or schemas: run `pnpm api-client:generate` and commit
   `packages/api-client/openapi.json` and `src/schema.ts`.
 - Never run git commit/push/merge/rebase/branch commands; list changed files and suggest a

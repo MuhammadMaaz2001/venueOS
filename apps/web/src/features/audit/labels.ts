@@ -22,6 +22,15 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'slot_template.update',
   'event_type.create',
   'event_type.update',
+  'customer.create',
+  'customer.update',
+  'customer.deactivate',
+  'customer.reactivate',
+  'customer.reveal_sensitive',
+  'lead.create',
+  'lead.update',
+  'lead.stage_change',
+  'lead.assign',
 ];
 
 /** The entity types of those actions, for the "what was changed" filter. */
@@ -34,4 +43,6 @@ export const AUDIT_ENTITY_TYPES: readonly string[] = [
   'space',
   'slot_template',
   'event_type',
+  'customer',
+  'lead',
 ];

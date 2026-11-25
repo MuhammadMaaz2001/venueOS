@@ -47,6 +47,9 @@ describe('catalogue schemas', () => {
     expect(
       CreateCustomFieldDefSchema.safeParse({ ...base, type: 'date', sensitive: true }).success,
     ).toBe(false);
+    expect(
+      CreateCustomFieldDefSchema.safeParse({ ...base, entity: 'lead', sensitive: true }).success,
+    ).toBe(false);
     expect(CreateCustomFieldDefSchema.safeParse({ ...base, type: 'select' }).success).toBe(false);
     expect(
       CreateCustomFieldDefSchema.safeParse({ ...base, type: 'select', options: ['A', 'a'] })

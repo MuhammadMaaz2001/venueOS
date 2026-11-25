@@ -77,3 +77,11 @@
 - **Tests** also need the local S3 (SeaweedFS: `docker compose up -d s3`) and Chromium
   (`pnpm --filter @venueos/worker exec playwright install chromium`). `startWorker({ renderer, storage, kinds,
   extraJobs })` swaps in scripted parts; `pnpm --filter @venueos/worker pdf:sample` renders the English sample.
+
+## Leads (module 5)
+
+- `src/leads`: `LeadsFollowUpScanner` (`leads.follow-up`, every 15 min, ids only) and `LeadFollowUpNotifyJob`
+  (`leads.follow-up.notify`, payload `{ tenantId, leadId }`). The notify job re-checks the lead, stamps
+  `leads.follow_up_notified_for` with a conditional UPDATE and queues the `lead.follow-up-due` email with `enqueueEmail` in the SAME
+  transaction (exactly once per follow-up; the stamp does not bump the lead's `rev`). It sends through its own enqueue-only
+  `JobQueue` (`LEADS_JOB_QUEUE`, role `venueos_app`). Links use `APP_ORIGIN`.

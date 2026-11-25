@@ -714,3 +714,92 @@ test('module 3: tax rates, cancellation policies and custom field definitions ca
     ['cancellation_policies', 'custom_field_defs', 'tax_rates'],
   );
 });
+
+// ───────────────────────────── modules 4 and 5: customers and leads ─────────────────────────────
+
+test('module 5 leads: the stage rules, source, venue and ranges are enforced by CHECKs and keys', async () => {
+  const lead = (id, cols = '', vals = '') =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO leads (id, tenant_id, venue_id, customer_id, source, stage, next_follow_up_at, updated_at ${cols})
+       VALUES ('${id}','t1','v1','c1','phone','NEW', now() + interval '1 day', now() ${vals})`,
+    );
+  await lead('ld1');
+  // venue_id is required and must exist.
+  await rejects(
+    sql(app, T1, `INSERT INTO leads (id, tenant_id, customer_id, source, stage, next_follow_up_at, updated_at) VALUES ('ldx','t1','c1','phone','NEW', now(), now())`),
+    /venue_id/,
+  );
+  await rejects(
+    sql(app, T1, `INSERT INTO leads (id, tenant_id, venue_id, customer_id, source, stage, next_follow_up_at, updated_at) VALUES ('ldx','t1','nope','c1','phone','NEW', now(), now())`),
+    /leads_venue_id_fkey/,
+  );
+  // An open lead needs a follow-up; LOST needs a reason; the source is one of the six.
+  await rejects(sql(app, T1, `UPDATE leads SET next_follow_up_at = NULL WHERE id = 'ld1'`), /leads_open_needs_follow_up/);
+  await rejects(sql(app, T1, `UPDATE leads SET stage = 'LOST' WHERE id = 'ld1'`), /leads_lost_needs_reason/);
+  await rejects(sql(app, T1, `UPDATE leads SET stage = 'LOST', lost_reason = '  ' WHERE id = 'ld1'`), /leads_lost_needs_reason/);
+  await rejects(sql(app, T1, `UPDATE leads SET source = 'marketplace' WHERE id = 'ld1'`), /leads_source_check/);
+  await rejects(sql(app, T1, `UPDATE leads SET guests = 0 WHERE id = 'ld1'`), /leads_guests_range/);
+  await rejects(sql(app, T1, `UPDATE leads SET budget = -1 WHERE id = 'ld1'`), /leads_budget_nonneg/);
+  // Closing a lead clears the follow-up and sets the reason in one statement.
+  await sql(app, T1, `UPDATE leads SET stage = 'LOST', lost_reason = 'Went elsewhere', next_follow_up_at = NULL WHERE id = 'ld1'`);
+  await sql(app, T1, `UPDATE leads SET stage = 'WON', lost_reason = NULL WHERE id = 'ld1'`);
+  // Another tenant's venue cannot be used: RLS hides it from this tenant's foreign key check path as well as reads.
+  assert.equal((await sql(app, T2, `SELECT id FROM leads WHERE id = 'ld1'`)).rows.length, 0);
+});
+
+test('module 5 leads: stamping follow_up_notified_for does not bump rev or updated_at, every other change does', async () => {
+  await sql(
+    app,
+    T1,
+    `INSERT INTO leads (id, tenant_id, venue_id, customer_id, source, stage, next_follow_up_at, updated_at)
+     VALUES ('ld2','t1','v1','c1','phone','CONTACTED', now() - interval '1 hour', now() - interval '1 day')`,
+  );
+  const read = async () =>
+    (await sql(app, T1, `SELECT rev, updated_at, follow_up_notified_for FROM leads WHERE id = 'ld2'`)).rows[0];
+  const first = await read();
+  await sql(app, T1, `UPDATE leads SET follow_up_notified_for = next_follow_up_at WHERE id = 'ld2'`);
+  const stamped = await read();
+  assert.equal(stamped.rev, first.rev);
+  assert.equal(stamped.updated_at.getTime(), first.updated_at.getTime());
+  assert.notEqual(stamped.follow_up_notified_for, null);
+  await sql(app, T1, `UPDATE leads SET notes = 'called' WHERE id = 'ld2'`);
+  const edited = await read();
+  assert.equal(edited.rev, first.rev + 1);
+  assert.ok(edited.updated_at > first.updated_at);
+  // Stamping together with a real change still counts as a change.
+  await sql(app, T1, `UPDATE leads SET follow_up_notified_for = NULL, notes = 'again' WHERE id = 'ld2'`);
+  assert.equal((await read()).rev, first.rev + 2);
+});
+
+test('module 5 leads: the scanner role reads leads and the follow-up queues exist', async () => {
+  const due = await jobs.query(
+    `SELECT id, tenant_id FROM leads WHERE stage NOT IN ('WON','LOST') AND next_follow_up_at <= now() AND id = 'ld2'`,
+  );
+  assert.equal(due.rows.length, 1);
+  await rejects(jobs.query(`UPDATE leads SET notes = 'x' WHERE id = 'ld2'`), /permission denied/);
+  const queues = await migrator.query(
+    `SELECT name FROM pgboss.queue WHERE name LIKE 'leads.follow-up%' ORDER BY name`,
+  );
+  assert.deepEqual(queues.rows.map((r) => r.name), [
+    'leads.follow-up',
+    'leads.follow-up.dead',
+    'leads.follow-up.notify',
+    'leads.follow-up.notify.dead',
+  ]);
+});
+
+test('module 4 customers: phone is not unique, search indexes exist, customers can be deactivated', async () => {
+  await sql(app, T1, `INSERT INTO customers (id, tenant_id, name, phone, updated_at) VALUES ('c1dup','t1','Twin','+923001112233', now())`);
+  await sql(app, T1, `INSERT INTO customers (id, tenant_id, name, phone, updated_at) VALUES ('c1dup2','t1','Twin 2','+923001112233', now())`);
+  await sql(app, T1, `UPDATE customers SET active = false WHERE id = 'c1dup2'`);
+  const idx = await migrator.query(
+    `SELECT indexname FROM pg_indexes WHERE tablename = 'customers' AND indexname IN
+       ('customers_name_trgm','customers_phone_trgm','customers_email_trgm','customers_tenant_lower_email_idx') ORDER BY 1`,
+  );
+  assert.equal(idx.rows.length, 4);
+  // The app role cannot hard-delete a customer that has leads (and never needs to).
+  await sql(app, T1, `INSERT INTO leads (id, tenant_id, venue_id, customer_id, source, stage, next_follow_up_at, updated_at) VALUES ('ld3','t1','v1','c1dup','phone','NEW', now(), now())`);
+  await rejects(sql(app, T1, `DELETE FROM customers WHERE id = 'c1dup'`), /foreign key|violates/);
+});

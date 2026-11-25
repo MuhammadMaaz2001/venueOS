@@ -68,6 +68,35 @@ export function TextField({ label, error, hint, isolate, className, ...props }: 
   );
 }
 
+export interface TextAreaFieldProps extends Omit<ComponentProps<'textarea'>, 'id'> {
+  label: string;
+  error?: string | undefined;
+  hint?: string | undefined;
+}
+
+/** A multi-line text box with its label and error (notes). */
+export function TextAreaField({ label, error, hint, className, ...props }: TextAreaFieldProps) {
+  return (
+    <FieldFrame label={label} error={error} hint={hint}>
+      {({ id, describedBy, invalid }) => (
+        <textarea
+          id={id}
+          rows={3}
+          aria-invalid={invalid || undefined}
+          aria-describedby={describedBy}
+          className={cn(
+            'border-input bg-background w-full rounded-lg border px-2.5 py-2 text-base md:text-sm',
+            'focus-visible:border-ring focus-visible:ring-ring/50 outline-none focus-visible:ring-3',
+            'aria-invalid:border-destructive disabled:opacity-50',
+            className,
+          )}
+          {...props}
+        />
+      )}
+    </FieldFrame>
+  );
+}
+
 /** A password input with a show/hide button. */
 export function PasswordField({ label, error, hint, className, ...props }: TextFieldProps) {
   const t = useTranslations('Common');
