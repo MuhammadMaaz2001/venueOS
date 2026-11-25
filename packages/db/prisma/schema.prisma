@@ -361,6 +361,7 @@ model Venue {
   spaces        Space[]
   slotTemplates SlotTemplate[]
   bookings      Booking[]
+  leads         Lead[]
 
   @@index([tenantId])
   @@map("venues")
@@ -684,14 +685,21 @@ model Customer {
   preferredLocale String?   @map("preferred_locale") // en (MVP), ar later; null = tenant default
   customFields    Json      @default("{}") @map("custom_fields")
   notes           String?
+  // Soft delete: customers are never removed (bookings reference them)
+  active          Boolean   @default(true)
   rev             Int       @default(1)
   createdAt       DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt       DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   leads           Lead[]
   bookings        Booking[]
 
+  // Search (module 4): pg_trgm GIN indexes serve contains / prefix matching; a btree on lower(email) (migration only,
+  // Prisma cannot express expression indexes) serves duplicate detection
   @@unique([tenantId, id])
   @@index([tenantId, phone])
+  @@index([name(ops: raw("gin_trgm_ops"))], type: Gin, map: "customers_name_trgm")
+  @@index([phone(ops: raw("gin_trgm_ops"))], type: Gin, map: "customers_phone_trgm")
+  @@index([email(ops: raw("gin_trgm_ops"))], type: Gin, map: "customers_email_trgm")
   @@map("customers")
 }
 
@@ -711,6 +719,9 @@ model Lead {
   id             String      @id @default(cuid())
   tenantId       String      @map("tenant_id")
   tenant         Tenant      @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  // The venue the inquiry is about; venue scoping applies (module 5)
+  venueId        String      @map("venue_id")
+  venue          Venue       @relation(fields: [venueId], references: [id])
   customerId     String      @map("customer_id")
   customer       Customer    @relation(fields: [customerId], references: [id])
   eventTypeId    String?     @map("event_type_id")
@@ -719,13 +730,17 @@ model Lead {
   flexibleDates  Boolean     @default(false) @map("flexible_dates")
   guests         Int?
   budget         Decimal?    @db.Decimal(18, 3)
-  source         String      // walk_in, phone, whatsapp, web, marketplace, referral
+  source         String      // walk_in, phone, whatsapp, web, referral, other (CHECK)
   stage          LeadStage   @default(NEW)
   lostReason     String?     @map("lost_reason")
   assigneeId     String?     @map("assignee_id")
   assignee       Membership? @relation("LeadAssignee", fields: [assigneeId], references: [id])
   nextFollowUpAt DateTime?   @map("next_follow_up_at") @db.Timestamptz(6)
+  // The follow-up the overdue email was sent for (the worker's "once per follow-up"); changing it does not bump rev
+  followUpNotifiedFor DateTime? @map("follow_up_notified_for") @db.Timestamptz(6)
   notes          String?
+  // Values of the tenant's custom fields for entity "lead" (custom_field_defs)
+  customFields   Json        @default("{}") @map("custom_fields")
   rev            Int         @default(1)
   createdAt      DateTime    @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt      DateTime    @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -733,6 +748,8 @@ model Lead {
 
   @@index([tenantId, stage])
   @@index([tenantId, nextFollowUpAt])
+  @@index([tenantId, venueId, stage])
+  @@index([tenantId, assigneeId])
   @@index([customerId])
   @@map("leads")
 }

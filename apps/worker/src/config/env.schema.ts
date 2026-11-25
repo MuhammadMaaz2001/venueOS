@@ -8,6 +8,14 @@ const postgresUrl = z
   .string()
   .refine((v) => /^postgres(ql)?:\/\/\S+$/.test(v), 'must be a postgres:// connection URL');
 
+const origin = z.string().refine((v) => {
+  try {
+    return new URL(v).origin === v;
+  } catch {
+    return false;
+  }
+}, 'must be a bare origin such as https://app.example.com (no path, no trailing slash)');
+
 export const EnvSchema = z
   .object({
     NODE_ENV: z.enum(['development', 'test', 'production']).default('development'),
@@ -35,6 +43,12 @@ export const EnvSchema = z
     EMAIL_FROM_ADDRESS: z.email(),
     /** Required for `ses`. Credentials come from the standard AWS provider chain, never from here. */
     AWS_REGION: z.string().min(1).optional(),
+
+    /**
+     * The web app's origin: the links in internal emails (`https://app.example.com/leads/<id>`). Same value as the
+     * API's APP_ORIGIN. Required in production; elsewhere it defaults to http://localhost:3000.
+     */
+    APP_ORIGIN: origin.optional(),
 
     /** Private bucket for generated PDFs (keys `tenants/{tenantId}/...`). */
     S3_BUCKET: z.string().min(1),
@@ -78,6 +92,13 @@ export const EnvSchema = z
         code: 'custom',
         path: ['SMTP_URL'],
         message: 'is required when EMAIL_PROVIDER=smtp',
+      });
+    }
+    if (env.NODE_ENV === 'production' && !env.APP_ORIGIN) {
+      ctx.addIssue({
+        code: 'custom',
+        path: ['APP_ORIGIN'],
+        message: 'is required in production',
       });
     }
     if (env.EMAIL_PROVIDER === 'ses' && !env.AWS_REGION) {

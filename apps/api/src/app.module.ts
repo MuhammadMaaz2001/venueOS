@@ -20,7 +20,9 @@ import { HealthModule } from './health/health.module';
 import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { CatalogueModule } from './modules/catalogue/catalogue.module';
+import { CustomersModule } from './modules/customers/customers.module';
 import { EventTypesModule } from './modules/event-types/event-types.module';
+import { LeadsModule } from './modules/leads/leads.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SlotTemplatesModule } from './modules/slot-templates/slot-templates.module';
@@ -57,6 +59,8 @@ import { VenuesModule } from './modules/venues/venues.module';
     EventTypesModule,
     CatalogueModule,
     PricingModule,
+    CustomersModule,
+    LeadsModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

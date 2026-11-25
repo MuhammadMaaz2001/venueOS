@@ -978,6 +978,198 @@ export interface paths {
         patch: operations["CancellationPoliciesController_update"];
         trace?: never;
     };
+    "/v1/customers": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Search and list customers
+         * @description `search` matches name, phone and email (contains, any case; digits also match the number without its leading zero). Cursor pagination, ordered by name.
+         */
+        get: operations["CustomersController_list"];
+        put?: never;
+        /**
+         * Add a customer
+         * @description The phone is stored in E.164 (read with the workspace country when typed the national way). The answer lists `duplicates`: other customers with the same phone or email; the customer is created anyway.
+         */
+        post: operations["CustomersController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/duplicates": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Possible duplicates of a phone and / or email
+         * @description Other active customers with the same phone (also their alternative phone) or the same email. A warning for the form, never an error: phone is not unique.
+         */
+        get: operations["CustomersController_duplicates"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/customers/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One customer with their leads and possible duplicates
+         * @description Sensitive custom fields come back masked. `leads` needs `lead.view` and only lists leads of the caller’s venues.
+         */
+        get: operations["CustomersController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a customer
+         * @description `rev` is required. `active: false` is the delete. Custom fields: only the keys sent change, `null` clears one.
+         */
+        patch: operations["CustomersController_update"];
+        trace?: never;
+    };
+    "/v1/customers/{id}/reveal/{fieldKey}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Show the clear value of a sensitive custom field
+         * @description Needs `customer.view_sensitive`. Every call writes an audit row (who, which customer, which field; never the value).
+         */
+        post: operations["CustomersController_reveal"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/leads": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List leads (board columns and the list view), newest first
+         * @description Filters: venueId, stage, assigneeId (membership) / unassigned, source, customerId, followUp=overdue|today, search (customer name or phone). Only leads of the caller’s venues; `venueId` only narrows. Cursor pagination.
+         */
+        get: operations["LeadsController_list"];
+        put?: never;
+        /**
+         * Record an inquiry
+         * @description Give `customerId` or a new `customer` (inline; needs `customer.manage`). Starts in NEW; `nextFollowUpAt` is required. The assignee defaults to the caller; the assignee gets an email (not when it is the caller).
+         */
+        post: operations["LeadsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/leads/follow-ups": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Follow-ups that are overdue or due today (the dashboard card)
+         * @description Counts and the most urgent open leads, in the caller’s venues. `assignee=me` (default) only counts leads assigned to the caller.
+         */
+        get: operations["LeadsController_followUps"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/leads/assignees": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Members a lead can be assigned to
+         * @description Active members whose role holds `lead.manage` and whose venues cover `venueId` (all venues when omitted).
+         */
+        get: operations["LeadsController_assignees"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/leads/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["LeadsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Edit a lead, move its stage, assign it
+         * @description `rev` is required. `stage` moves it (LOST needs `lostReason`; an open stage needs a follow-up; WON is final; a LOST lead can be reopened). The assignee must be an active member with `lead.manage` whose venues cover the lead’s venue.
+         */
+        patch: operations["LeadsController_update"];
+        trace?: never;
+    };
+    "/v1/leads/{id}/activity": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Activity log of a lead
+         * @description Stage changes, assignments and other edits (notes included), newest first, read from the audit rows.
+         */
+        get: operations["LeadsController_activity"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1958,6 +2150,307 @@ export interface components {
             }[];
             isDefault?: boolean;
             active?: boolean;
+        };
+        CustomerListResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                phone: string;
+                altPhone: string | null;
+                email: string | null;
+                address: string | null;
+                preferredLocale: string | null;
+                notes: string | null;
+                customFields: {
+                    [key: string]: (string | number) | null;
+                };
+                sensitiveKeys: string[];
+                active: boolean;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        CustomerDuplicatesResponseDto: {
+            data: {
+                id: string;
+                name: string;
+                phone: string;
+                email: string | null;
+                matchedOn: ("phone" | "email")[];
+            }[];
+            nextCursor: null;
+        };
+        CreateCustomerDto: {
+            name: string;
+            phone: string;
+            altPhone?: string | null;
+            email?: string | null;
+            address?: string | null;
+            preferredLocale?: string | null;
+            notes?: string | null;
+            customFields?: {
+                [key: string]: (string | number) | null;
+            };
+        };
+        CustomerDetailResponseDto: {
+            id: string;
+            name: string;
+            phone: string;
+            altPhone: string | null;
+            email: string | null;
+            address: string | null;
+            preferredLocale: string | null;
+            notes: string | null;
+            customFields: {
+                [key: string]: (string | number) | null;
+            };
+            sensitiveKeys: string[];
+            active: boolean;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+            leads: {
+                id: string;
+                venueId: string;
+                venueName: string;
+                eventTypeName: string | null;
+                /** @enum {string} */
+                stage: "NEW" | "CONTACTED" | "SITE_VISIT" | "QUOTED" | "NEGOTIATION" | "WON" | "LOST";
+                preferredDate: string | null;
+                /** Format: date-time */
+                nextFollowUpAt: string | null;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            duplicates: {
+                id: string;
+                name: string;
+                phone: string;
+                email: string | null;
+                matchedOn: ("phone" | "email")[];
+            }[];
+        };
+        UpdateCustomerDto: {
+            rev: number;
+            name?: string;
+            phone?: string;
+            altPhone?: string | null;
+            email?: string | null;
+            address?: string | null;
+            preferredLocale?: string | null;
+            notes?: string | null;
+            customFields?: {
+                [key: string]: (string | number) | null;
+            };
+            active?: boolean;
+        };
+        RevealedValueResponseDto: {
+            key: string;
+            value: string;
+        };
+        LeadListResponseDto: {
+            data: {
+                id: string;
+                venueId: string;
+                venueName: string;
+                customer: {
+                    id: string;
+                    name: string;
+                    phone: string;
+                    email: string | null;
+                };
+                eventTypeId: string | null;
+                eventTypeName: string | null;
+                preferredDate: string | null;
+                flexibleDates: boolean;
+                guests: number | null;
+                budget: string | null;
+                /** @enum {string} */
+                source: "walk_in" | "phone" | "whatsapp" | "web" | "referral" | "other";
+                /** @enum {string} */
+                stage: "NEW" | "CONTACTED" | "SITE_VISIT" | "QUOTED" | "NEGOTIATION" | "WON" | "LOST";
+                lostReason: string | null;
+                assignee: {
+                    membershipId: string;
+                    userId: string;
+                    name: string;
+                } | null;
+                /** Format: date-time */
+                nextFollowUpAt: string | null;
+                notes: string | null;
+                customFields: {
+                    [key: string]: (string | number) | null;
+                };
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        LeadFollowUpsResponseDto: {
+            overdue: number;
+            dueToday: number;
+            items: {
+                id: string;
+                venueId: string;
+                venueName: string;
+                customer: {
+                    id: string;
+                    name: string;
+                    phone: string;
+                    email: string | null;
+                };
+                eventTypeId: string | null;
+                eventTypeName: string | null;
+                preferredDate: string | null;
+                flexibleDates: boolean;
+                guests: number | null;
+                budget: string | null;
+                /** @enum {string} */
+                source: "walk_in" | "phone" | "whatsapp" | "web" | "referral" | "other";
+                /** @enum {string} */
+                stage: "NEW" | "CONTACTED" | "SITE_VISIT" | "QUOTED" | "NEGOTIATION" | "WON" | "LOST";
+                lostReason: string | null;
+                assignee: {
+                    membershipId: string;
+                    userId: string;
+                    name: string;
+                } | null;
+                /** Format: date-time */
+                nextFollowUpAt: string | null;
+                notes: string | null;
+                customFields: {
+                    [key: string]: (string | number) | null;
+                };
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+                /** Format: date-time */
+                updatedAt: string;
+            }[];
+        };
+        LeadAssigneeListResponseDto: {
+            data: {
+                membershipId: string;
+                userId: string;
+                name: string;
+                roleName: string;
+            }[];
+            nextCursor: null;
+        };
+        CreateLeadDto: {
+            venueId: string;
+            customerId?: string;
+            customer?: {
+                name: string;
+                phone: string;
+                altPhone?: string | null;
+                email?: string | null;
+                address?: string | null;
+                preferredLocale?: string | null;
+                notes?: string | null;
+                customFields?: {
+                    [key: string]: (string | number) | null;
+                };
+            };
+            eventTypeId?: string | null;
+            preferredDate?: string | null;
+            /** @default false */
+            flexibleDates: boolean;
+            guests?: number | null;
+            budget?: string | null;
+            /** @enum {string} */
+            source: "walk_in" | "phone" | "whatsapp" | "web" | "referral" | "other";
+            assigneeId?: string | null;
+            /** Format: date-time */
+            nextFollowUpAt: string;
+            notes?: string | null;
+            customFields?: {
+                [key: string]: (string | number) | null;
+            };
+        };
+        LeadResponseDto: {
+            id: string;
+            venueId: string;
+            venueName: string;
+            customer: {
+                id: string;
+                name: string;
+                phone: string;
+                email: string | null;
+            };
+            eventTypeId: string | null;
+            eventTypeName: string | null;
+            preferredDate: string | null;
+            flexibleDates: boolean;
+            guests: number | null;
+            budget: string | null;
+            /** @enum {string} */
+            source: "walk_in" | "phone" | "whatsapp" | "web" | "referral" | "other";
+            /** @enum {string} */
+            stage: "NEW" | "CONTACTED" | "SITE_VISIT" | "QUOTED" | "NEGOTIATION" | "WON" | "LOST";
+            lostReason: string | null;
+            assignee: {
+                membershipId: string;
+                userId: string;
+                name: string;
+            } | null;
+            /** Format: date-time */
+            nextFollowUpAt: string | null;
+            notes: string | null;
+            customFields: {
+                [key: string]: (string | number) | null;
+            };
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            /** Format: date-time */
+            updatedAt: string;
+        };
+        UpdateLeadDto: {
+            rev: number;
+            venueId?: string;
+            eventTypeId?: string | null;
+            preferredDate?: string | null;
+            flexibleDates?: boolean;
+            guests?: number | null;
+            budget?: string | null;
+            /** @enum {string} */
+            source?: "walk_in" | "phone" | "whatsapp" | "web" | "referral" | "other";
+            assigneeId?: string | null;
+            /** Format: date-time */
+            nextFollowUpAt?: string | null;
+            notes?: string | null;
+            customFields?: {
+                [key: string]: (string | number) | null;
+            };
+            /** @enum {string} */
+            stage?: "NEW" | "CONTACTED" | "SITE_VISIT" | "QUOTED" | "NEGOTIATION" | "WON" | "LOST";
+            lostReason?: string | null;
+        };
+        LeadActivityListResponseDto: {
+            data: {
+                id: string;
+                /** @enum {string} */
+                action: "lead.create" | "lead.update" | "lead.stage_change" | "lead.assign";
+                /** Format: date-time */
+                createdAt: string;
+                actorName: string | null;
+                changes: {
+                    field: string;
+                    from: string | null;
+                    to: string | null;
+                }[];
+            }[];
+            nextCursor: null;
         };
     };
     responses: never;
@@ -3681,6 +4174,307 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["CancellationPolicyResponseDto"];
+                };
+            };
+        };
+    };
+    CustomersController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                search?: string;
+                includeInactive?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerListResponseDto"];
+                };
+            };
+        };
+    };
+    CustomersController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateCustomerDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailResponseDto"];
+                };
+            };
+        };
+    };
+    CustomersController_duplicates: {
+        parameters: {
+            query?: {
+                phone?: string;
+                email?: string;
+                excludeId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDuplicatesResponseDto"];
+                };
+            };
+        };
+    };
+    CustomersController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailResponseDto"];
+                };
+            };
+        };
+    };
+    CustomersController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateCustomerDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CustomerDetailResponseDto"];
+                };
+            };
+        };
+    };
+    CustomersController_reveal: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                fieldKey: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RevealedValueResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                venueId?: string;
+                stage?: "NEW" | "CONTACTED" | "SITE_VISIT" | "QUOTED" | "NEGOTIATION" | "WON" | "LOST";
+                assigneeId?: string;
+                unassigned?: "true" | "false";
+                source?: "walk_in" | "phone" | "whatsapp" | "web" | "referral" | "other";
+                customerId?: string;
+                followUp?: "overdue" | "today";
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadListResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateLeadDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_followUps: {
+        parameters: {
+            query?: {
+                assignee?: "me" | "any";
+                limit?: number;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadFollowUpsResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_assignees: {
+        parameters: {
+            query?: {
+                venueId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadAssigneeListResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateLeadDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadResponseDto"];
+                };
+            };
+        };
+    };
+    LeadsController_activity: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["LeadActivityListResponseDto"];
                 };
             };
         };

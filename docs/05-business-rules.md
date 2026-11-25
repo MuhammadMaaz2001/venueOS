@@ -247,6 +247,24 @@ Event profit = revenue (line items excluding tax)
   E.164 using the tenant's country). The UI **warns** about a matching phone and lets the user
   pick the existing customer or continue; phone is not unique in the database (relatives may
   share a number).
+- **Phones** are typed any way (`0300 1234567`, `+92 300 1234567`, `0092...`) and stored as E.164. A number without a
+  country code is read with the workspace country (`packages/shared/src/phone.ts`: calling code, trunk digit and national
+  length per country; a country not in the table needs the `+code`). **Duplicates** are other active customers with the same
+  phone (their phone or alternative phone) or the same email (case-insensitive); the API returns them on create, on read and
+  from `GET /v1/customers/duplicates`, and never refuses the save. Customers are never deleted: `active = false`.
+- **A lead** has a venue, a customer (existing, or created inline in the same transaction), an event type, a preferred date
+  (maybe flexible), guests, a budget, a source (`walk_in`, `phone`, `whatsapp`, `web`, `referral`, `other`), an assignee,
+  the next follow-up, notes and the tenant's custom fields for leads. The assignee defaults to the person recording it.
+- **Stage changes** (`checkLeadStageChange` in `packages/shared`): between open stages in any direction; from an open stage
+  to WON or LOST; a LOST lead can be reopened to an open stage (new follow-up required); WON is final. `QUOTED` and `WON`
+  will be set by the quotation and booking modules; until they exist staff set them by hand. LOST needs a reason. Closing a
+  lead clears its follow-up, and a closed lead cannot have one.
+- **Follow-ups.** `leads.follow-up` runs every 15 minutes and emails the assignee once for each follow-up time that has
+  passed on an open lead (`leads.follow_up_notified_for`); a new follow-up time or a new assignee makes the lead due again.
+  Workspaces that are suspended or cancelled get none. The dashboard counts overdue leads (follow-up before now) and leads
+  due later today (workspace time zone). A lead assigned to somebody else sends them the "new lead assigned" email.
+- **Activity log** of a lead = its audit rows (`lead.create`, `lead.stage_change`, `lead.assign`, `lead.update` with notes and
+  the other fields).
 - Stages: NEW → CONTACTED → SITE_VISIT → QUOTED → NEGOTIATION → WON / LOST. Creating a
   quotation moves the lead to QUOTED; confirming a booking moves it to WON. LOST needs a reason.
 - `nextFollowUpAt` is required for open leads; overdue follow-ups email the assignee.
@@ -316,4 +334,5 @@ the defaults below, so code never reads raw keys or hard-codes these numbers.
   `select`, `phone`), choices for `select`, `required` and `sensitive` (text, number and phone only; encrypted and masked
   when the values are stored, docs/04 section 6). Entity, key, type and sensitivity are fixed after creation, and a key stays
   reserved for its record type even when the field is deactivated. The values are stored with the records (module 4 onwards).
+- Only **customer** fields can be sensitive for now (docs/04 section 6); the other record types get it when they need it.
 - Amounts use the tenant currency's decimals (`PKR` 2, `KWD` 3, `JPY` 0): a client amount with more decimals is `400`.

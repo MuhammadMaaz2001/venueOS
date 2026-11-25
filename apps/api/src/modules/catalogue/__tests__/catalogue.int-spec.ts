@@ -338,8 +338,9 @@ describe('catalogue endpoints', () => {
       const again = await field(auth, body);
       expect(again.status).toBe(409);
       expect(code(again)).toBe('DUPLICATE');
-      // The same key on another record type is a different field.
-      expect((await field(auth, { ...body, entity: 'lead' })).status).toBe(201);
+      // The same key on another record type is a different field (sensitive values exist for customers only).
+      expect((await field(auth, { ...body, entity: 'lead', sensitive: false })).status).toBe(201);
+      expect((await field(auth, { ...body, entity: 'lead', key: 'cnic2' })).status).toBe(400);
     });
 
     it('a choice field needs choices; the others have none; only text-like types are sensitive', async () => {

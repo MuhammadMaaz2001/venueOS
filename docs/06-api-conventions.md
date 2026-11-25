@@ -110,6 +110,24 @@ scoped to a space or slot of the caller's venues.
 | `GET/POST /v1/tax-rates`, `GET/PATCH /v1/tax-rates/{id}` | `pricing.view` / `pricing.manage` | `isDefault: true` moves the default flag; deactivating the default clears it |
 | `GET/POST /v1/cancellation-policies`, `GET/PATCH /v1/cancellation-policies/{id}` | `pricing.view` / `pricing.manage` | tiers: `minDaysBefore` strictly descending, last one 0, `refundPct` 0..100; default as for tax rates |
 
+## Customers and leads (modules 4 and 5)
+
+| Endpoint | Access | Notes |
+| --- | --- | --- |
+| `GET /v1/customers?search&includeInactive&limit&cursor` | `customer.view` | cursor list ordered by name; `search` matches name, phone (digits, with or without the leading zero) and email |
+| `GET /v1/customers/duplicates?phone&email&excludeId` | `customer.view` | other active customers with the same phone / alternative phone / email; 400 without phone or email |
+| `POST /v1/customers` | `customer.manage` | phone read with the workspace country; the answer lists `duplicates`; custom fields validated against the definitions (type, choices, required); a sensitive value is sealed |
+| `GET /v1/customers/{id}` | `customer.view` | profile, masked custom fields (`sensitiveKeys`), `leads` (needs `lead.view`, caller's venues), `duplicates` |
+| `PATCH /v1/customers/{id}` | `customer.manage` | `rev`; custom fields: only the keys sent change, `null` clears; `active: false` is the delete |
+| `POST /v1/customers/{id}/reveal/{fieldKey}` | `customer.view_sensitive` | `{ key, value }`, audited; 404 for a field that is not sensitive or has no value |
+| `GET /v1/leads?venueId&stage&assigneeId&unassigned&source&customerId&followUp=overdue\|today&search&limit&cursor` | `lead.view` | newest first; only the caller's venues |
+| `GET /v1/leads/follow-ups?assignee=me\|any&limit` | `lead.view` | `{ overdue, dueToday, items }` for the dashboard card |
+| `GET /v1/leads/assignees?venueId` | `lead.view` | active members with `lead.manage` whose venues cover the venue |
+| `POST /v1/leads` | `lead.manage` | `customerId` or an inline `customer` (needs `customer.manage`); `nextFollowUpAt` required; starts NEW; assignee defaults to the caller |
+| `GET /v1/leads/{id}` | `lead.view` | out-of-scope venue = 404 |
+| `PATCH /v1/leads/{id}` | `lead.manage` | `rev`; `stage` (+ `lostReason` for LOST, `nextFollowUpAt` when reopening); illegal change 422 `INVALID_STATE_TRANSITION`; ineligible assignee 400, unknown member 404 |
+| `GET /v1/leads/{id}/activity` | `lead.view` | `{ data: [{ action, actorName, createdAt, changes: [{ field, from, to }] }] }`, newest first |
+
 ## Lists
 
 - Cursor pagination: `?limit=25&cursor=<opaque>`; response

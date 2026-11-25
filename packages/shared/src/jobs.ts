@@ -16,6 +16,12 @@ export const JOB_NAMES = {
   /** Every few minutes: logs an error line for each dead-letter queue that holds jobs. */
   OPS_DEAD_LETTER_CHECK: 'ops.dead-letter-check',
   OPS_DEAD_LETTER_CHECK_DEAD: 'ops.dead-letter-check.dead',
+  /** Every 15 minutes: finds open leads whose follow-up time has passed (scanner, ids only). */
+  LEADS_FOLLOW_UP: 'leads.follow-up',
+  LEADS_FOLLOW_UP_DEAD: 'leads.follow-up.dead',
+  /** One per due lead: emails the assignee once per follow-up. */
+  LEADS_FOLLOW_UP_NOTIFY: 'leads.follow-up.notify',
+  LEADS_FOLLOW_UP_NOTIFY_DEAD: 'leads.follow-up.notify.dead',
 } as const;
 export type JobName = (typeof JOB_NAMES)[keyof typeof JOB_NAMES];
 
@@ -37,6 +43,9 @@ export const EMAIL_SEND_EXPIRE_SECONDS = 300;
 /** How long a worker may hold one `pdf.render` job (Chromium start + render + upload) before it is given away. */
 export const PDF_RENDER_EXPIRE_SECONDS = 180;
 
+/** How long a worker may hold one `leads.follow-up.notify` job (one query, one email enqueued). */
+export const LEADS_FOLLOW_UP_NOTIFY_EXPIRE_SECONDS = 300;
+
 /** How long a worker may hold one system job (`auth.purge`, the dead-letter check). */
 export const SYSTEM_JOB_EXPIRE_SECONDS = 900;
 
@@ -53,6 +62,13 @@ const id = z.string().regex(/^[A-Za-z0-9_-]{1,128}$/, 'must be a plain identifie
  */
 export const emailSendPayloadSchema = z.object({ tenantId: id, messageKey: id }).strict();
 export type EmailSendPayload = z.infer<typeof emailSendPayloadSchema>;
+
+/**
+ * Payload of `leads.follow-up.notify`: identifiers only (`pgboss.job` has no RLS). Everything printed in the email is
+ * loaded inside the tenant's transaction.
+ */
+export const leadFollowUpNotifyPayloadSchema = z.object({ tenantId: id, leadId: id }).strict();
+export type LeadFollowUpNotifyPayload = z.infer<typeof leadFollowUpNotifyPayloadSchema>;
 
 /** Values a template can print: strings, numbers, booleans, and nested objects of those. */
 export type TemplateVars = { [key: string]: string | number | boolean | TemplateVars };

@@ -148,7 +148,9 @@
       "roles": "Roles",
       "audit": "Audit log",
       "catalogue": "Catalogue",
-      "pricing": "Pricing"
+      "pricing": "Pricing",
+      "customers": "Customers",
+      "leads": "Leads"
     },
     "tenant": {
       "switch": "Switch workspace",
@@ -709,7 +711,9 @@
       "space": "Space",
       "slot_template": "Slot",
       "event_type": "Event type",
-      "user": "User"
+      "user": "User",
+      "customer": "Customer",
+      "lead": "Lead"
     },
     "actions": {
       "tenant_signup": "Workspace created",
@@ -730,7 +734,16 @@
       "slot_template_create": "Slot added",
       "slot_template_update": "Slot changed",
       "event_type_create": "Event type added",
-      "event_type_update": "Event type changed"
+      "event_type_update": "Event type changed",
+      "customer_create": "Customer added",
+      "customer_update": "Customer changed",
+      "customer_deactivate": "Customer deactivated",
+      "customer_reactivate": "Customer reactivated",
+      "customer_reveal_sensitive": "Sensitive value revealed",
+      "lead_create": "Lead added",
+      "lead_update": "Lead changed",
+      "lead_stage_change": "Lead stage changed",
+      "lead_assign": "Lead assigned"
     }
   },
   "Catalogue": {
@@ -1051,6 +1064,243 @@
       "create": "Add field",
       "deactivate": "Deactivate",
       "reactivate": "Reactivate"
+    }
+  },
+  "Customers": {
+    "title": "Customers",
+    "subtitle": "People and families who ask for or book events.",
+    "description": "Search by name, phone or email. A phone number can belong to several customers (relatives share numbers); you are warned, never blocked.",
+    "noAccess": "You do not have access to customers.",
+    "add": "Add customer",
+    "addTitle": "Add a customer",
+    "editTitle": "Edit customer",
+    "formDescription": "Phone numbers are stored with the country code so WhatsApp links work.",
+    "search": "Search customers",
+    "searchPlaceholder": "Search name, phone or email",
+    "showInactive": "Show inactive",
+    "empty": "No customers yet. Add the first one, or record an inquiry.",
+    "emptySearch": "No customer matches this search.",
+    "loadFailed": "The customers could not be loaded. Reload and try again.",
+    "loadMore": "Show more",
+    "inactive": "Inactive",
+    "errors": {
+      "changedByOthers": "Someone else changed this customer just now. The latest version has been loaded, please check and try again."
+    },
+    "fields": {
+      "name": "Name",
+      "phone": "Phone",
+      "altPhone": "Alternative phone",
+      "email": "Email",
+      "address": "Address",
+      "preferredLocale": "Language",
+      "localeDefault": "Workspace default",
+      "localeEnglish": "English",
+      "notes": "Notes",
+      "custom": "Additional details",
+      "choose": "Choose…",
+      "sensitiveKeep": "Stored as {masked}. Leave empty to keep it.",
+      "sensitiveHint": "Stored encrypted and shown masked."
+    },
+    "form": {
+      "phoneHint": "Without a country code the number is read as a number of {country}, e.g. 0300 1234567.",
+      "phoneInvalid": "Enter a valid phone number",
+      "saved": "Customer saved.",
+      "create": "Add customer",
+      "save": "Save changes"
+    },
+    "duplicates": {
+      "title": "{count, plural, one {This looks like 1 customer you already have} other {This looks like # customers you already have}}",
+      "description": "You can still save. Check first that this is not the same person.",
+      "use": "Use this customer",
+      "matched": {
+        "phone": "same phone",
+        "email": "same email"
+      }
+    },
+    "detail": {
+      "back": "All customers",
+      "loadFailed": "This customer could not be loaded.",
+      "newInquiry": "New inquiry",
+      "edit": "Edit",
+      "deactivate": "Deactivate",
+      "reactivate": "Reactivate",
+      "profile": "Profile",
+      "leads": "Inquiries",
+      "noLeads": "No inquiries yet.",
+      "inquiry": "Inquiry",
+      "bookingsLater": "Bookings will be listed here once bookings are available.",
+      "reveal": "Reveal",
+      "hide": "Hide",
+      "revealNamed": "Reveal {name}",
+      "hideNamed": "Hide {name}"
+    },
+    "stages": {
+      "NEW": "New",
+      "CONTACTED": "Contacted",
+      "SITE_VISIT": "Site visit",
+      "QUOTED": "Quoted",
+      "NEGOTIATION": "Negotiation",
+      "WON": "Won",
+      "LOST": "Lost"
+    }
+  },
+  "Leads": {
+    "title": "Leads",
+    "subtitle": "Inquiries from first call to a booking.",
+    "noAccess": "You do not have access to leads.",
+    "newInquiry": "New inquiry",
+    "loading": "Loading…",
+    "loadFailed": "The leads could not be loaded. Reload and try again.",
+    "loadMore": "Show more",
+    "columnEmpty": "Nothing here.",
+    "empty": "No leads match. Record the first inquiry.",
+    "unassigned": "Unassigned",
+    "noDetails": "No details yet",
+    "moveTo": "Move to",
+    "moveNamed": "Move the lead of {name}",
+    "stageMoved": "Moved to {stage}.",
+    "stages": {
+      "NEW": "New",
+      "CONTACTED": "Contacted",
+      "SITE_VISIT": "Site visit",
+      "QUOTED": "Quoted",
+      "NEGOTIATION": "Negotiation",
+      "WON": "Won",
+      "LOST": "Lost"
+    },
+    "sources": {
+      "walk_in": "Walk-in",
+      "phone": "Phone",
+      "whatsapp": "WhatsApp",
+      "web": "Web form",
+      "referral": "Referral",
+      "other": "Other"
+    },
+    "views": {
+      "label": "Views",
+      "board": "Board",
+      "list": "List"
+    },
+    "filters": {
+      "search": "Search customer",
+      "venue": "Venue",
+      "assignee": "Assigned to",
+      "source": "Source",
+      "followUp": "Follow-up",
+      "stage": "Stage",
+      "any": "Any",
+      "mine": "Me",
+      "reset": "Clear filters"
+    },
+    "followUp": {
+      "overdue": "Overdue",
+      "today": "Today"
+    },
+    "errors": {
+      "changedByOthers": "Someone else changed this lead just now. The latest version has been loaded, please check and try again.",
+      "stageNotAllowed": "This lead cannot move to that stage."
+    },
+    "form": {
+      "description": "Who asked, what for, and when to follow up.",
+      "customer": "Customer",
+      "customerNew": "New customer",
+      "customerExisting": "Existing customer",
+      "customerChange": "Change",
+      "customerSearch": "Search by name or phone",
+      "phoneInvalid": "Enter a valid phone number",
+      "venue": "Venue",
+      "chooseVenue": "Choose a venue",
+      "eventType": "Event type",
+      "noEventType": "Not decided",
+      "preferredDate": "Preferred date",
+      "guests": "Guests",
+      "flexibleDates": "The dates are flexible",
+      "budget": "Budget ({currency})",
+      "source": "Source",
+      "assignee": "Assigned to",
+      "assigneeHint": "By default the inquiry is yours. The person it is assigned to gets an email.",
+      "assigneeDefault": "Me",
+      "assigneeNobody": "Nobody",
+      "assigneeMe": "{name} (me)",
+      "nextFollowUp": "Next follow-up ({timezone})",
+      "preset": {
+        "1": "Tomorrow",
+        "3": "In 3 days",
+        "7": "In a week"
+      },
+      "save": "Save changes",
+      "create": "Record inquiry",
+      "saved": "Lead saved.",
+      "created": "Inquiry recorded."
+    },
+    "stageDialog": {
+      "lostTitle": "Mark as lost",
+      "lostDescription": "Say why, so the team can learn from it.",
+      "reopenTitle": "Reopen the lead",
+      "reopenDescription": "When should somebody follow up?",
+      "reason": "Reason",
+      "reasonRequired": "Say why the lead was lost",
+      "followUpRequired": "Set the next follow-up",
+      "markLost": "Mark as lost",
+      "reopen": "Reopen",
+      "cancel": "Cancel"
+    },
+    "detail": {
+      "back": "All leads",
+      "loadFailed": "This lead could not be loaded.",
+      "customer": "Open customer",
+      "edit": "Edit",
+      "editTitle": "Edit lead",
+      "moveTitle": "Move to another stage",
+      "moveHint": "Quoted and Won are set by hand until quotations and bookings can do it for you.",
+      "lostBecause": "Lost because",
+      "flexible": "flexible",
+      "budgetLabel": "Budget",
+      "followUp": "Next follow-up",
+      "contact": "Phone",
+      "notes": "Notes"
+    },
+    "activity": {
+      "title": "Activity",
+      "loadFailed": "The activity could not be loaded.",
+      "none": "none",
+      "yes": "yes",
+      "no": "no",
+      "system": "System",
+      "actions": {
+        "lead_create": "Inquiry recorded",
+        "lead_update": "Details changed",
+        "lead_stage_change": "Stage changed",
+        "lead_assign": "Assignment changed"
+      },
+      "fields": {
+        "venue": "Venue",
+        "eventType": "Event type",
+        "preferredDate": "Preferred date",
+        "flexibleDates": "Flexible dates",
+        "guests": "Guests",
+        "budget": "Budget",
+        "source": "Source",
+        "nextFollowUpAt": "Next follow-up",
+        "notes": "Notes",
+        "stage": "Stage",
+        "lostReason": "Lost because",
+        "assignee": "Assigned to"
+      }
+    },
+    "dashboard": {
+      "title": "Follow-ups",
+      "scope": "Whose follow-ups",
+      "scopes": {
+        "me": "Mine",
+        "any": "Everyone"
+      },
+      "overdue": "overdue",
+      "dueToday": "due later today",
+      "loading": "Loading…",
+      "loadFailed": "Follow-ups could not be loaded.",
+      "none": "Nothing is due. Nice.",
+      "openLeads": "Open the leads"
     }
   }
 }

@@ -148,7 +148,8 @@ function CustomFieldForm({
           type: v.type,
           options: v.type === 'select' ? parseOptions(v.options) : [],
           required: v.required,
-          sensitive: v.sensitive && SENSITIVE_FIELD_TYPES.includes(v.type),
+          sensitive:
+            v.sensitive && v.entity === 'customer' && SENSITIVE_FIELD_TYPES.includes(v.type),
           sortOrder: v.sortOrder.trim() === '' ? 0 : Number(v.sortOrder),
         };
   const form = useForm<Values>({
@@ -169,6 +170,7 @@ function CustomFieldForm({
   });
   const errors = form.formState.errors;
   const type = useWatch({ control: form.control, name: 'type' });
+  const entity = useWatch({ control: form.control, name: 'entity' });
   const pending = create.isPending || update.isPending;
 
   const onSubmit = form.handleSubmit(async (values) => {
@@ -260,7 +262,7 @@ function CustomFieldForm({
         field.sensitive ? (
           <p className="text-muted-foreground text-sm">{t('sensitiveNote')}</p>
         ) : null
-      ) : SENSITIVE_FIELD_TYPES.includes(type) ? (
+      ) : entity === 'customer' && SENSITIVE_FIELD_TYPES.includes(type) ? (
         <div className="grid gap-1">
           <CheckboxField label={t('sensitiveLabel')} {...form.register('sensitive')} />
           <p className="text-muted-foreground text-xs">{t('sensitiveHint')}</p>

@@ -2658,6 +2658,628 @@
           "cancellation-policies"
         ]
       }
+    },
+    "/v1/customers": {
+      "get": {
+        "description": "`search` matches name, phone and email (contains, any case; digits also match the number without its leading zero). Cursor pagination, ordered by name.",
+        "operationId": "CustomersController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            }
+          },
+          {
+            "name": "includeInactive",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Search and list customers",
+        "tags": [
+          "customers"
+        ]
+      },
+      "post": {
+        "description": "The phone is stored in E.164 (read with the workspace country when typed the national way). The answer lists `duplicates`: other customers with the same phone or email; the customer is created anyway.",
+        "operationId": "CustomersController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a customer",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/v1/customers/duplicates": {
+      "get": {
+        "description": "Other active customers with the same phone (also their alternative phone) or the same email. A warning for the form, never an error: phone is not unique.",
+        "operationId": "CustomersController_duplicates",
+        "parameters": [
+          {
+            "name": "phone",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 3,
+              "maxLength": 32,
+              "type": "string"
+            }
+          },
+          {
+            "name": "email",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "maxLength": 254,
+              "type": "string"
+            }
+          },
+          {
+            "name": "excludeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDuplicatesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Possible duplicates of a phone and / or email",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/v1/customers/{id}": {
+      "get": {
+        "description": "Sensitive custom fields come back masked. `leads` needs `lead.view` and only lists leads of the caller’s venues.",
+        "operationId": "CustomersController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "One customer with their leads and possible duplicates",
+        "tags": [
+          "customers"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. `active: false` is the delete. Custom fields: only the keys sent change, `null` clears one.",
+        "operationId": "CustomersController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateCustomerDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CustomerDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit a customer",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/v1/customers/{id}/reveal/{fieldKey}": {
+      "post": {
+        "description": "Needs `customer.view_sensitive`. Every call writes an audit row (who, which customer, which field; never the value).",
+        "operationId": "CustomersController_reveal",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "fieldKey",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[a-z][a-z0-9_]{0,39}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RevealedValueResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Show the clear value of a sensitive custom field",
+        "tags": [
+          "customers"
+        ]
+      }
+    },
+    "/v1/leads": {
+      "get": {
+        "description": "Filters: venueId, stage, assigneeId (membership) / unassigned, source, customerId, followUp=overdue|today, search (customer name or phone). Only leads of the caller’s venues; `venueId` only narrows. Cursor pagination.",
+        "operationId": "LeadsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "venueId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "stage",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "NEW",
+                "CONTACTED",
+                "SITE_VISIT",
+                "QUOTED",
+                "NEGOTIATION",
+                "WON",
+                "LOST"
+              ]
+            }
+          },
+          {
+            "name": "assigneeId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "unassigned",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          },
+          {
+            "name": "source",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "walk_in",
+                "phone",
+                "whatsapp",
+                "web",
+                "referral",
+                "other"
+              ]
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "followUp",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "overdue",
+                "today"
+              ]
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List leads (board columns and the list view), newest first",
+        "tags": [
+          "leads"
+        ]
+      },
+      "post": {
+        "description": "Give `customerId` or a new `customer` (inline; needs `customer.manage`). Starts in NEW; `nextFollowUpAt` is required. The assignee defaults to the caller; the assignee gets an email (not when it is the caller).",
+        "operationId": "LeadsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateLeadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Record an inquiry",
+        "tags": [
+          "leads"
+        ]
+      }
+    },
+    "/v1/leads/follow-ups": {
+      "get": {
+        "description": "Counts and the most urgent open leads, in the caller’s venues. `assignee=me` (default) only counts leads assigned to the caller.",
+        "operationId": "LeadsController_followUps",
+        "parameters": [
+          {
+            "name": "assignee",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "default": "me",
+              "type": "string",
+              "enum": [
+                "me",
+                "any"
+              ]
+            }
+          },
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 50,
+              "default": 10,
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadFollowUpsResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Follow-ups that are overdue or due today (the dashboard card)",
+        "tags": [
+          "leads"
+        ]
+      }
+    },
+    "/v1/leads/assignees": {
+      "get": {
+        "description": "Active members whose role holds `lead.manage` and whose venues cover `venueId` (all venues when omitted).",
+        "operationId": "LeadsController_assignees",
+        "parameters": [
+          {
+            "name": "venueId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadAssigneeListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Members a lead can be assigned to",
+        "tags": [
+          "leads"
+        ]
+      }
+    },
+    "/v1/leads/{id}": {
+      "get": {
+        "operationId": "LeadsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "leads"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. `stage` moves it (LOST needs `lostReason`; an open stage needs a follow-up; WON is final; a LOST lead can be reopened). The assignee must be an active member with `lead.manage` whose venues cover the lead’s venue.",
+        "operationId": "LeadsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateLeadDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Edit a lead, move its stage, assign it",
+        "tags": [
+          "leads"
+        ]
+      }
+    },
+    "/v1/leads/{id}/activity": {
+      "get": {
+        "description": "Stage changes, assignments and other edits (notes included), newest first, read from the audit rows.",
+        "operationId": "LeadsController_activity",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LeadActivityListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Activity log of a lead",
+        "tags": [
+          "leads"
+        ]
+      }
     }
   },
   "info": {
@@ -7015,6 +7637,1400 @@
         },
         "required": [
           "rev"
+        ]
+      },
+      "CustomerListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                },
+                "altPhone": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "email": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "address": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "preferredLocale": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "notes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customFields": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "nullable": true
+                  }
+                },
+                "sensitiveKeys": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                },
+                "active": {
+                  "type": "boolean"
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "phone",
+                "altPhone",
+                "email",
+                "address",
+                "preferredLocale",
+                "notes",
+                "customFields",
+                "sensitiveKeys",
+                "active",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CustomerDuplicatesResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "matchedOn": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "phone",
+                      "email"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "phone",
+                "email",
+                "matchedOn"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CreateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32
+          },
+          "altPhone": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          },
+          "preferredLocale": {
+            "type": "string",
+            "maxLength": 35,
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "nullable": true
+            }
+          }
+        },
+        "required": [
+          "name",
+          "phone"
+        ]
+      },
+      "CustomerDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "name": {
+            "type": "string"
+          },
+          "phone": {
+            "type": "string"
+          },
+          "altPhone": {
+            "type": "string",
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "nullable": true
+          },
+          "preferredLocale": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "nullable": true
+            }
+          },
+          "sensitiveKeys": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "active": {
+            "type": "boolean"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "leads": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "venueName": {
+                  "type": "string"
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "NEW",
+                    "CONTACTED",
+                    "SITE_VISIT",
+                    "QUOTED",
+                    "NEGOTIATION",
+                    "WON",
+                    "LOST"
+                  ]
+                },
+                "preferredDate": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "nextFollowUpAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "venueId",
+                "venueName",
+                "eventTypeName",
+                "stage",
+                "preferredDate",
+                "nextFollowUpAt",
+                "createdAt"
+              ]
+            }
+          },
+          "duplicates": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "phone": {
+                  "type": "string"
+                },
+                "email": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "matchedOn": {
+                  "minItems": 1,
+                  "type": "array",
+                  "items": {
+                    "type": "string",
+                    "enum": [
+                      "phone",
+                      "email"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "phone",
+                "email",
+                "matchedOn"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "name",
+          "phone",
+          "altPhone",
+          "email",
+          "address",
+          "preferredLocale",
+          "notes",
+          "customFields",
+          "sensitiveKeys",
+          "active",
+          "rev",
+          "createdAt",
+          "updatedAt",
+          "leads",
+          "duplicates"
+        ]
+      },
+      "UpdateCustomerDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "name": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 150
+          },
+          "phone": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32
+          },
+          "altPhone": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 32,
+            "nullable": true
+          },
+          "email": {
+            "type": "string",
+            "nullable": true
+          },
+          "address": {
+            "type": "string",
+            "maxLength": 500,
+            "nullable": true
+          },
+          "preferredLocale": {
+            "type": "string",
+            "maxLength": 35,
+            "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "nullable": true
+            }
+          },
+          "active": {
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "RevealedValueResponseDto": {
+        "type": "object",
+        "properties": {
+          "key": {
+            "type": "string"
+          },
+          "value": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "key",
+          "value"
+        ]
+      },
+      "LeadListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "venueName": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "phone",
+                    "email"
+                  ]
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "preferredDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "nullable": true
+                },
+                "flexibleDates": {
+                  "type": "boolean"
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "budget": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "walk_in",
+                    "phone",
+                    "whatsapp",
+                    "web",
+                    "referral",
+                    "other"
+                  ]
+                },
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "NEW",
+                    "CONTACTED",
+                    "SITE_VISIT",
+                    "QUOTED",
+                    "NEGOTIATION",
+                    "WON",
+                    "LOST"
+                  ]
+                },
+                "lostReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "assignee": {
+                  "type": "object",
+                  "properties": {
+                    "membershipId": {
+                      "type": "string"
+                    },
+                    "userId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "membershipId",
+                    "userId",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "nextFollowUpAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "notes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customFields": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "nullable": true
+                  }
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "venueId",
+                "venueName",
+                "customer",
+                "eventTypeId",
+                "eventTypeName",
+                "preferredDate",
+                "flexibleDates",
+                "guests",
+                "budget",
+                "source",
+                "stage",
+                "lostReason",
+                "assignee",
+                "nextFollowUpAt",
+                "notes",
+                "customFields",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "LeadFollowUpsResponseDto": {
+        "type": "object",
+        "properties": {
+          "overdue": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "dueToday": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "items": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "venueName": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    },
+                    "email": {
+                      "type": "string",
+                      "nullable": true
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "phone",
+                    "email"
+                  ]
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "preferredDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "nullable": true
+                },
+                "flexibleDates": {
+                  "type": "boolean"
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "budget": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "source": {
+                  "type": "string",
+                  "enum": [
+                    "walk_in",
+                    "phone",
+                    "whatsapp",
+                    "web",
+                    "referral",
+                    "other"
+                  ]
+                },
+                "stage": {
+                  "type": "string",
+                  "enum": [
+                    "NEW",
+                    "CONTACTED",
+                    "SITE_VISIT",
+                    "QUOTED",
+                    "NEGOTIATION",
+                    "WON",
+                    "LOST"
+                  ]
+                },
+                "lostReason": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "assignee": {
+                  "type": "object",
+                  "properties": {
+                    "membershipId": {
+                      "type": "string"
+                    },
+                    "userId": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "membershipId",
+                    "userId",
+                    "name"
+                  ],
+                  "nullable": true
+                },
+                "nextFollowUpAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "notes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customFields": {
+                  "type": "object",
+                  "additionalProperties": {
+                    "anyOf": [
+                      {
+                        "type": "string"
+                      },
+                      {
+                        "type": "number"
+                      }
+                    ],
+                    "nullable": true
+                  }
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "updatedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "venueId",
+                "venueName",
+                "customer",
+                "eventTypeId",
+                "eventTypeName",
+                "preferredDate",
+                "flexibleDates",
+                "guests",
+                "budget",
+                "source",
+                "stage",
+                "lostReason",
+                "assignee",
+                "nextFollowUpAt",
+                "notes",
+                "customFields",
+                "rev",
+                "createdAt",
+                "updatedAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "overdue",
+          "dueToday",
+          "items"
+        ]
+      },
+      "LeadAssigneeListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "membershipId": {
+                  "type": "string"
+                },
+                "userId": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "roleName": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "membershipId",
+                "userId",
+                "name",
+                "roleName"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "CreateLeadDto": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "customerId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "name": {
+                "type": "string",
+                "minLength": 1,
+                "maxLength": 150
+              },
+              "phone": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 32
+              },
+              "altPhone": {
+                "type": "string",
+                "minLength": 3,
+                "maxLength": 32,
+                "nullable": true
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              },
+              "address": {
+                "type": "string",
+                "maxLength": 500,
+                "nullable": true
+              },
+              "preferredLocale": {
+                "type": "string",
+                "maxLength": 35,
+                "pattern": "^[a-z]{2,3}(-[A-Za-z0-9]{2,8})*$",
+                "nullable": true
+              },
+              "notes": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "customFields": {
+                "type": "object",
+                "additionalProperties": {
+                  "anyOf": [
+                    {
+                      "type": "string",
+                      "maxLength": 500
+                    },
+                    {
+                      "type": "number"
+                    }
+                  ],
+                  "nullable": true
+                }
+              }
+            },
+            "required": [
+              "name",
+              "phone"
+            ]
+          },
+          "eventTypeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "preferredDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "nullable": true
+          },
+          "flexibleDates": {
+            "default": false,
+            "type": "boolean"
+          },
+          "guests": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "budget": {
+            "type": "string",
+            "pattern": "^\\d{1,15}(\\.\\d{1,3})?$",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "walk_in",
+              "phone",
+              "whatsapp",
+              "web",
+              "referral",
+              "other"
+            ]
+          },
+          "assigneeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "nextFollowUpAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "nullable": true
+            }
+          }
+        },
+        "required": [
+          "venueId",
+          "source",
+          "nextFollowUpAt"
+        ]
+      },
+      "LeadResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "venueId": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "phone",
+              "email"
+            ]
+          },
+          "eventTypeId": {
+            "type": "string",
+            "nullable": true
+          },
+          "eventTypeName": {
+            "type": "string",
+            "nullable": true
+          },
+          "preferredDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "nullable": true
+          },
+          "flexibleDates": {
+            "type": "boolean"
+          },
+          "guests": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991,
+            "nullable": true
+          },
+          "budget": {
+            "type": "string",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "walk_in",
+              "phone",
+              "whatsapp",
+              "web",
+              "referral",
+              "other"
+            ]
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "SITE_VISIT",
+              "QUOTED",
+              "NEGOTIATION",
+              "WON",
+              "LOST"
+            ]
+          },
+          "lostReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "assignee": {
+            "type": "object",
+            "properties": {
+              "membershipId": {
+                "type": "string"
+              },
+              "userId": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "membershipId",
+              "userId",
+              "name"
+            ],
+            "nullable": true
+          },
+          "nextFollowUpAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "nullable": true
+            }
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "updatedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "venueId",
+          "venueName",
+          "customer",
+          "eventTypeId",
+          "eventTypeName",
+          "preferredDate",
+          "flexibleDates",
+          "guests",
+          "budget",
+          "source",
+          "stage",
+          "lostReason",
+          "assignee",
+          "nextFollowUpAt",
+          "notes",
+          "customFields",
+          "rev",
+          "createdAt",
+          "updatedAt"
+        ]
+      },
+      "UpdateLeadDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "venueId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "eventTypeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "preferredDate": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+            "nullable": true
+          },
+          "flexibleDates": {
+            "type": "boolean"
+          },
+          "guests": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "budget": {
+            "type": "string",
+            "pattern": "^\\d{1,15}(\\.\\d{1,3})?$",
+            "nullable": true
+          },
+          "source": {
+            "type": "string",
+            "enum": [
+              "walk_in",
+              "phone",
+              "whatsapp",
+              "web",
+              "referral",
+              "other"
+            ]
+          },
+          "assigneeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "nextFollowUpAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z|([+-](?:[01]\\d|2[0-3]):[0-5]\\d)))$",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 4000,
+            "nullable": true
+          },
+          "customFields": {
+            "type": "object",
+            "additionalProperties": {
+              "anyOf": [
+                {
+                  "type": "string",
+                  "maxLength": 500
+                },
+                {
+                  "type": "number"
+                }
+              ],
+              "nullable": true
+            }
+          },
+          "stage": {
+            "type": "string",
+            "enum": [
+              "NEW",
+              "CONTACTED",
+              "SITE_VISIT",
+              "QUOTED",
+              "NEGOTIATION",
+              "WON",
+              "LOST"
+            ]
+          },
+          "lostReason": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 500,
+            "nullable": true
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "LeadActivityListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string",
+                  "enum": [
+                    "lead.create",
+                    "lead.update",
+                    "lead.stage_change",
+                    "lead.assign"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "actorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "changes": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "field": {
+                        "type": "string"
+                      },
+                      "from": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "to": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "field",
+                      "from",
+                      "to"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "action",
+                "createdAt",
+                "actorName",
+                "changes"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "null"
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
         ]
       }
     }

@@ -354,12 +354,17 @@ describe('pg-boss schema', () => {
       retry_delay_max: delayMax,
       dead_letter: `${name}.dead`,
     });
-    // email.send (P0-6a), then pdf.render, auth.purge and ops.dead-letter-check (P0-6b)
+    // email.send (P0-6a), then pdf.render, auth.purge and ops.dead-letter-check (P0-6b), then the lead follow-up
+    // scanner and its per-lead job (module 5)
     assert.deepEqual(rows, [
       live('auth.purge', 5, 3600),
       dead('auth.purge.dead'),
       live('email.send', 5, 3600),
       dead('email.send.dead'),
+      live('leads.follow-up', 5, 3600),
+      dead('leads.follow-up.dead'),
+      live('leads.follow-up.notify', 5, 3600),
+      dead('leads.follow-up.notify.dead'),
       live('ops.dead-letter-check', 2, 300),
       dead('ops.dead-letter-check.dead'),
       live('pdf.render', 5, 3600),

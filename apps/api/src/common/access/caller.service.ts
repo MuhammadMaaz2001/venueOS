@@ -20,6 +20,18 @@ export class Caller {
     return this.access.tenantId;
   }
 
+  /** The acting user (never from the body). */
+  get userId(): string {
+    const userId = this.cls.get('userId');
+    if (!userId) throw new UnauthenticatedError();
+    return userId;
+  }
+
+  /** The caller's membership id: what a lead's `assigneeId` refers to. */
+  get membershipId(): string {
+    return this.access.membershipId;
+  }
+
   has(permission: Permission): boolean {
     return this.access.permissions.includes(permission);
   }

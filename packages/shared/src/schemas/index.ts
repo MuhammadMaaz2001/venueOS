@@ -6,3 +6,5 @@ export * from './setup.js';
 export * from './audit.js';
 export * from './catalogue.js';
 export * from './pricing.js';
+export * from './customers.js';
+export * from './leads.js';

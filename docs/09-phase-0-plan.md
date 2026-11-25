@@ -309,8 +309,8 @@ link goes in `secretVars`. Staff-facing listings of members use `GET /v1/staff`.
 
 1. Setup and onboarding (venues, spaces, combined spaces, slots, settings, wizard)
 2. Catalogue and pricing (menus, packages, add-ons, price rules, tax, cancellation policies, custom fields) (done, see below)
-3. Customers
-4. Leads
+3. Customers (done, see below)
+4. Leads (done, see below)
 5. Pricing engine + quotations (PDF, email, wa.me share)
 6. Bookings + availability calendar (holds, confirm, change, cancel, hold-expiry job)
 7. Payments and receipts (schedule, receipts, refund requests, reversals, reminders)
@@ -432,3 +432,18 @@ audit), `src/pricing/price-rules.spec.ts`, shared schema specs, constraint tests
 logic tests, e2e `catalogue-pricing.spec.ts`. **Test stability:** the isolation sweep's `beforeAll` has an explicit 120 s
 timeout and `vitest.config.ts` a 60 s `hookTimeout` (a world of ten argon2 logins exceeded the 10 s default when the whole
 suite ran in parallel).
+
+## Modules 4 and 5: customers and leads (done)
+
+Plan and decisions: `.claude/plans/module-4-5.md`. **Database:** migration `module4_5_customers_leads` (customer `active`, trigram
+search indexes, `leads.venue_id` / `custom_fields` / `follow_up_notified_for`, stage CHECKs, a leads `touch_row` that ignores the
+notification stamp, the follow-up queues, back-fill of `customer.view_sensitive` for the Branch manager). **Shared:** E.164 phone
+normalisation, `maskSensitiveValue`, `lead-stages.ts` (stage rules the quotation and booking modules reuse), schemas
+`customers.ts` / `leads.ts`. **Backend:** `modules/customers` (CRUD, search, duplicates, sealed sensitive fields, reveal),
+`modules/leads` (CRUD, stages, assignee rules, follow-ups, activity), `common/custom-fields` (validation and sealing of field
+values). **Worker:** `leads.follow-up` scanner and `leads.follow-up.notify` job; `lead.assigned` / `lead.follow-up-due` email
+templates. **Web:** `/customers`, `/customers/[id]`, `/leads` (board with drag or move menu, list, filters), `/leads/[id]`, the
+new-inquiry dialog, the dashboard follow-ups card. **Tests:** customers and leads integration specs (2xx, 400, 401, 403,
+other-tenant 404, venue scoping, stage rules, assignee validation, reveal permission and audit, no clear value in the audit log,
+database or logs, duplicates, phone normalisation), worker spec (once per follow-up, Mailpit), constraint tests, isolation sweep
+and route scan extended, shared / web unit tests, e2e `customers-leads.spec.ts`.

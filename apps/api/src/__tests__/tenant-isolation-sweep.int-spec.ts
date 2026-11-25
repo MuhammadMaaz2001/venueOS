@@ -39,6 +39,10 @@ interface Victim {
   priceRuleId: string;
   taxRateId: string;
   policyId: string;
+  /** Modules 4 and 5: B's customer (with a sealed CNIC), its lead and the lead's assignee membership. */
+  customerId: string;
+  leadId: string;
+  customerPhone: string;
 }
 
 interface IsolationCase {
@@ -472,6 +476,97 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
       body: { rev: 1, name: 'Hijacked', isDefault: false },
     }),
   },
+
+  // ── modules 4 and 5: customers and leads ──────────────────────────────────────────────────────────────
+  'CustomersController.list': {
+    // Searching for B's customer by name finds nothing of B in A's workspace.
+    owner: 200,
+    request: () => ({
+      method: 'get',
+      path: '/v1/customers?search=B%20secret%20customer&includeInactive=true',
+    }),
+  },
+  'CustomersController.duplicates': {
+    // B's phone is not a duplicate of anything in A.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/customers/duplicates?phone=${encodeURIComponent(v.customerPhone)}&email=b-secret%40example.test`,
+    }),
+  },
+  'CustomersController.create': {
+    // Same phone and email as B's customer: created in A, with no duplicate pointing at B.
+    owner: 201,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/customers',
+      body: { name: 'Sweep customer', phone: v.customerPhone, tenantId: v.tenant.id },
+    }),
+  },
+  'CustomersController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/customers/${v.customerId}` }),
+  },
+  'CustomersController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/customers/${v.customerId}`,
+      body: { rev: 1, name: 'Hijacked', active: false },
+    }),
+  },
+  'CustomersController.reveal': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/customers/${v.customerId}/reveal/b_cnic`,
+      body: {},
+    }),
+  },
+  'LeadsController.list': {
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/leads?venueId=${v.venueId}&customerId=${v.customerId}&search=B%20secret%20customer&limit=100`,
+    }),
+  },
+  'LeadsController.followUps': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/leads/follow-ups?assignee=any' }),
+  },
+  'LeadsController.assignees': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/leads/assignees?venueId=${v.venueId}` }),
+  },
+  'LeadsController.create': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: '/v1/leads',
+      body: {
+        venueId: v.venueId,
+        customerId: v.customerId,
+        source: 'phone',
+        nextFollowUpAt: '2030-01-01T10:00:00Z',
+      },
+    }),
+  },
+  'LeadsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/leads/${v.leadId}` }),
+  },
+  'LeadsController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/leads/${v.leadId}`,
+      body: { rev: 1, stage: 'LOST', lostReason: 'Hijacked' },
+    }),
+  },
+  'LeadsController.activity': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/leads/${v.leadId}/activity` }),
+  },
 };
 
 /** Routes that are not tenant data, with the reason. */
@@ -575,8 +670,33 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       isDefault: true,
     });
 
+    // Modules 4 and 5: B's customer with a sealed CNIC, and a lead for it.
+    await post('/v1/custom-fields', {
+      entity: 'customer',
+      key: 'b_cnic',
+      label: 'B CNIC',
+      type: 'text',
+      sensitive: true,
+    });
+    const customerB = await post('/v1/customers', {
+      name: 'B secret customer',
+      phone: '0300 9990001',
+      email: 'b-secret@example.test',
+      customFields: { b_cnic: '99999-9999999-9' },
+    });
+    const leadB = await post('/v1/leads', {
+      venueId: venueB.id,
+      customerId: customerB.id,
+      source: 'phone',
+      nextFollowUpAt: '2030-01-01T10:00:00Z',
+      notes: 'B secret note',
+    });
+
     victim = {
       tenant: tenantB,
+      customerId: customerB.id,
+      leadId: leadB.id,
+      customerPhone: '+923009990001',
       roleId: customRole.roleId,
       membershipId: staffB.membershipId,
       userId: staffB.userId,
@@ -642,6 +762,13 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       'B secret tax',
       'B secret policy',
       '1234.50',
+      customerB.id,
+      leadB.id,
+      'B secret customer',
+      'B secret note',
+      '99999-9999999-9',
+      'B CNIC',
+      'b_cnic',
     ];
     // Explicit and generous: this world needs ~10 argon2 logins plus dozens of API calls, which took longer than
     // the 10 s default when the whole suite ran in parallel.
@@ -683,7 +810,7 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
 
     it('a Sales agent of tenant A gets nothing either (403 where a permission is needed)', async () => {
       const res = await send(agentHeaders);
-      expect([200, 400, 403, 404]).toContain(res.status);
+      expect([200, 201, 400, 403, 404]).toContain(res.status);
       const text = JSON.stringify(res.body);
       for (const secret of secrets) expect(text, `${name} leaked ${secret}`).not.toContain(secret);
     });
@@ -787,6 +914,29 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       [victim.priceRuleId],
     );
     expect(rule).toEqual({ active: true });
+
+    // Modules 4 and 5: B's customer and lead are as created (the attacks that "hijacked" them landed nowhere), and
+    // no customer or lead of B was added by an attack.
+    const [customer] = await h.sql<{ name: string; active: boolean; rev: number }>(
+      `SELECT name, active, rev FROM customers WHERE id = $1`,
+      [victim.customerId],
+    );
+    expect(customer).toEqual({ name: 'B secret customer', active: true, rev: 1 });
+    const [lead] = await h.sql<{ stage: string; lost_reason: string | null; rev: number }>(
+      `SELECT stage, lost_reason, rev FROM leads WHERE id = $1`,
+      [victim.leadId],
+    );
+    expect(lead).toEqual({ stage: 'NEW', lost_reason: null, rev: 1 });
+    const strays2 = await h.sql<{ n: string }>(
+      `SELECT (SELECT count(*) FROM customers WHERE tenant_id = $1) + (SELECT count(*) FROM leads WHERE tenant_id = $1) AS n`,
+      [victim.tenant.id],
+    );
+    expect(Number(strays2[0]?.n)).toBe(2);
+    const reveals = await h.sql<{ id: string }>(
+      `SELECT id FROM audit_logs WHERE tenant_id = $1 AND action = 'customer.reveal_sensitive'`,
+      [victim.tenant.id],
+    );
+    expect(reveals).toEqual([]);
   });
 
   it("the workspace list of tenant A's owner holds tenant A only", async () => {
