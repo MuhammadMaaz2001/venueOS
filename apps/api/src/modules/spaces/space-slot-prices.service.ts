@@ -73,6 +73,7 @@ export class SpaceSlotPricesService {
         action: 'space.slot_prices.replace',
         entityType: 'space',
         entityId: spaceId,
+        venueId: space.venueId,
         before: { prices: before },
         after: { prices: after },
       });

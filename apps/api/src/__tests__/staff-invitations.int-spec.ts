@@ -394,6 +394,49 @@ describe('staff invitations', () => {
         .set('X-Forwarded-For', freshIp())
         .send(body);
 
+    it('422: the role of the invitation was retired in the meantime; the invitation stays usable once the role is back', async () => {
+      const { tenant, headers } = await workspace();
+      // A custom role, invited into, then retired (nobody holds it yet).
+      const role = await t
+        .http()
+        .post('/v1/roles')
+        .set(headers)
+        .send({ name: 'Short lived', copyFromRoleId: tenant.roles.operations });
+      expect(role.status).toBe(201);
+      const email = uniqueEmail();
+      expect((await invite(headers, { email, roleId: role.body.id })).status).toBe(201);
+      const token = (await h.lastMail(email, 'staff.invite')).token as string;
+      const retire = await t
+        .http()
+        .patch(`/v1/roles/${role.body.id}`)
+        .set(headers)
+        .send({ rev: role.body.rev, active: false });
+      expect(retire.status).toBe(200);
+
+      const refused = await accept({ token, name: 'Too Late', password: TEST_PASSWORD });
+      expect(refused.status).toBe(422);
+      expect(refused.body.error.code).toBe('INVALID_STATE_TRANSITION');
+
+      const restore = await t
+        .http()
+        .patch(`/v1/roles/${role.body.id}`)
+        .set(headers)
+        .send({ rev: retire.body.rev, active: true });
+      expect(restore.status).toBe(200);
+      // The first attempt already created the account (the invitation was released, not burnt): from here on the
+      // person signs in and accepts with that account.
+      expect((await accept({ token, name: 'Just In Time', password: TEST_PASSWORD })).status).toBe(
+        409,
+      );
+      const personHeaders = await h.sessionHeaders(t, email);
+      const ok = await t
+        .http()
+        .post('/v1/me/invitations/accept')
+        .set(personHeaders)
+        .send({ token });
+      expect(ok.status).toBe(200);
+    });
+
     it('creates the account (address verified by the token), the membership with the invited role and venues, and audits it', async () => {
       const { tenant, headers } = await workspace();
       const venue = await world.createVenue(tenant);

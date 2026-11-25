@@ -100,6 +100,20 @@ These rules are mandatory. A change that breaks one of them is not mergeable, ho
   removes either is rejected with `422 INVALID_STATE_TRANSITION`), and the name of a system role cannot
   be changed. A tenant must also always keep at least one active membership with the Owner role: removing
   or deactivating the last owner is rejected with `422` (enforced by the staff endpoints, P0-4).
+- **A role that may manage an area may also see it.** A role holding `<area>.manage` must hold `<area>.view` where a view
+  permission exists (`venue`, `customer`, `lead`, `vendor`): otherwise the role edit is `400 VALIDATION_ERROR` naming
+  the missing permission (`requiredViewPermission` in `packages/shared`). Areas without a view permission (`staff`,
+  `role`, `catalogue`, `pricing`, `billing`, `template`, `tenant.settings`) have no pair. `DEFAULT_ROLES` satisfy it
+  (a test proves it).
+- **Retiring roles.** `PATCH /v1/roles/{id}` with `active: false` retires a custom role; `true` restores it. A system
+  role cannot be retired and a role with active members cannot be retired (`422 INVALID_STATE_TRANSITION`; the check runs
+  under a row lock that assignments share, so a member added a moment ago counts). A retired role is frozen (no edit, no
+  copy), is not offered by `GET /v1/staff/assignable-roles`, and cannot be given by `PATCH /v1/staff/{id}` or an
+  invitation (`422`); an invitation accepted after its role was retired is `422` and stays usable once the role is
+  restored. Both changes are audited (`role.retire`, `role.restore`).
+- **Audit log access.** `audit.view` reads `GET /v1/audit-logs` (and `/{id}`). Venue scoping applies: a caller whose
+  membership lists venues sees only rows whose `audit_logs.venue_id` is one of them; rows without a venue (settings,
+  roles, staff, event types, invitations) are visible only with access to all venues. An out-of-scope id is `404`.
 - Guards read the caller's membership and role **on every request**, so a role edit or a deactivation
   applies on the next request. Nothing about permissions is cached.
 - Value limits are checked on the server: discount above the role limit → 403
@@ -269,6 +283,16 @@ changes, price/discount changes, payments, refunds (including self-approval), re
 expenses, inventory adjustments, role/permission changes, user invites/removals, settings
 changes, sensitive-field views. Audit rows are written in the same transaction as the change
 and cannot be updated or deleted by the app role.
+
+**Reading the audit trail (module 2).** `GET /v1/audit-logs` (`audit.view`) lists rows newest first with cursor
+pagination (`limit` default 25, max 100; the cursor is opaque and stable even for rows written in the same
+millisecond) and the filters `entityType`, `entityId`, `actorUserId`, `action`, `from`, `to` (`YYYY-MM-DD` = whole days of
+the workspace time zone, or ISO instants). The list carries who, what and when; `GET /v1/audit-logs/{id}` adds the
+`before`/`after` and the IP. Rows are returned **exactly as stored**: secrets were replaced by `[REDACTED]` and phone
+numbers / emails reduced to a hint when the row was written, so no token, hash, password or CNIC is ever in the answer
+(nothing here can unmask them). Rows of venue-level entities (venue, space, slot template) carry `venue_id`, which the
+venue scope filters on; the column is written by `AuditService.record` (`venueId`) and was back-filled by the migration.
+Audit rows are still never updated or deleted by the app role.
 
 ## 9. Platform admin and support access (post-MVP)
 

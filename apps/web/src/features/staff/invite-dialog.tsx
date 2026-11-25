@@ -16,6 +16,7 @@ import {
 } from '@/components/ui/dialog';
 import { useZodResolver } from '@/lib/validation';
 import { useSession } from '../shell/session';
+import { useRoleName } from '../roles/use-role-name';
 import { useAssignableRoles, useInviteStaff } from './api';
 import { inviteVenueScope } from './venue-scope';
 import { VenueScopePicker } from './venue-scope-picker';
@@ -41,6 +42,7 @@ export function InviteDialog({
   const t = useTranslations('Staff.invite');
   const { access } = useSession();
   const roles = useAssignableRoles(open);
+  const roleName = useRoleName();
   const invite = useInviteStaff();
   const form = useForm<FormValues>({
     resolver: useZodResolver(InviteFormSchema),
@@ -97,7 +99,7 @@ export function InviteDialog({
             <option value="">{t('rolePlaceholder')}</option>
             {roles.data?.data.map((role) => (
               <option key={role.id} value={role.id}>
-                {role.name}
+                {roleName(role.name)}
               </option>
             ))}
           </SelectField>

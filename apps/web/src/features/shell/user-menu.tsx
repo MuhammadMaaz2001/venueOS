@@ -14,6 +14,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { useLogout } from '../auth/api';
+import { useRoleName } from '../roles/use-role-name';
 import { useSession } from './session';
 
 function initials(name: string): string {
@@ -30,6 +31,7 @@ export function UserMenu() {
   const t = useTranslations('Shell.user');
   const router = useRouter();
   const { user, access } = useSession();
+  const roleName = useRoleName();
   const logout = useLogout();
 
   const leave = (everywhere: boolean) =>
@@ -55,7 +57,7 @@ export function UserMenu() {
           {user.email ? (
             <span className="ltr-text truncate text-xs font-normal">{user.email}</span>
           ) : null}
-          <span className="text-xs font-normal">{access.roleName}</span>
+          <span className="text-xs font-normal">{roleName(access.roleName)}</span>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
         <DropdownMenuItem onSelect={() => leave(false)} data-testid="logout">

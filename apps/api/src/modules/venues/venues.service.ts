@@ -122,6 +122,7 @@ export class VenuesService {
         action: 'venue.create',
         entityType: 'venue',
         entityId: created.id,
+        venueId: created.id,
         after: dto,
       });
       return dto;
@@ -169,6 +170,7 @@ export class VenuesService {
         action: 'venue.update',
         entityType: 'venue',
         entityId: id,
+        venueId: id,
         before,
         after,
       });

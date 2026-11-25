@@ -1,4 +1,4 @@
-import { Body, Controller, Get, HttpCode, Param, Patch, Post } from '@nestjs/common';
+import { Body, Controller, Get, HttpCode, Param, Patch, Post, Query } from '@nestjs/common';
 import { ApiCreatedResponse, ApiOkResponse, ApiOperation, ApiTags } from '@nestjs/swagger';
 import type { RoleDto, RoleListResponse } from '@venueos/shared';
 import { RequirePermission } from '../../common/access/access.decorators';
@@ -6,6 +6,7 @@ import {
   CreateRoleDto,
   RoleResponseDto,
   RoleIdParamDto,
+  RoleListQueryDto,
   RoleListResponseDto,
   UpdateRoleDto,
 } from './roles.dto';
@@ -19,10 +20,13 @@ export class RolesController {
 
   @Get()
   @RequirePermission('role.manage')
-  @ApiOperation({ summary: 'List the roles of the current tenant' })
+  @ApiOperation({
+    summary: 'List the roles of the current tenant',
+    description: 'Active roles unless `status=retired` or `status=all` is given.',
+  })
   @ApiOkResponse({ type: RoleListResponseDto })
-  list(): Promise<RoleListResponse> {
-    return this.roles.list();
+  list(@Query() query: RoleListQueryDto): Promise<RoleListResponse> {
+    return this.roles.list(query);
   }
 
   @Get(':id')
@@ -43,7 +47,11 @@ export class RolesController {
   @Patch(':id')
   @HttpCode(200)
   @RequirePermission('role.manage')
-  @ApiOperation({ summary: 'Edit a role: name (custom roles only), permissions, limits' })
+  @ApiOperation({
+    summary: 'Edit a role: name (custom roles only), permissions, limits; retire or restore it',
+    description:
+      '`active: false` retires a custom role that has no active members (422 otherwise); a retired role is frozen until `active: true`. A role that holds `<area>.manage` must hold `<area>.view` where it exists (400).',
+  })
   @ApiOkResponse({ type: RoleResponseDto })
   update(@Param() params: RoleIdParamDto, @Body() body: UpdateRoleDto): Promise<RoleDto> {
     return this.roles.update(params.id, body);

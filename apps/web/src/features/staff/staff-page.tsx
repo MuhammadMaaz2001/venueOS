@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Skeleton } from '@/components/ui/skeleton';
+import { useRoleName } from '../roles/use-role-name';
 import { useVenues } from '../setup/api';
 import { useSession } from '../shell/session';
 import { useFormatters } from '../shell/session';
@@ -85,6 +86,7 @@ function MembersSection() {
   const { user } = useSession();
   const staff = useStaff();
   const scopeText = useScopeText();
+  const roleName = useRoleName();
   const [editing, setEditing] = useState<StaffMemberDto | null>(null);
 
   return (
@@ -122,7 +124,7 @@ function MembersSection() {
                     ) : null}
                   </div>
                   <div className="flex flex-wrap items-center gap-2 text-sm">
-                    <Badge variant="outline">{member.roleName}</Badge>
+                    <Badge variant="outline">{roleName(member.roleName)}</Badge>
                     {!member.active ? (
                       <Badge variant="secondary">{t('members.inactive')}</Badge>
                     ) : null}
@@ -158,6 +160,7 @@ function InvitationsSection() {
   const revoke = useRevokeInvitation();
   const formatters = useFormatters();
   const scopeText = useScopeText();
+  const roleName = useRoleName();
 
   const onRevoke = (invitation: InvitationDto) =>
     revoke.mutate(invitation.id, { onSuccess: () => toast.success(t('invitations.revoked')) });
@@ -191,7 +194,8 @@ function InvitationsSection() {
                       <span className="ltr-text truncate">{invitation.email}</span>
                     </p>
                     <p className="text-muted-foreground text-xs">
-                      {invitation.roleName ?? '—'} · {scopeText(invitation.venueIds)} ·{' '}
+                      {invitation.roleName ? roleName(invitation.roleName) : '—'} ·{' '}
+                      {scopeText(invitation.venueIds)} ·{' '}
                       {invitation.status === 'expired'
                         ? t('invitations.expired')
                         : t('invitations.expires', {

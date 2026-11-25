@@ -26,6 +26,8 @@ describe('route scan: the application', () => {
           'RolesController.get',
           'RolesController.create',
           'RolesController.update',
+          'AuditLogsController.list',
+          'AuditLogsController.get',
           'AuthController.login',
           'AuthController.logout',
           'MeController.get',

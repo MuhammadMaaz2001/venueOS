@@ -122,6 +122,7 @@ export class SlotTemplatesService {
         action: 'slot_template.create',
         entityType: 'slot_template',
         entityId: created.id,
+        venueId: venue.id,
         after: dto,
       });
       return dto;
@@ -196,6 +197,7 @@ export class SlotTemplatesService {
         action: 'slot_template.update',
         entityType: 'slot_template',
         entityId: id,
+        venueId: current.venueId,
         before,
         after,
       });

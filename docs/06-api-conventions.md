@@ -83,6 +83,16 @@ Messages are user-safe English; the web app maps `code` to translated text.
 | `GET /v1/staff`, `PATCH /v1/staff/{membershipId}` | `staff.manage` | `rev`; one active Owner always remains (422) |
 | `GET /v1/staff/assignable-roles` | `staff.manage` | `{ data: [{ id, name }] }`: the roles the caller may give (no escalation); does not need `role.manage` (the invite and edit pickers of the web app) |
 
+## Roles and audit (module 2)
+
+| Endpoint | Access | Notes |
+| --- | --- | --- |
+| `GET /v1/roles?status=active\|retired\|all` | `role.manage` | default `active`; each role has `active` and `memberCount` (active members) |
+| `POST /v1/roles` | `role.manage` | `{ name, copyFromRoleId }`; a retired source is 422 |
+| `PATCH /v1/roles/{id}` | `role.manage` | `rev` + any of `name`, `permissions`, `limits`, `active`; `<area>.manage` without `<area>.view` is 400; retiring a role with active members or a system role is 422; a retired role only accepts `active: true` |
+| `GET /v1/audit-logs` | `audit.view` | cursor list, newest first; filters `entityType`, `entityId`, `actorUserId`, `action`, `from`, `to` (`YYYY-MM-DD` = whole tenant-time-zone days, inclusive, or an ISO instant); venue-limited callers see only their venues' entries |
+| `GET /v1/audit-logs/{id}` | `audit.view` | with `before`, `after`, `ip`; another tenant's or an out-of-scope id is 404 |
+
 ## Lists
 
 - Cursor pagination: `?limit=25&cursor=<opaque>`; response

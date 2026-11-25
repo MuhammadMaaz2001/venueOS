@@ -17,6 +17,7 @@ import { CsrfGuard } from './common/security/csrf.guard';
 import { APP_CONFIG, ConfigModule } from './config/config.module';
 import type { AppConfig } from './config/config.module';
 import { HealthModule } from './health/health.module';
+import { AuditLogsModule } from './modules/audit-logs/audit-logs.module';
 import { AuthModule } from './modules/auth/auth.module';
 import { EventTypesModule } from './modules/event-types/event-types.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -45,6 +46,7 @@ import { VenuesModule } from './modules/venues/venues.module';
     HealthModule,
     AuthModule,
     RolesModule,
+    AuditLogsModule,
     StaffModule,
     TenantSettingsModule,
     VenuesModule,

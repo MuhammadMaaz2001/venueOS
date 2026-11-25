@@ -328,7 +328,10 @@ export interface paths {
             path?: never;
             cookie?: never;
         };
-        /** List the roles of the current tenant */
+        /**
+         * List the roles of the current tenant
+         * @description Active roles unless `status=retired` or `status=all` is given.
+         */
         get: operations["RolesController_list"];
         put?: never;
         /** Create a custom role as a copy of an existing one */
@@ -352,8 +355,51 @@ export interface paths {
         delete?: never;
         options?: never;
         head?: never;
-        /** Edit a role: name (custom roles only), permissions, limits */
+        /**
+         * Edit a role: name (custom roles only), permissions, limits; retire or restore it
+         * @description `active: false` retires a custom role that has no active members (422 otherwise); a retired role is frozen until `active: true`. A role that holds `<area>.manage` must hold `<area>.view` where it exists (400).
+         */
         patch: operations["RolesController_update"];
+        trace?: never;
+    };
+    "/v1/audit-logs": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List audit entries, newest first
+         * @description Cursor pagination (`limit` 25, max 100). `from`/`to` are `YYYY-MM-DD` (whole days of the workspace time zone, inclusive) or ISO instants. A caller limited to some venues only sees entries of those venues, never tenant-wide ones.
+         */
+        get: operations["AuditLogsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/audit-logs/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One audit entry with the full before/after
+         * @description Sensitive fields are masked exactly as they were stored.
+         */
+        get: operations["AuditLogsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
         trace?: never;
     };
     "/v1/staff": {
@@ -779,6 +825,8 @@ export interface components {
                     maxDiscountPct: number;
                 };
                 isSystem: boolean;
+                active: boolean;
+                memberCount: number;
                 rev: number;
                 /** Format: date-time */
                 createdAt: string;
@@ -795,6 +843,8 @@ export interface components {
                 maxDiscountPct: number;
             };
             isSystem: boolean;
+            active: boolean;
+            memberCount: number;
             rev: number;
             /** Format: date-time */
             createdAt: string;
@@ -812,6 +862,39 @@ export interface components {
             limits?: {
                 maxDiscountPct: number;
             };
+            active?: boolean;
+        };
+        AuditLogListResponseDto: {
+            data: {
+                id: string;
+                /** Format: date-time */
+                createdAt: string;
+                /** @enum {string} */
+                actorType: "USER" | "SYSTEM" | "PLATFORM_ADMIN";
+                actorUserId: string | null;
+                actorName: string | null;
+                action: string;
+                entityType: string;
+                entityId: string;
+                venueId: string | null;
+            }[];
+            nextCursor: string | null;
+        };
+        AuditLogDetailResponseDto: {
+            id: string;
+            /** Format: date-time */
+            createdAt: string;
+            /** @enum {string} */
+            actorType: "USER" | "SYSTEM" | "PLATFORM_ADMIN";
+            actorUserId: string | null;
+            actorName: string | null;
+            action: string;
+            entityType: string;
+            entityId: string;
+            venueId: string | null;
+            before: unknown;
+            after: unknown;
+            ip: string | null;
         };
         StaffListResponseDto: {
             data: {
@@ -1562,7 +1645,9 @@ export interface operations {
     };
     RolesController_list: {
         parameters: {
-            query?: never;
+            query?: {
+                status?: "active" | "retired" | "all";
+            };
             header?: never;
             path?: never;
             cookie?: never;
@@ -1644,6 +1729,55 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["RoleResponseDto"];
+                };
+            };
+        };
+    };
+    AuditLogsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                entityType?: string;
+                entityId?: string;
+                actorUserId?: string;
+                action?: string;
+                from?: string;
+                to?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogListResponseDto"];
+                };
+            };
+        };
+    };
+    AuditLogsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AuditLogDetailResponseDto"];
                 };
             };
         };

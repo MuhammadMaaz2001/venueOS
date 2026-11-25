@@ -29,6 +29,8 @@ interface Victim {
   spaceId: string;
   slotId: string;
   eventTypeId: string;
+  /** Module 2: one audit row of tenant B. */
+  auditLogId: string;
 }
 
 interface IsolationCase {
@@ -61,7 +63,8 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
     request: (v) => ({
       method: 'patch',
       path: `/v1/roles/${v.roleId}`,
-      body: { rev: 1, name: 'Hijacked' },
+      // Retiring is the same route: B's role must stay active.
+      body: { rev: 1, name: 'Hijacked', active: false },
     }),
   },
   'StaffController.list': {
@@ -117,6 +120,19 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
       path: '/v1/me/invitations/accept',
       body: { token: v.inviteToken },
     }),
+  },
+  // ── module 2: audit log ───────────────────────────────────────────────────────────────────────────────
+  'AuditLogsController.list': {
+    // A tenantId / entityId of B in the query only filters A's own rows: nothing of B comes back.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/audit-logs?tenantId=${v.tenant.id}&entityId=${v.venueId}&limit=100`,
+    }),
+  },
+  'AuditLogsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/audit-logs/${v.auditLogId}` }),
   },
   // ── module 1: setup (venues, spaces, slots, prices, event types, settings) ──────────────────────────────
   'TenantSettingsController.get': {
@@ -328,6 +344,12 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       spaceId: spaceB.id,
       slotId: slotB.id,
       eventTypeId: eventB.id,
+      auditLogId: (
+        await h.sql<{ id: string }>(
+          `SELECT id FROM audit_logs WHERE tenant_id = $1 AND action = 'venue.create'`,
+          [tenantB.id],
+        )
+      )[0]?.id as string,
     };
     secrets = [
       tenantB.id,
@@ -348,6 +370,7 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       spaceB.id,
       slotB.id,
       eventB.id,
+      victim.auditLogId,
       'B secret venue',
       'B secret space',
       'B secret slot',
@@ -408,6 +431,11 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       [victim.roleId],
     );
     expect(role).toEqual({ name: 'B secret role', rev: 1 });
+    const [roleActive] = await h.sql<{ active: boolean }>(
+      `SELECT active FROM roles WHERE id = $1`,
+      [victim.roleId],
+    );
+    expect(roleActive).toEqual({ active: true });
     const [invitation] = await h.sql<{ revoked_at: Date | null; accepted_at: Date | null }>(
       `SELECT revoked_at, accepted_at FROM invitations WHERE id = $1`,
       [victim.invitationId],

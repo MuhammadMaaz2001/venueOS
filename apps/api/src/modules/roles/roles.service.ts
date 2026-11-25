@@ -11,6 +11,7 @@ import type {
   CreateRoleInput,
   Permission,
   RoleDto,
+  RoleListQuery,
   RoleListResponse,
   UpdateRoleInput,
 } from '@venueos/shared';
@@ -34,10 +35,18 @@ interface RoleRow {
   permissions: string[];
   limits: unknown;
   isSystem: boolean;
+  active: boolean;
   rev: number;
   createdAt: Date;
   updatedAt: Date;
+  /** Active members who hold the role. */
+  _count: { memberships: number };
 }
+
+/** Every read of a role carries the number of its active members (the retire rule and the roles page). */
+const WITH_MEMBER_COUNT = {
+  _count: { select: { memberships: { where: { active: true } } } },
+} as const;
 
 const PERMISSION_ORDER = new Map<string, number>(PERMISSIONS.map((p, i) => [p, i]));
 
@@ -55,6 +64,8 @@ function toDto(row: RoleRow): RoleDto {
     permissions: normalizePermissions(row.permissions),
     limits: parseRoleLimits(row.limits),
     isSystem: row.isSystem,
+    active: row.active,
+    memberCount: row._count.memberships,
     rev: row.rev,
     createdAt: row.createdAt.toISOString(),
     updatedAt: row.updatedAt.toISOString(),
@@ -75,10 +86,17 @@ export class RolesService {
     return access;
   }
 
-  async list(): Promise<RoleListResponse> {
+  async list(query: RoleListQuery): Promise<RoleListResponse> {
     const { tenantId } = this.access;
     const rows = await this.tenantDb.tx((tx) =>
-      tx.role.findMany({ where: { tenantId }, orderBy: [{ isSystem: 'desc' }, { name: 'asc' }] }),
+      tx.role.findMany({
+        where: {
+          tenantId,
+          ...(query.status === 'all' ? {} : { active: query.status === 'active' }),
+        },
+        orderBy: [{ isSystem: 'desc' }, { name: 'asc' }],
+        include: WITH_MEMBER_COUNT,
+      }),
     );
     return { data: rows.map(toDto), nextCursor: null };
   }
@@ -94,6 +112,11 @@ export class RolesService {
       return await this.tenantDb.tx(async (tx) => {
         // The id comes from the client and is not covered by a composite FK: load it first (rule 13).
         const source = await this.load(tx, input.copyFromRoleId);
+        if (!source.active) {
+          throw new InvalidStateTransitionError(
+            'A retired role cannot be copied. Restore it first.',
+          );
+        }
         const permissions = normalizePermissions(source.permissions);
         const limits = parseRoleLimits(source.limits);
         // Copying must not hand out more than the caller holds (same rule as editing).
@@ -109,7 +132,7 @@ export class RolesService {
             isSystem: false,
           },
         });
-        const dto = toDto(created);
+        const dto = toDto({ ...created, _count: { memberships: 0 } });
         await this.audit.record(tx, {
           action: 'role.create',
           entityType: 'role',
@@ -133,8 +156,36 @@ export class RolesService {
         if (current.rev !== input.rev) throw new VersionConflictError();
         const before = toDto(current);
 
+        const fieldsChanged =
+          input.name !== undefined || input.permissions !== undefined || input.limits !== undefined;
+        const nextActive = input.active ?? current.active;
+
         if (current.isSystem && input.name !== undefined && input.name !== current.name) {
           throw new InvalidStateTransitionError('The name of a system role cannot be changed.');
+        }
+        if (current.isSystem && !nextActive) {
+          throw new InvalidStateTransitionError('A system role cannot be retired.');
+        }
+        // A retired role is frozen: restore it first (restoring and editing in one request is fine).
+        if (!current.active && !nextActive && fieldsChanged) {
+          throw new InvalidStateTransitionError(
+            'A retired role cannot be edited. Restore it first.',
+          );
+        }
+
+        const retiring = current.active && !nextActive;
+        const restoring = !current.active && nextActive;
+        if (retiring) {
+          // Serialise with assignments (they share-lock the role): a member added a moment ago is counted.
+          await tx.$queryRaw`SELECT id FROM roles WHERE id = ${id} FOR UPDATE`;
+          const members = await tx.membership.count({
+            where: { tenantId: access.tenantId, roleId: id, active: true },
+          });
+          if (members > 0) {
+            throw new InvalidStateTransitionError(
+              'This role still has active members. Move them to another role first.',
+            );
+          }
         }
 
         const nextPermissions =
@@ -172,18 +223,30 @@ export class RolesService {
             ...(input.name === undefined ? {} : { name: input.name }),
             ...(input.permissions === undefined ? {} : { permissions: nextPermissions }),
             ...(input.limits === undefined ? {} : { limits: nextLimits }),
+            ...(nextActive === current.active ? {} : { active: nextActive }),
           },
         });
         if (changed.count !== 1) throw new VersionConflictError();
 
         const after = toDto(await this.load(tx, id));
-        await this.audit.record(tx, {
-          action: 'role.update',
-          entityType: 'role',
-          entityId: id,
-          before,
-          after,
-        });
+        if (fieldsChanged) {
+          await this.audit.record(tx, {
+            action: 'role.update',
+            entityType: 'role',
+            entityId: id,
+            before,
+            after,
+          });
+        }
+        if (retiring || restoring) {
+          await this.audit.record(tx, {
+            action: retiring ? 'role.retire' : 'role.restore',
+            entityType: 'role',
+            entityId: id,
+            before: { name: before.name, active: before.active },
+            after: { name: after.name, active: after.active },
+          });
+        }
         return after;
       });
     } catch (error) {
@@ -195,7 +258,10 @@ export class RolesService {
 
   /** Loads a role of the active tenant or 404 (another tenant's id answers the same as a missing one). */
   private async load(tx: DbTx, id: string): Promise<RoleRow> {
-    const role = await tx.role.findFirst({ where: { id, tenantId: this.access.tenantId } });
+    const role = await tx.role.findFirst({
+      where: { id, tenantId: this.access.tenantId },
+      include: WITH_MEMBER_COUNT,
+    });
     if (!role) throw new NotFoundError();
     return role;
   }

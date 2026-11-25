@@ -15,6 +15,7 @@ import {
 } from '@/components/ui/dialog';
 import { errorMessageKey } from '@/lib/api/error-messages';
 import { isApiError } from '@/lib/api/errors';
+import { useRoleName } from '../roles/use-role-name';
 import { UPDATE_MEMBER_MESSAGES, useAssignableRoles, useUpdateStaff } from './api';
 import { VenueScopePicker } from './venue-scope-picker';
 
@@ -58,6 +59,7 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
   const t = useTranslations();
   const roles = useAssignableRoles();
   const update = useUpdateStaff();
+  const roleName = useRoleName();
   const [roleId, setRoleId] = useState(member.roleId);
   const [active, setActive] = useState(member.active);
   // `undefined` = untouched; `null` = "selected venues" with none ticked (cannot be saved).
@@ -120,7 +122,7 @@ function EditForm({ member, onClose }: { member: StaffMemberDto; onClose: () => 
       >
         {withCurrent.map((role) => (
           <option key={role.id} value={role.id}>
-            {role.name}
+            {roleName(role.name)}
           </option>
         ))}
       </SelectField>

@@ -3,3 +3,4 @@ export * from './roles.js';
 export * from './auth.js';
 export * from './staff.js';
 export * from './setup.js';
+export * from './audit.js';

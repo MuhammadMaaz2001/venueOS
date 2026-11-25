@@ -9,6 +9,11 @@ export interface AuditEntry {
   action: string;
   entityType: string;
   entityId: string;
+  /**
+   * The venue the entity belongs to (venue, space, slot template; bookings later). Readers limited to some venues
+   * only see rows of their own venues; leave it out for tenant-wide entities (settings, roles, staff).
+   */
+  venueId?: string;
   /** State before and after the change. Sensitive fields are masked before storing. */
   before?: unknown;
   after?: unknown;
@@ -58,6 +63,7 @@ export class AuditService {
         action: entry.action,
         entityType: entry.entityType,
         entityId: entry.entityId,
+        venueId: entry.venueId ?? null,
         ...(entry.before === undefined
           ? {}
           : { before: maskSensitive(entry.before) as Prisma.InputJsonValue }),

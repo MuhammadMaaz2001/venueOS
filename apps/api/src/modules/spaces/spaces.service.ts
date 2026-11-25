@@ -166,6 +166,7 @@ export class SpacesService {
         action: 'space.create',
         entityType: 'space',
         entityId: created.id,
+        venueId: created.venueId,
         after: dto,
       });
       return dto;
@@ -251,6 +252,7 @@ export class SpacesService {
         action: 'space.update',
         entityType: 'space',
         entityId: id,
+        venueId: current.venueId,
         before,
         after,
       });
