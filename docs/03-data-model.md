@@ -155,6 +155,21 @@ to forced RLS like everyone else: set `app.tenant_id` (and `app.user_id` for `us
 writing, or insert users/credentials through `venueos_auth`. For a one-off cross-tenant data fix,
 `SET ROLE venueos_definer` (the migrator is a member) inside the migration, with explicit GRANTs.
 
+## Modules 6-8 columns and checks
+
+Migrations `module6_8_bookings` and `bookings_touch_row`.
+
+| Table | Added |
+| --- | --- |
+| `bookings` | `pricing` (JSON: the tax rate and discount the quote was priced with, frozen), `hold_warned_at`, `suggested_refund` (>= 0, computed at cancellation from the policy snapshot), `cancelled_from` (the status a restore goes back to), CHECK `hold_extensions >= 0`; index on the hold expiry of TENTATIVE rows and on `(tenant_id, venue_id, status)` |
+| `booking_sessions` | `add_ons` (JSON: the add-ons chosen, the INPUT of the quote), `pricing` (JSON: frozen unit prices), CHECKs on `guests` (1..100000) and `guaranteed_guests`; index on `(booking_id, ends_at)` of ACTIVE rows |
+| `booking_line_items` | `tax_amount`: the tax contained in an inclusive-tax line (gross = amount + tax_amount); the TAX line is the sum of them |
+| `message_logs` | `attachments` (JSON, on the `queued` row only): S3 keys to attach |
+
+`bookings` has its own `touch_row_bookings()` trigger: stamping `hold_warned_at` alone (worker bookkeeping) does not bump `rev` or
+`updated_at`, every other change does (the same idea as `leads.follow_up_notified_for`). Queues: `holds.expire`, `holds.expire.run`,
+`holds.warn.run`, `bookings.complete`, `bookings.complete.run`, each with its `.dead` queue.
+
 ## Derived and computed values
 
 | Value | How |

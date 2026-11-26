@@ -1170,6 +1170,384 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/quotations/preview": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Price a quotation without saving it
+         * @description The live breakdown of the builder: rent and price rules, package, add-ons, discount (within your role limit, else 403 DISCOUNT_LIMIT) and tax, with warnings for taken slots and broken venue rules. The client sends ids and quantities only.
+         */
+        post: operations["QuotationsController_preview"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotations": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** List quotation versions, newest first */
+        get: operations["QuotationsController_list"];
+        put?: never;
+        /**
+         * Create a quotation (a DRAFT booking with its first version)
+         * @description Give a customer or a lead (which moves to QUOTED). Numbered {prefix}-Q-{year}-{seq}; the PDF is rendered in the background (`pdfReady`).
+         */
+        post: operations["QuotationsController_create"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotations/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get: operations["QuotationsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotations/{id}/send": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Email the quotation with its PDF attached
+         * @description To the customer address, or `to`. Only the newest version; 422 while the PDF is still being prepared.
+         */
+        post: operations["QuotationsController_send"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotations/{id}/accept": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /** Record that the customer accepted this version */
+        post: operations["QuotationsController_accept"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotations/{id}/pdf": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A pre-signed link to the PDF (valid 5 minutes)
+         * @description 422 while the PDF is still being prepared.
+         */
+        get: operations["QuotationsController_pdf"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/quotations/{id}/whatsapp": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A wa.me link with a text summary
+         * @description Text only: no link to the PDF, which stays private.
+         */
+        get: operations["QuotationsController_whatsapp"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * List bookings and quotations, newest first
+         * @description Filters: status, venueId, customerId, leadId, from / to (a session starts in the range, workspace time zone), search (number, customer name or phone). Cursor pagination.
+         */
+        get: operations["BookingsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * One booking: sessions, line items, versions and timeline
+         * @description A booking of another venue or workspace is 404.
+         */
+        get: operations["BookingsController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change notes, policy, discount or (a DRAFT) the sessions
+         * @description `rev` is required. A priced change writes a new quotation version (an unsent draft is re-priced in place); a held or confirmed booking is re-priced at its frozen rates unless `requote: CURRENT`. A discount above your role limit is 403 DISCOUNT_LIMIT.
+         */
+        patch: operations["BookingsController_update"];
+        trace?: never;
+    };
+    "/v1/bookings/{id}/hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hold the dates: DRAFT -> TENTATIVE
+         * @description Blocks the calendar (every component of a combined space, with buffers), numbers the booking, starts the hold timer. A taken slot is 409 SLOT_TAKEN (the database decides). A broken venue rule is 422 LOCAL_RULE unless `overrideRules` with `booking.override_rules` and a reason.
+         */
+        post: operations["BookingsController_hold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/extend-hold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Extend the hold by the hold duration
+         * @description Once for anyone who may hold; further extensions need `booking.extend_hold`.
+         */
+        post: operations["BookingsController_extend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/rehold": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Hold an EXPIRED booking again
+         * @description 409 SLOT_TAKEN when somebody took the slot meanwhile.
+         */
+        post: operations["BookingsController_rehold"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/confirm": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Confirm: TENTATIVE -> CONFIRMED
+         * @description Needs the advance (cleared receipts of the advance percentage of the total): else 422 ADVANCE_REQUIRED, unless `override` with `booking.confirm_override` and a reason (audited). The lead becomes WON.
+         */
+        post: operations["BookingsController_confirm"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel with a reason
+         * @description Frees the calendar. The answer carries the refund the cancellation policy snapshot suggests (executing refunds is the payments module).
+         */
+        post: operations["BookingsController_cancel"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/restore": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Restore a CANCELLED booking to the status it was cancelled from
+         * @description 409 SLOT_TAKEN when the slot is taken meanwhile.
+         */
+        post: operations["BookingsController_restore"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/sessions": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Add a session
+         * @description Re-prices the booking (new version). Inside the guest lock window it needs `booking.edit_locked`.
+         */
+        post: operations["BookingsController_addSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/sessions/{sessionId}": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        /**
+         * Change a session (guests, add-ons, notes, date, space, slot)
+         * @description Re-prices at the frozen rates (guests below the guarantee never reduce the bill) unless `requote: CURRENT`. New dates or spaces must be free: 409 SLOT_TAKEN.
+         */
+        patch: operations["BookingsController_updateSession"];
+        trace?: never;
+    };
+    "/v1/bookings/{id}/sessions/{sessionId}/cancel": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Cancel one session (soft: it stays on record)
+         * @description Releases its calendar slot and re-prices without it. The last session cannot be cancelled this way.
+         */
+        post: operations["BookingsController_cancelSession"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/availability": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Spaces x dates x slots of a venue: what is held or confirmed
+         * @description Up to 62 days. Only taken cells are listed; every other cell of the grid is free. Each taken cell names the booking number and the customer (no prices). A combined space is taken when any component is, and the other way round. A venue outside the caller scope is 404.
+         */
+        get: operations["AvailabilityController_get"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
 }
 export type webhooks = Record<string, never>;
 export interface components {
@@ -1464,6 +1842,10 @@ export interface components {
                 eventReminderDays: number;
                 /** @default 2 */
                 minHours: number;
+                /** @default 14 */
+                quotationValidDays: number;
+                /** @default 6 */
+                holdWarnHours: number;
             };
             rev: number;
         };
@@ -1481,6 +1863,8 @@ export interface components {
                 reminderDays?: number;
                 eventReminderDays?: number;
                 minHours?: number;
+                quotationValidDays?: number;
+                holdWarnHours?: number;
             };
         };
         VenueListResponseDto: {
@@ -2451,6 +2835,717 @@ export interface components {
                 }[];
             }[];
             nextCursor: null;
+        };
+        QuoteInputDto: {
+            venueId: string;
+            customerId?: string;
+            leadId?: string;
+            sessions: {
+                id?: string;
+                spaceId: string;
+                date: string;
+                slotId: string;
+                startTime?: string;
+                endTime?: string;
+                eventTypeId?: string | null;
+                packageId?: string | null;
+                guests: number;
+                guaranteedGuests?: number | null;
+                /** @default [] */
+                addOns: {
+                    addOnId: string;
+                    /** @default 1 */
+                    quantity: number;
+                }[];
+                setupNotes?: string | null;
+                kitchenNotes?: string | null;
+            }[];
+            discount?: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            cancellationPolicyId?: string | null;
+            notes?: string | null;
+        };
+        QuotePreviewResponseDto: {
+            currency: string;
+            sessions: {
+                id: string | null;
+                index: number;
+                /** @enum {string} */
+                status: "ACTIVE" | "CANCELLED";
+                spaceId: string;
+                spaceName: string;
+                date: string;
+                slotId: string;
+                slotName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+                hours: string;
+                eventTypeId: string | null;
+                eventTypeName: string | null;
+                packageId: string | null;
+                packageName: string | null;
+                guests: number;
+                guaranteedGuests: number | null;
+                billedGuests: number;
+                addOns: {
+                    addOnId: string;
+                    name: string;
+                    quantity: number;
+                }[];
+                setupNotes: string | null;
+                kitchenNotes: string | null;
+                subtotal: string | null;
+            }[];
+            lines: {
+                id: string | null;
+                sessionIndex: number | null;
+                /** @enum {string} */
+                kind: "RENT" | "PACKAGE" | "ADD_ON" | "ADJUSTMENT" | "DISCOUNT" | "TAX";
+                description: string;
+                refType: string | null;
+                refId: string | null;
+                quantity: string;
+                unitPrice: string | null;
+                amount: string | null;
+                taxAmount: string | null;
+                grossAmount: string | null;
+            }[];
+            totals: {
+                subtotal: string | null;
+                discountTotal: string | null;
+                taxTotal: string | null;
+                grandTotal: string | null;
+            };
+            taxRate: {
+                id: string;
+                name: string;
+                ratePct: string;
+                inclusive: boolean;
+            } | null;
+            discount: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            maxDiscountPct: number;
+            warnings: {
+                /** @enum {string} */
+                code: "SLOT_TAKEN" | "LOCAL_RULE";
+                sessionIndex: number;
+                detail: string | null;
+            }[];
+        };
+        CreateQuotationDto: {
+            venueId: string;
+            customerId?: string;
+            leadId?: string;
+            sessions: {
+                id?: string;
+                spaceId: string;
+                date: string;
+                slotId: string;
+                startTime?: string;
+                endTime?: string;
+                eventTypeId?: string | null;
+                packageId?: string | null;
+                guests: number;
+                guaranteedGuests?: number | null;
+                /** @default [] */
+                addOns: {
+                    addOnId: string;
+                    /** @default 1 */
+                    quantity: number;
+                }[];
+                setupNotes?: string | null;
+                kitchenNotes?: string | null;
+            }[];
+            discount?: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            cancellationPolicyId?: string | null;
+            notes?: string | null;
+        };
+        QuotationResponseDto: {
+            currency: string;
+            sessions: {
+                id: string | null;
+                index: number;
+                /** @enum {string} */
+                status: "ACTIVE" | "CANCELLED";
+                spaceId: string;
+                spaceName: string;
+                date: string;
+                slotId: string;
+                slotName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+                hours: string;
+                eventTypeId: string | null;
+                eventTypeName: string | null;
+                packageId: string | null;
+                packageName: string | null;
+                guests: number;
+                guaranteedGuests: number | null;
+                billedGuests: number;
+                addOns: {
+                    addOnId: string;
+                    name: string;
+                    quantity: number;
+                }[];
+                setupNotes: string | null;
+                kitchenNotes: string | null;
+                subtotal: string | null;
+            }[];
+            lines: {
+                id: string | null;
+                sessionIndex: number | null;
+                /** @enum {string} */
+                kind: "RENT" | "PACKAGE" | "ADD_ON" | "ADJUSTMENT" | "DISCOUNT" | "TAX";
+                description: string;
+                refType: string | null;
+                refId: string | null;
+                quantity: string;
+                unitPrice: string | null;
+                amount: string | null;
+                taxAmount: string | null;
+                grossAmount: string | null;
+            }[];
+            totals: {
+                subtotal: string | null;
+                discountTotal: string | null;
+                taxTotal: string | null;
+                grandTotal: string | null;
+            };
+            taxRate: {
+                id: string;
+                name: string;
+                ratePct: string;
+                inclusive: boolean;
+            } | null;
+            discount: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            id: string;
+            bookingId: string;
+            /** @enum {string} */
+            bookingStatus: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+            bookingNumber: string | null;
+            number: string;
+            version: number;
+            isLatest: boolean;
+            customer: {
+                id: string;
+                name: string;
+                phone: string;
+                email: string | null;
+            };
+            venueName: string;
+            validUntil: string | null;
+            /** Format: date-time */
+            sentAt: string | null;
+            /** Format: date-time */
+            acceptedAt: string | null;
+            pdfReady: boolean;
+            /** Format: date-time */
+            createdAt: string;
+            rev: number;
+        };
+        QuotationListResponseDto: {
+            data: {
+                id: string;
+                version: number;
+                number: string;
+                grandTotal: string | null;
+                validUntil: string | null;
+                /** Format: date-time */
+                sentAt: string | null;
+                /** Format: date-time */
+                acceptedAt: string | null;
+                pdfReady: boolean;
+                /** Format: date-time */
+                createdAt: string;
+                bookingId: string;
+                /** @enum {string} */
+                bookingStatus: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+                customerName: string;
+                isLatest: boolean;
+            }[];
+            nextCursor: string | null;
+        };
+        SendQuotationDto: {
+            /** Format: email */
+            to?: string;
+            message?: string;
+        };
+        SendQuotationResponseDto: {
+            /** Format: date-time */
+            sentAt: string;
+            to: string;
+        };
+        QuotationPdfResponseDto: {
+            url: string;
+            expiresInSeconds: number;
+        };
+        QuotationWhatsAppResponseDto: {
+            url: string;
+            text: string;
+        };
+        BookingListResponseDto: {
+            data: {
+                id: string;
+                number: string | null;
+                /** @enum {string} */
+                status: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+                venueId: string;
+                venueName: string;
+                customer: {
+                    id: string;
+                    name: string;
+                    phone: string;
+                };
+                leadId: string | null;
+                /** Format: date-time */
+                firstSessionAt: string | null;
+                sessionCount: number;
+                quoteVersion: number;
+                /** Format: date-time */
+                holdExpiresAt: string | null;
+                grandTotal: string | null;
+                paidTotal: string | null;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        BookingDetailResponseDto: {
+            id: string;
+            number: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+            venueId: string;
+            venueName: string;
+            customer: {
+                id: string;
+                name: string;
+                phone: string;
+            };
+            leadId: string | null;
+            /** Format: date-time */
+            firstSessionAt: string | null;
+            sessionCount: number;
+            quoteVersion: number;
+            /** Format: date-time */
+            holdExpiresAt: string | null;
+            grandTotal: string | null;
+            paidTotal: string | null;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            currency: string;
+            sessions: {
+                id: string | null;
+                index: number;
+                /** @enum {string} */
+                status: "ACTIVE" | "CANCELLED";
+                spaceId: string;
+                spaceName: string;
+                date: string;
+                slotId: string;
+                slotName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+                hours: string;
+                eventTypeId: string | null;
+                eventTypeName: string | null;
+                packageId: string | null;
+                packageName: string | null;
+                guests: number;
+                guaranteedGuests: number | null;
+                billedGuests: number;
+                addOns: {
+                    addOnId: string;
+                    name: string;
+                    quantity: number;
+                }[];
+                setupNotes: string | null;
+                kitchenNotes: string | null;
+                subtotal: string | null;
+            }[];
+            lines: {
+                id: string | null;
+                sessionIndex: number | null;
+                /** @enum {string} */
+                kind: "RENT" | "PACKAGE" | "ADD_ON" | "ADJUSTMENT" | "DISCOUNT" | "TAX";
+                description: string;
+                refType: string | null;
+                refId: string | null;
+                quantity: string;
+                unitPrice: string | null;
+                amount: string | null;
+                taxAmount: string | null;
+                grossAmount: string | null;
+            }[];
+            totals: {
+                subtotal: string | null;
+                discountTotal: string | null;
+                taxTotal: string | null;
+                grandTotal: string | null;
+            };
+            taxRate: {
+                id: string;
+                name: string;
+                ratePct: string;
+                inclusive: boolean;
+            } | null;
+            discount: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            warnings: {
+                /** @enum {string} */
+                code: "SLOT_TAKEN" | "LOCAL_RULE";
+                sessionIndex: number;
+                detail: string | null;
+            }[];
+            notes: string | null;
+            holdExtensions: number;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelReason: string | null;
+            suggestedRefund: string | null;
+            cancellationPolicy: {
+                policyId: string | null;
+                name: string;
+                tiers: {
+                    minDaysBefore: number;
+                    refundPct: number;
+                }[];
+            } | null;
+            quotations: {
+                id: string;
+                version: number;
+                number: string;
+                grandTotal: string | null;
+                validUntil: string | null;
+                /** Format: date-time */
+                sentAt: string | null;
+                /** Format: date-time */
+                acceptedAt: string | null;
+                pdfReady: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            timeline: {
+                id: string;
+                action: string;
+                /** Format: date-time */
+                at: string;
+                actorName: string | null;
+                reason: string | null;
+            }[];
+        };
+        UpdateBookingDto: {
+            rev: number;
+            notes?: string | null;
+            discount?: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            cancellationPolicyId?: string | null;
+            sessions?: {
+                id?: string;
+                spaceId: string;
+                date: string;
+                slotId: string;
+                startTime?: string;
+                endTime?: string;
+                eventTypeId?: string | null;
+                packageId?: string | null;
+                guests: number;
+                guaranteedGuests?: number | null;
+                /** @default [] */
+                addOns: {
+                    addOnId: string;
+                    /** @default 1 */
+                    quantity: number;
+                }[];
+                setupNotes?: string | null;
+                kitchenNotes?: string | null;
+            }[];
+            /** @enum {string} */
+            requote?: "FROZEN" | "CURRENT";
+        };
+        HoldBookingDto: {
+            rev: number;
+            /** @default false */
+            overrideRules: boolean;
+            reason?: string;
+        };
+        RevOnlyDto: {
+            rev: number;
+        };
+        ConfirmBookingDto: {
+            rev: number;
+            /** @default false */
+            override: boolean;
+            reason?: string;
+        };
+        CancelBookingDto: {
+            rev: number;
+            reason: string;
+        };
+        CancelResultResponseDto: {
+            id: string;
+            number: string | null;
+            /** @enum {string} */
+            status: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+            venueId: string;
+            venueName: string;
+            customer: {
+                id: string;
+                name: string;
+                phone: string;
+            };
+            leadId: string | null;
+            /** Format: date-time */
+            firstSessionAt: string | null;
+            sessionCount: number;
+            quoteVersion: number;
+            /** Format: date-time */
+            holdExpiresAt: string | null;
+            grandTotal: string | null;
+            paidTotal: string | null;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+            currency: string;
+            sessions: {
+                id: string | null;
+                index: number;
+                /** @enum {string} */
+                status: "ACTIVE" | "CANCELLED";
+                spaceId: string;
+                spaceName: string;
+                date: string;
+                slotId: string;
+                slotName: string;
+                /** Format: date-time */
+                startsAt: string;
+                /** Format: date-time */
+                endsAt: string;
+                hours: string;
+                eventTypeId: string | null;
+                eventTypeName: string | null;
+                packageId: string | null;
+                packageName: string | null;
+                guests: number;
+                guaranteedGuests: number | null;
+                billedGuests: number;
+                addOns: {
+                    addOnId: string;
+                    name: string;
+                    quantity: number;
+                }[];
+                setupNotes: string | null;
+                kitchenNotes: string | null;
+                subtotal: string | null;
+            }[];
+            lines: {
+                id: string | null;
+                sessionIndex: number | null;
+                /** @enum {string} */
+                kind: "RENT" | "PACKAGE" | "ADD_ON" | "ADJUSTMENT" | "DISCOUNT" | "TAX";
+                description: string;
+                refType: string | null;
+                refId: string | null;
+                quantity: string;
+                unitPrice: string | null;
+                amount: string | null;
+                taxAmount: string | null;
+                grossAmount: string | null;
+            }[];
+            totals: {
+                subtotal: string | null;
+                discountTotal: string | null;
+                taxTotal: string | null;
+                grandTotal: string | null;
+            };
+            taxRate: {
+                id: string;
+                name: string;
+                ratePct: string;
+                inclusive: boolean;
+            } | null;
+            discount: {
+                /** @enum {string} */
+                type: "PERCENT" | "AMOUNT";
+                value: string;
+            } | null;
+            warnings: {
+                /** @enum {string} */
+                code: "SLOT_TAKEN" | "LOCAL_RULE";
+                sessionIndex: number;
+                detail: string | null;
+            }[];
+            notes: string | null;
+            holdExtensions: number;
+            /** Format: date-time */
+            confirmedAt: string | null;
+            /** Format: date-time */
+            cancelledAt: string | null;
+            cancelReason: string | null;
+            suggestedRefund: string | null;
+            cancellationPolicy: {
+                policyId: string | null;
+                name: string;
+                tiers: {
+                    minDaysBefore: number;
+                    refundPct: number;
+                }[];
+            } | null;
+            quotations: {
+                id: string;
+                version: number;
+                number: string;
+                grandTotal: string | null;
+                validUntil: string | null;
+                /** Format: date-time */
+                sentAt: string | null;
+                /** Format: date-time */
+                acceptedAt: string | null;
+                pdfReady: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            timeline: {
+                id: string;
+                action: string;
+                /** Format: date-time */
+                at: string;
+                actorName: string | null;
+                reason: string | null;
+            }[];
+            refund: {
+                daysBefore: number;
+                refundPct: number;
+                received: string | null;
+                suggested: string | null;
+            } | null;
+        };
+        AddSessionDto: {
+            rev: number;
+            session: {
+                id?: string;
+                spaceId: string;
+                date: string;
+                slotId: string;
+                startTime?: string;
+                endTime?: string;
+                eventTypeId?: string | null;
+                packageId?: string | null;
+                guests: number;
+                guaranteedGuests?: number | null;
+                /** @default [] */
+                addOns: {
+                    addOnId: string;
+                    /** @default 1 */
+                    quantity: number;
+                }[];
+                setupNotes?: string | null;
+                kitchenNotes?: string | null;
+            };
+            /** @enum {string} */
+            requote?: "FROZEN" | "CURRENT";
+            /** @default false */
+            overrideRules: boolean;
+            reason?: string;
+        };
+        UpdateSessionDto: {
+            rev: number;
+            spaceId?: string;
+            date?: string;
+            slotId?: string;
+            startTime?: string;
+            endTime?: string;
+            eventTypeId?: string | null;
+            packageId?: string | null;
+            guests?: number;
+            guaranteedGuests?: number | null;
+            addOns?: {
+                addOnId: string;
+                /** @default 1 */
+                quantity: number;
+            }[];
+            setupNotes?: string | null;
+            kitchenNotes?: string | null;
+            /** @enum {string} */
+            requote?: "FROZEN" | "CURRENT";
+            /** @default false */
+            overrideRules: boolean;
+            reason?: string;
+        };
+        CancelSessionDto: {
+            rev: number;
+            reason?: string;
+        };
+        AvailabilityResponseDto: {
+            venueId: string;
+            from: string;
+            to: string;
+            timezone: string;
+            spaces: {
+                id: string;
+                name: string;
+                isCombined: boolean;
+                capacitySeated: number | null;
+                componentIds: string[];
+            }[];
+            slots: {
+                id: string;
+                name: string;
+                /** @enum {string} */
+                mode: "FIXED" | "HOURLY" | "FULL_DAY";
+                startTime: string;
+                endTime: string;
+                daysOfWeek: number[];
+            }[];
+            cells: {
+                spaceId: string;
+                date: string;
+                slotId: string;
+                /** @enum {string} */
+                status: "HELD" | "CONFIRMED";
+                entries: {
+                    bookingId: string;
+                    number: string | null;
+                    /** @enum {string} */
+                    status: "HELD" | "CONFIRMED";
+                    customerName: string;
+                    sessionId: string;
+                    eventTypeName: string | null;
+                    /** Format: date-time */
+                    holdExpiresAt: string | null;
+                    blockedBy: string | null;
+                }[];
+            }[];
         };
     };
     responses: never;
@@ -4475,6 +5570,511 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["LeadActivityListResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_preview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["QuoteInputDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotePreviewResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                bookingId?: string;
+                customerId?: string;
+                leadId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationListResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_create: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateQuotationDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_send: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["SendQuotationDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["SendQuotationResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_accept: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_pdf: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationPdfResponseDto"];
+                };
+            };
+        };
+    };
+    QuotationsController_whatsapp: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["QuotationWhatsAppResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                status?: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+                venueId?: string;
+                customerId?: string;
+                leadId?: string;
+                from?: string;
+                to?: string;
+                search?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingListResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_get: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_update: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateBookingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_hold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["HoldBookingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_extend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevOnlyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_rehold: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevOnlyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_confirm: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ConfirmBookingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_cancel: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelBookingDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["CancelResultResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_restore: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RevOnlyDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_addSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["AddSessionDto"];
+            };
+        };
+        responses: {
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_updateSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["UpdateSessionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingsController_cancelSession: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+                sessionId: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CancelSessionDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    AvailabilityController_get: {
+        parameters: {
+            query: {
+                venueId: string;
+                from: string;
+                to: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["AvailabilityResponseDto"];
                 };
             };
         };

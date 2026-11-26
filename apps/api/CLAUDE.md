@@ -103,3 +103,10 @@
   `packages/api-client/openapi.json` and `src/schema.ts`.
 - Never run git commit/push/merge/rebase/branch commands; list changed files and suggest a
   conventional commit message at the end.
+
+- **Availability, quotations and bookings (modules 6-8)** (`modules/availability`, `modules/quotations`, `modules/bookings`, shared services in
+  `modules/bookings/core`): all pricing goes through `src/pricing/quote.ts` (pure; never price anywhere else), built by `QuoteBuilder` and saved by
+  `BookingWriter` (one transaction: booking, sessions, frozen pricing, lines, version, audit). Holds write occupancy rows and let the exclusion
+  constraint decide (`409 SLOT_TAKEN`); status first, occupancies second. Amounts go through `toLineDto` / `toTotalsDto` with `visible =
+  caller.has('booking.view_prices')`. Money is compared and summed with `money()` / `clearedNet()`, never numbers. Documents: the `quotation` PDF
+  is queued with `pdf.render`; `PresignService` signs download links; emails carry attachments by S3 KEY. Test fixtures: `helpers/booking-fixtures.ts`.

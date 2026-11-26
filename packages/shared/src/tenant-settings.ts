@@ -35,6 +35,10 @@ export const TenantSettings = z.object({
   eventReminderDays: z.number().int().min(0).max(60).default(2),
   /** Default minimum hours for HOURLY slots. */
   minHours: z.number().int().min(1).max(24).default(2),
+  /** Days a quotation stays valid after it is issued. */
+  quotationValidDays: z.number().int().min(1).max(365).default(14),
+  /** Hours before a tentative hold ends when the agent gets the "hold expiring" email. */
+  holdWarnHours: z.number().int().min(1).max(168).default(6),
 });
 
 /** Parsed settings, every key present. */

@@ -1,6 +1,7 @@
 import { textDirection } from '../direction.js';
 import { escapeHtml, escapeSubject, escapeText, renderTemplate } from '../render.js';
 import { accountExists, passwordReset, staffInvite, verifyEmail } from './auth.js';
+import { holdExpired, holdExpiring, quotationSend } from './bookings.js';
 import { leadAssigned, leadFollowUpDue } from './leads.js';
 import { sampleHello } from './sample.js';
 import type { EmailTemplateDefinition, EmailTemplateSource, RenderedEmail } from './types.js';
@@ -21,6 +22,9 @@ const REGISTRY: Readonly<Record<string, EmailTemplateDefinition>> = Object.freez
   'staff.invite': staffInvite,
   'lead.assigned': leadAssigned,
   'lead.follow-up-due': leadFollowUpDue,
+  'quotation.send': quotationSend,
+  'hold.expired': holdExpired,
+  'hold.expiring': holdExpiring,
 });
 
 /** The sender name of mail that is not sent under a tenant's name. */

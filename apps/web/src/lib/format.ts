@@ -95,16 +95,26 @@ export function formatDateTime(
 
 const DATE_ONLY = /^(\d{4})-(\d{2})-(\d{2})$/;
 
-/** `14 Feb 2027` of a date-only value (`2027-02-14`). It has no zone, so it is never shifted. */
-export function formatDateOnly(value: string, locale: string): string {
+export type DateOnlyStyle = 'medium' | 'short' | 'long';
+
+/**
+ * `14 Feb 2027` of a date-only value (`2027-02-14`). It has no zone, so it is never shifted. `short` is `Sun 14` (a calendar
+ * column), `long` is `Sunday, 14 February 2027`.
+ */
+export function formatDateOnly(
+  value: string,
+  locale: string,
+  style: DateOnlyStyle = 'medium',
+): string {
   const match = DATE_ONLY.exec(value);
   if (!match) throw new RangeError(`Invalid date-only value: ${value}`);
   const [, year, month, day] = match;
   const date = new Date(Date.UTC(Number(year), Number(month) - 1, Number(day)));
-  return new Intl.DateTimeFormat(intlLocale(locale), {
-    timeZone: 'UTC',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(date);
+  const options: Intl.DateTimeFormatOptions =
+    style === 'short'
+      ? { weekday: 'short', day: 'numeric' }
+      : style === 'long'
+        ? { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' }
+        : { day: 'numeric', month: 'short', year: 'numeric' };
+  return new Intl.DateTimeFormat(intlLocale(locale), { timeZone: 'UTC', ...options }).format(date);
 }

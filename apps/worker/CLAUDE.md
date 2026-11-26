@@ -85,3 +85,13 @@
   `leads.follow_up_notified_for` with a conditional UPDATE and queues the `lead.follow-up-due` email with `enqueueEmail` in the SAME
   transaction (exactly once per follow-up; the stamp does not bump the lead's `rev`). It sends through its own enqueue-only
   `JobQueue` (`LEADS_JOB_QUEUE`, role `venueos_app`). Links use `APP_ORIGIN`.
+
+## Bookings (modules 6-8)
+
+- `src/bookings`: `HoldsScanner` (`holds.expire`, every 5 min) enqueues `holds.expire.run` and `holds.warn.run`; `BookingsCompleteScanner`
+  (hourly) enqueues `bookings.complete.run`. The run jobs re-check inside the tenant with conditional UPDATEs, write SYSTEM audit rows and queue
+  emails with `enqueueEmail` in the same transaction (own enqueue-only `JobQueue`, `BOOKINGS_JOB_QUEUE`). `hold_warned_at` does not bump `rev`.
+- `src/pdf/quotation-kind.ts`: the `quotation` kind prints the frozen snapshot of one version and records `quotations.pdf_key`.
+- Emails may carry `attachments` (S3 keys under `tenants/{tenantId}/`); `email-send.job.ts` downloads them between transactions.
+- Chromium must be launchable for the PDFs (`playwright install chromium`); the dev stack and the e2e reuse one worker, so a stale worker
+  that cannot start Chromium leaves quotations without a PDF (`BROWSER_UNAVAILABLE` on `pdf.render` in `pgboss.job`).

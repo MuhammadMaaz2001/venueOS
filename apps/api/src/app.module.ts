@@ -23,6 +23,9 @@ import { CatalogueModule } from './modules/catalogue/catalogue.module';
 import { CustomersModule } from './modules/customers/customers.module';
 import { EventTypesModule } from './modules/event-types/event-types.module';
 import { LeadsModule } from './modules/leads/leads.module';
+import { AvailabilityModule } from './modules/availability/availability.module';
+import { BookingsModule } from './modules/bookings/bookings.module';
+import { QuotationsModule } from './modules/quotations/quotations.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { RolesModule } from './modules/roles/roles.module';
 import { SlotTemplatesModule } from './modules/slot-templates/slot-templates.module';
@@ -61,6 +64,9 @@ import { VenuesModule } from './modules/venues/venues.module';
     PricingModule,
     CustomersModule,
     LeadsModule,
+    QuotationsModule,
+    BookingsModule,
+    AvailabilityModule,
   ],
   providers: [
     { provide: APP_FILTER, useClass: AllExceptionsFilter },

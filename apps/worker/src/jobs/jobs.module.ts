@@ -4,6 +4,14 @@ import { AuthPurgeModule } from '../auth/auth.module';
 import { EmailModule } from '../email/email.module';
 import { EmailSendJob } from '../email/email-send.job';
 import { DeadLetterCheckJob } from '../ops/dead-letter-check.job';
+import { WorkerBookingsModule } from '../bookings/bookings.module';
+import {
+  BookingCompleteRunJob,
+  BookingsCompleteScanner,
+  HoldExpireRunJob,
+  HoldWarnRunJob,
+  HoldsScanner,
+} from '../bookings/hold-jobs';
 import { LeadFollowUpNotifyJob } from '../leads/lead-follow-up-notify.job';
 import { LeadsFollowUpScanner } from '../leads/leads-follow-up.scanner';
 import { LeadsModule } from '../leads/leads.module';
@@ -27,6 +35,11 @@ export const BASE_JOBS = [
   DeadLetterCheckJob,
   LeadsFollowUpScanner,
   LeadFollowUpNotifyJob,
+  HoldsScanner,
+  HoldExpireRunJob,
+  HoldWarnRunJob,
+  BookingsCompleteScanner,
+  BookingCompleteRunJob,
 ] as const;
 
 @Module({
@@ -38,6 +51,7 @@ export const BASE_JOBS = [
     OpsModule,
     PdfModule,
     LeadsModule,
+    WorkerBookingsModule,
   ],
   providers: [
     { provide: JOBS, inject: [...BASE_JOBS], useFactory: (...jobs: unknown[]) => jobs },

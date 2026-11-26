@@ -6,6 +6,11 @@ export interface PdfTemplateDefinition {
   css: string;
   /** Body markup with `{{ a.b }}` placeholders. */
   body: string;
+  /**
+   * For a document with repeated parts (sessions, lines) that the placeholder syntax cannot express: builds the body in code.
+   * It must pass every value through `escape`; the literal markup is trusted because it comes from this repository.
+   */
+  build?: (vars: unknown, escape: (value: string) => string) => string;
 }
 
 export interface RenderedPdfHtml {

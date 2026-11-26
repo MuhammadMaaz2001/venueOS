@@ -1,5 +1,7 @@
 import {
   Building2,
+  CalendarDays,
+  ClipboardList,
   Contact,
   Inbox,
   LayoutDashboard,
@@ -23,6 +25,8 @@ export interface NavItem {
     | 'pricing'
     | 'customers'
     | 'leads'
+    | 'calendar'
+    | 'bookings'
     | 'staff'
     | 'roles'
     | 'audit'
@@ -39,6 +43,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/catalogue', label: 'catalogue', icon: UtensilsCrossed, permission: 'catalogue.view' },
   { href: '/pricing', label: 'pricing', icon: Tags, permission: 'pricing.view' },
   { href: '/leads', label: 'leads', icon: Inbox, permission: 'lead.view' },
+  { href: '/calendar', label: 'calendar', icon: CalendarDays, permission: 'booking.view' },
+  { href: '/bookings', label: 'bookings', icon: ClipboardList, permission: 'booking.view' },
   { href: '/customers', label: 'customers', icon: Contact, permission: 'customer.view' },
   { href: '/staff', label: 'staff', icon: Users, permission: 'staff.manage' },
   { href: '/roles', label: 'roles', icon: ShieldCheck, permission: 'role.manage' },

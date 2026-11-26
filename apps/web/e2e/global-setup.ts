@@ -1,6 +1,7 @@
 import fs from 'node:fs';
 import path from 'node:path';
 import { Client } from 'pg';
+import { API_URL } from './support/stack';
 
 /**
  * The login and mail limits count per IP address in the database (docs/04 section 1: 20 per 15 minutes), and
@@ -19,7 +20,7 @@ function authDatabaseUrl(): string | undefined {
 
 /** The web server answers long before the API and the worker are up; wait for the API's readiness check. */
 async function waitForApi(): Promise<void> {
-  const url = `${process.env.E2E_API_URL ?? 'http://localhost:4000'}/health/ready`;
+  const url = `${API_URL}/health/ready`;
   const deadline = Date.now() + 240_000;
   let last = 'no answer';
   while (Date.now() < deadline) {

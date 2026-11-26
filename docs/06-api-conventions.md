@@ -128,6 +128,31 @@ scoped to a space or slot of the caller's venues.
 | `PATCH /v1/leads/{id}` | `lead.manage` | `rev`; `stage` (+ `lostReason` for LOST, `nextFollowUpAt` when reopening); illegal change 422 `INVALID_STATE_TRANSITION`; ineligible assignee 400, unknown member 404 |
 | `GET /v1/leads/{id}/activity` | `lead.view` | `{ data: [{ action, actorName, createdAt, changes: [{ field, from, to }] }] }`, newest first |
 
+## Availability, quotations and bookings (modules 6-8)
+
+| Endpoint | Access | Notes |
+| --- | --- | --- |
+| `GET /v1/availability?venueId&from&to` | `booking.view` | at most 62 days; `{ spaces, slots, cells }`, only taken cells are listed (status `HELD` or `CONFIRMED`, with booking number, customer name, event type, hold expiry; combined spaces show which physical space blocks them); no prices; venue outside the caller's venues = 404 |
+| `POST /v1/quotations/preview` | `quotation.manage` + `booking.view_prices` | the same body as create without saving: lines, totals, tax, `maxDiscountPct`, `warnings` (`SLOT_TAKEN`, `LOCAL_RULE`); 403 `DISCOUNT_LIMIT` |
+| `POST /v1/quotations` | `quotation.manage` | `venueId`, `customerId` or `leadId`, `sessions[]` (space, date, slot, times for HOURLY, event type, package, guests, guaranteed guests, add-ons, notes), `discount`, `cancellationPolicyId`, `notes`; creates the DRAFT booking and version 1, queues the PDF, lead -> QUOTED; 201 |
+| `GET /v1/quotations?bookingId&customerId&leadId` | `quotation.manage` | cursor list of versions |
+| `GET /v1/quotations/{id}` | `quotation.manage` | the frozen version (`pdfReady`, `isLatest`, `sentAt`, `acceptedAt`) |
+| `POST /v1/quotations/{id}/send` | `quotation.send` | `{ to?, message? }`; 422 until the PDF is ready; email with the PDF attached |
+| `POST /v1/quotations/{id}/accept` | `quotation.manage` | records that the customer accepted this version |
+| `GET /v1/quotations/{id}/pdf` | `quotation.send` | `{ url, expiresInSeconds }`: a pre-signed link of 5 minutes |
+| `GET /v1/quotations/{id}/whatsapp` | `quotation.send` | `{ url, text }`: a `wa.me` link with a text summary |
+| `GET /v1/bookings?status&venueId&customerId&leadId&from&to&search&limit&cursor` | `booking.view` | newest first; amounts are `null` without `booking.view_prices` |
+| `GET /v1/bookings/{id}` | `booking.view` | sessions, lines, totals, warnings, quotation versions, cancellation snapshot, timeline of audit entries |
+| `PATCH /v1/bookings/{id}` | `booking.edit` | `rev`; `notes`, `discount`, `cancellationPolicyId`, `sessions` (DRAFT only), `requote` |
+| `POST /v1/bookings/{id}/hold` | `booking.hold` | `{ rev, overrideRules?, reason? }`; DRAFT -> TENTATIVE, number assigned; 409 `SLOT_TAKEN`, 422 `LOCAL_RULE` |
+| `POST /v1/bookings/{id}/extend-hold`, `/rehold` | `booking.hold` (a second extension: `booking.extend_hold`) | `{ rev }` |
+| `POST /v1/bookings/{id}/confirm` | `booking.confirm` | `{ rev, override?, reason? }`; 422 `ADVANCE_REQUIRED`; the override needs `booking.confirm_override` |
+| `POST /v1/bookings/{id}/cancel` | `booking.cancel` | `{ rev, reason }`; answers the booking and `refund` (suggested, from the policy snapshot) |
+| `POST /v1/bookings/{id}/restore` | `booking.cancel` | `{ rev }`; 409 `SLOT_TAKEN` when the slot is gone |
+| `POST /v1/bookings/{id}/sessions`, `PATCH .../sessions/{sessionId}`, `POST .../sessions/{sessionId}/cancel` | `booking.edit` (`booking.edit_locked` inside the guest lock window) | `rev`; re-prices at the frozen rates unless `requote: CURRENT` |
+
+Every booking route takes the booking's `rev` and answers `409 VERSION_CONFLICT` when it moved on. Actions answer `200`.
+
 ## Lists
 
 - Cursor pagination: `?limit=25&cursor=<opaque>`; response

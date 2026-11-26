@@ -97,6 +97,9 @@ const COUNTRY_RULES: Readonly<Record<string, CountryPhoneRule>> = {
   MM: rule('95', '0', 8, 10),
 };
 
+/** Countries (ISO 3166-1 alpha-2) whose numbers can be typed the national way. */
+export const PHONE_COUNTRIES: readonly string[] = Object.freeze(Object.keys(COUNTRY_RULES));
+
 const CODES_LONGEST_FIRST: readonly string[] = [
   ...new Set(Object.values(COUNTRY_RULES).map((r) => r.code)),
 ].sort((a, b) => b.length - a.length);

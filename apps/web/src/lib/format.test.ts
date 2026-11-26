@@ -51,6 +51,8 @@ describe('dates in an explicit time zone', () => {
   it('never shifts a date-only value', () => {
     expect(formatDateOnly('2027-02-14', 'en')).toBe('14 Feb 2027');
     expect(() => formatDateOnly('14/02/2027', 'en')).toThrow(RangeError);
+    expect(formatDateOnly('2027-02-14', 'en', 'short')).toBe('Sun 14');
+    expect(formatDateOnly('2027-02-14', 'en', 'long')).toBe('Sunday, 14 February 2027');
   });
 
   it('rejects an invalid instant', () => {

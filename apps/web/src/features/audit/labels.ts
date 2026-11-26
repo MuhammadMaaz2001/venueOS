@@ -31,6 +31,21 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'lead.update',
   'lead.stage_change',
   'lead.assign',
+  'quotation.create',
+  'quotation.send',
+  'quotation.accept',
+  'booking.hold',
+  'booking.extend_hold',
+  'booking.rehold',
+  'booking.confirm',
+  'booking.cancel',
+  'booking.restore',
+  'booking.update',
+  'booking.session.add',
+  'booking.session.update',
+  'booking.session.cancel',
+  'booking.expire',
+  'booking.complete',
 ];
 
 /** The entity types of those actions, for the "what was changed" filter. */
@@ -45,4 +60,6 @@ export const AUDIT_ENTITY_TYPES: readonly string[] = [
   'event_type',
   'customer',
   'lead',
+  'booking',
+  'quotation',
 ];

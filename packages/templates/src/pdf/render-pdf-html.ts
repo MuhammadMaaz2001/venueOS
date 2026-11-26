@@ -1,6 +1,7 @@
 import { textDirection } from '../direction.js';
 import { escapeHtml, renderTemplate } from '../render.js';
 import { pdfFontFaceCss } from './fonts.js';
+import { quotationDocument } from './quotation.js';
 import { sampleDocument } from './sample.js';
 import type { PdfTemplateDefinition, RenderedPdfHtml } from './types.js';
 
@@ -14,6 +15,7 @@ export class UnknownPdfTemplateError extends Error {
 
 const REGISTRY: Readonly<Record<string, PdfTemplateDefinition>> = Object.freeze({
   sample: sampleDocument,
+  quotation: quotationDocument,
 });
 
 const LOCALE = /^[a-z]{2,3}(-[a-z0-9]{2,8})*$/i;
@@ -36,7 +38,9 @@ export function renderPdfHtml(name: string, locale: string, vars: unknown): Rend
 
   const language = (LOCALE.test(locale) ? locale : 'en').toLowerCase().split('-')[0] ?? 'en';
   const dir = textDirection(language);
-  const body = renderTemplate(definition.body, vars, escapeHtml);
+  const body = definition.build
+    ? definition.build(vars, escapeHtml)
+    : renderTemplate(definition.body, vars, escapeHtml);
   const title = renderTemplate(definition.title, vars, escapeHtml);
 
   const html =

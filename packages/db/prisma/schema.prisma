@@ -801,6 +801,13 @@ model Booking {
   taxTotal             Decimal             @default(0) @map("tax_total") @db.Decimal(18, 3)
   grandTotal           Decimal             @default(0) @map("grand_total") @db.Decimal(18, 3)
   paidTotal            Decimal             @default(0) @map("paid_total") @db.Decimal(18, 3)
+  // Frozen pricing context of the current quote: {"taxRate": {...}|null, "discount": {"type","value"}|null}
+  pricing              Json?
+  holdWarnedAt         DateTime?           @map("hold_warned_at") @db.Timestamptz(6)
+  // Suggested refund computed at cancellation from cancellation_snapshot (module 9 executes refunds)
+  suggestedRefund      Decimal?            @map("suggested_refund") @db.Decimal(18, 3)
+  // The status a restore goes back to
+  cancelledFrom        BookingStatus?      @map("cancelled_from")
   customFields         Json                @default("{}") @map("custom_fields")
   notes                String?
   createdById          String?             @map("created_by_id")
@@ -819,6 +826,7 @@ model Booking {
   @@unique([tenantId, number])
   @@unique([tenantId, id])
   @@index([tenantId, status])
+  @@index([tenantId, venueId, status])
   @@index([customerId])
   @@index([leadId])
   @@map("bookings")
@@ -884,6 +892,9 @@ model BookingSession {
   endsAt           DateTime      @map("ends_at") @db.Timestamptz(6)
   guests           Int
   guaranteedGuests Int?          @map("guaranteed_guests") // billed minimum
+  // The add-ons chosen ([{addOnId, quantity}]) = the input of the quote; `pricing` = the frozen unit prices it used
+  addOns           Json          @default("[]") @map("add_ons")
+  pricing          Json?
   setupNotes       String?       @map("setup_notes")   // decor, seating, stage — feeds the event sheet
   kitchenNotes     String?       @map("kitchen_notes") // dietary notes, serving time — feeds the event sheet
   customFields     Json          @default("{}") @map("custom_fields")
@@ -954,6 +965,8 @@ model BookingLineItem {
   quantity    Decimal         @default(1) @db.Decimal(12, 2)
   unitPrice   Decimal         @map("unit_price") @db.Decimal(18, 3)
   amount      Decimal         @db.Decimal(18, 3)
+  // Tax contained in an inclusive-tax line (gross = amount + taxAmount); 0 for exclusive tax and for the TAX line
+  taxAmount   Decimal         @default(0) @map("tax_amount") @db.Decimal(18, 3)
   sortOrder   Int             @default(0) @map("sort_order")
 
   @@index([tenantId, bookingId])
@@ -1317,6 +1330,7 @@ model MessageLog {
   locale       String?  // queued row only
   templateVars Json?    @map("template_vars") // queued row only; personal data, RLS-protected
   replyTo      String?  @map("reply_to") // queued row only
+  attachments  Json?    // queued row only: [{key, filename}], S3 object keys of files to attach
   attempt      Int?     // failed/sent rows: which delivery attempt (1-based)
   isFinal      Boolean  @default(false) @map("is_final") // failed row: no more retries (dead-lettered)
   createdAt    DateTime @default(now()) @map("created_at") @db.Timestamptz(6)

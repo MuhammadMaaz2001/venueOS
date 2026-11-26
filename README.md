@@ -41,7 +41,7 @@ cp apps/api/.env.example apps/api/.env
 cp apps/web/.env.example apps/web/.env
 cp apps/worker/.env.example apps/worker/.env
 cp packages/db/.env.example packages/db/.env
-cp .env.example .env                     # only read by docker compose; set POSTGRES_PORT if 5432 is taken
+cp .env.example .env                     # docker compose, the web dev server and Playwright; set POSTGRES_PORT if 5432 is taken, WEB_PORT if 3000 is
 # Optional: opt out of Turborepo telemetry. Turbo ignores .env files, so export it in your shell
 # ($env:TURBO_TELEMETRY_DISABLED = "1" in PowerShell) or run `pnpm exec turbo telemetry disable` once.
 docker compose up -d postgres mailpit s3   # Postgres :5432 (roles created on first start), local email inbox :8025, S3 (SeaweedFS) :9100
@@ -57,6 +57,19 @@ creates the five roles (`venueos_migrator`, `venueos_definer`, `venueos_app`, `v
 - API: http://localhost:4000/v1, OpenAPI docs at http://localhost:4000/docs
 - Emails in development land in Mailpit: http://localhost:8025
 
+**Ports.** The defaults are web 3000 and api 4000 (what CI uses). If another project owns them, move venueOS and keep five
+settings in step (all `.env` files are gitignored; the `.env.example` files say the same):
+
+| Setting | File | Example for web 3100 / api 4100 |
+| --- | --- | --- |
+| `WEB_PORT` | root `.env` (also moves the Docker web container) | `WEB_PORT=3100` |
+| `PORT` | `apps/api/.env` | `PORT=4100` |
+| `API_INTERNAL_URL` | `apps/web/.env` (where the web server forwards `/api/*`) | `API_INTERNAL_URL=http://localhost:4100` |
+| `APP_ORIGIN` | `apps/api/.env` (CSRF `Origin` check) and `apps/worker/.env` (links in emails) | `APP_ORIGIN=http://localhost:3100` |
+
+Playwright reads the same files (`E2E_BASE_URL` / `E2E_API_URL` override them), and it refuses to test an address that
+does not answer like venueOS (`/api/health/ready`), so it never runs against another project by mistake.
+
 ## Run with Docker
 
 The three application images (api, worker with Chromium, web) run against the same local postgres, mailpit and s3:
@@ -69,7 +82,7 @@ curl http://localhost:3000/api/health/ready    # {"status":"ok","checks":{"datab
 docker compose -f docker-compose.yml -f docker-compose.apps.yml down
 ```
 
-Stop `pnpm dev` first (both use :3000; set `WEB_PORT` to move the container). The API is not published: only the web
+Stop `pnpm dev` first (both use the web port, :3000 by default; set `WEB_PORT` to move the container). The API is not published: only the web
 container reaches it, as in staging. `docker-compose.apps.yml` holds local placeholders only. CI is
 `.github/workflows/ci.yml`.
 

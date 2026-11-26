@@ -14,9 +14,16 @@ import type { RenderedEmail } from '@venueos/templates';
 import { WORKER_CONFIG } from '../config/config.module';
 import type { WorkerConfig } from '../config/config.module';
 import { PermanentJobError, RetryableJobError, TenantJob, describeError } from '../jobs/tenant-job';
+import {
+  InvalidObjectKeyError,
+  OBJECT_STORAGE,
+  StorageError,
+  assertTenantObjectKey,
+} from '../storage/object-storage';
+import type { ObjectStorage } from '../storage/object-storage';
 import type { InvalidPayloadInfo, JobContext } from '../jobs/tenant-job';
 import { EMAIL_PROVIDER, EmailProviderError, SEALER, sanitizeDisplayName } from './email-provider';
-import type { EmailProvider } from './email-provider';
+import type { EmailProvider, OutgoingEmail } from './email-provider';
 
 /** The recipient of a failure row when no queued row could be read. `message_logs.to` is NOT NULL. */
 const UNKNOWN_RECIPIENT = 'unknown';
@@ -30,6 +37,7 @@ interface QueuedMessage {
   event: string | null;
   entityType: string | null;
   entityId: string | null;
+  attachments?: { key: string; filename: string }[];
 }
 
 type Plan =
@@ -73,6 +81,7 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
     @Inject(EMAIL_PROVIDER) private readonly provider: EmailProvider,
     @Inject(WORKER_CONFIG) private readonly config: WorkerConfig,
     @Inject(SEALER) private readonly sealer: Sealer,
+    @Inject(OBJECT_STORAGE) private readonly storage: ObjectStorage,
   ) {
     super(tenantDb);
   }
@@ -122,6 +131,36 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
       throw error;
     }
 
+    // Attachments are S3 keys on the queued row: check each belongs to this tenant, then download them (no transaction open).
+    let attachments: NonNullable<OutgoingEmail['attachments']> = [];
+    try {
+      for (const a of message.attachments ?? []) assertTenantObjectKey(a.key, tenantId);
+    } catch (error) {
+      if (error instanceof InvalidObjectKeyError)
+        return this.failPermanently(ctx, 'INVALID_PAYLOAD', fields);
+      throw error;
+    }
+    try {
+      attachments = await Promise.all(
+        (message.attachments ?? []).map(async (a) => ({
+          filename: a.filename,
+          content: await this.storage.get(a.key),
+          contentType: /\.pdf$/i.test(a.filename) ? 'application/pdf' : 'application/octet-stream',
+        })),
+      );
+    } catch (error) {
+      if (!(error instanceof StorageError)) throw error;
+      await ctx.tx((tx) =>
+        this.append(tx, fields, {
+          status: MESSAGE_STATUS.FAILED,
+          error: 'ATTACHMENT_UNAVAILABLE',
+          attempt: ctx.attempt,
+          isFinal: ctx.isLastAttempt,
+        }),
+      );
+      throw new RetryableJobError('ATTACHMENT_UNAVAILABLE');
+    }
+
     ctx.log.info(
       {
         recipient: maskEmail(message.to),
@@ -144,6 +183,7 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
         subject: rendered.subject,
         html: rendered.html,
         text: rendered.text,
+        ...(attachments.length > 0 ? { attachments } : {}),
       }));
     } catch (error) {
       const code: EmailFailureCode =
@@ -242,6 +282,7 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
       template: queued.template,
       locale: queued.locale,
       vars,
+      attachments: queued.attachments ?? undefined,
     });
     if (!parsed.success) return { kind: 'invalid', message: base };
 
@@ -259,6 +300,7 @@ export class EmailSendJob extends TenantJob<EmailSendPayload> {
         template: parsed.data.template,
         locale: parsed.data.locale,
         vars: parsed.data.vars,
+        ...(parsed.data.attachments ? { attachments: parsed.data.attachments } : {}),
       },
     };
   }

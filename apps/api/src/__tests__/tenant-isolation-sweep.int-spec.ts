@@ -43,6 +43,12 @@ interface Victim {
   customerId: string;
   leadId: string;
   customerPhone: string;
+  /** Modules 6-8: tenant B booking (priced and held), its quotation, its one session and its hall. */
+  bookingId: string;
+  bookingNumber: string;
+  quotationId: string;
+  sessionId: string;
+  bookingSpaceId: string;
 }
 
 interface IsolationCase {
@@ -567,7 +573,153 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
     owner: 404,
     request: (v) => ({ method: 'get', path: `/v1/leads/${v.leadId}/activity` }),
   },
+  // ── modules 6-8: availability, quotations, bookings ────────────────────────────────────────────────────
+  'AvailabilityController.get': {
+    owner: 404,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/availability?venueId=${v.venueId}&from=2031-01-01&to=2031-01-31`,
+    }),
+  },
+  'QuotationsController.preview': {
+    owner: 404,
+    request: (v) => ({ method: 'post', path: '/v1/quotations/preview', body: quoteOf(v) }),
+  },
+  'QuotationsController.create': {
+    owner: 404,
+    request: (v) => ({ method: 'post', path: '/v1/quotations', body: quoteOf(v) }),
+  },
+  'QuotationsController.list': {
+    // Asking for a booking or customer of B only filters the rows of A: nothing of B comes back.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/quotations?bookingId=${v.bookingId}&customerId=${v.customerId}&limit=100`,
+    }),
+  },
+  'QuotationsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/quotations/${v.quotationId}` }),
+  },
+  'QuotationsController.send': {
+    owner: 404,
+    request: (v) => ({ method: 'post', path: `/v1/quotations/${v.quotationId}/send`, body: {} }),
+  },
+  'QuotationsController.accept': {
+    owner: 404,
+    request: (v) => ({ method: 'post', path: `/v1/quotations/${v.quotationId}/accept`, body: {} }),
+  },
+  'QuotationsController.pdf': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/quotations/${v.quotationId}/pdf` }),
+  },
+  'QuotationsController.whatsapp': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/quotations/${v.quotationId}/whatsapp` }),
+  },
+  'BookingsController.list': {
+    // A venue, customer or search of B only filters the rows of A: nothing of B comes back.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/bookings?venueId=${v.venueId}&customerId=${v.customerId}&search=${v.bookingNumber}&limit=100`,
+    }),
+  },
+  'BookingsController.get': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/bookings/${v.bookingId}` }),
+  },
+  'BookingsController.update': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/bookings/${v.bookingId}`,
+      body: { rev: 1, notes: 'Hijacked' },
+    }),
+  },
+  'BookingsController.hold': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/hold`,
+      body: { rev: 1 },
+    }),
+  },
+  'BookingsController.extend': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/extend-hold`,
+      body: { rev: 1 },
+    }),
+  },
+  'BookingsController.rehold': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/rehold`,
+      body: { rev: 1 },
+    }),
+  },
+  'BookingsController.confirm': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/confirm`,
+      body: { rev: 1, override: true, reason: 'Hijacked' },
+    }),
+  },
+  'BookingsController.cancel': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/cancel`,
+      body: { rev: 1, reason: 'Hijacked' },
+    }),
+  },
+  'BookingsController.restore': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/restore`,
+      body: { rev: 1 },
+    }),
+  },
+  'BookingsController.addSession': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/sessions`,
+      body: {
+        rev: 1,
+        session: { spaceId: v.bookingSpaceId, date: '2031-02-01', slotId: v.slotId, guests: 50 },
+      },
+    }),
+  },
+  'BookingsController.updateSession': {
+    owner: 404,
+    request: (v) => ({
+      method: 'patch',
+      path: `/v1/bookings/${v.bookingId}/sessions/${v.sessionId}`,
+      body: { rev: 1, guests: 5 },
+    }),
+  },
+  'BookingsController.cancelSession': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/sessions/${v.sessionId}/cancel`,
+      body: { rev: 1, reason: 'Hijacked' },
+    }),
+  },
 };
+
+/** A quotation body naming the venue, customer, space and slot of tenant B. */
+const quoteOf = (v: Victim) => ({
+  venueId: v.venueId,
+  customerId: v.customerId,
+  sessions: [{ spaceId: v.bookingSpaceId, date: '2031-02-01', slotId: v.slotId, guests: 50 }],
+});
 
 /** Routes that are not tenant data, with the reason. */
 const NOT_TENANT_DATA: Record<string, string> = {
@@ -692,8 +844,36 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       notes: 'B secret note',
     });
 
+    // Modules 6-8: a priced quotation of B and its booking, held (so it blocks the calendar of B).
+    const hallB = await post('/v1/spaces', {
+      venueId: venueB.id,
+      name: 'B secret hall',
+      baseRent: '90000',
+    });
+    const quotationB = await post('/v1/quotations', {
+      venueId: venueB.id,
+      customerId: customerB.id,
+      sessions: [{ spaceId: hallB.id, date: '2031-03-01', slotId: slotB.id, guests: 120 }],
+    });
+    const quotationRead = await t.http().get(`/v1/quotations/${quotationB.id}`).set(ownerBHeaders);
+    expect(quotationRead.status, JSON.stringify(quotationRead.body)).toBe(200);
+    const bookingIdB = quotationRead.body.bookingId as string;
+    const bookingB = await t.http().get(`/v1/bookings/${bookingIdB}`).set(ownerBHeaders);
+    expect(bookingB.status).toBe(200);
+    const held = await t
+      .http()
+      .post(`/v1/bookings/${bookingIdB}/hold`)
+      .set(ownerBHeaders)
+      .send({ rev: bookingB.body.rev });
+    expect(held.status, JSON.stringify(held.body)).toBe(200);
+
     victim = {
       tenant: tenantB,
+      bookingId: bookingIdB,
+      bookingNumber: held.body.number as string,
+      quotationId: quotationB.id,
+      sessionId: bookingB.body.sessions[0].id as string,
+      bookingSpaceId: hallB.id,
       customerId: customerB.id,
       leadId: leadB.id,
       customerPhone: '+923009990001',
@@ -769,6 +949,12 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       '99999-9999999-9',
       'B CNIC',
       'b_cnic',
+      quotationB.id,
+      bookingIdB,
+      held.body.number as string,
+      bookingB.body.sessions[0].id as string,
+      hallB.id,
+      'B secret hall',
     ];
     // Explicit and generous: this world needs ~10 argon2 logins plus dozens of API calls, which took longer than
     // the 10 s default when the whole suite ran in parallel.
@@ -937,6 +1123,42 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       [victim.tenant.id],
     );
     expect(reveals).toEqual([]);
+
+    // Modules 6-8: the booking of B is still the held one it was, with one session and one quotation; its calendar
+    // block is intact; nothing was added to B by an attack.
+    const [booking] = await h.sql<{ status: string; notes: string | null }>(
+      `SELECT status, notes FROM bookings WHERE id = $1`,
+      [victim.bookingId],
+    );
+    expect(booking).toEqual({ status: 'TENTATIVE', notes: null });
+    const [counts] = await h.sql<{
+      bookings: string;
+      sessions: string;
+      quotations: string;
+      occupancies: string;
+    }>(
+      `SELECT (SELECT count(*) FROM bookings WHERE tenant_id = $1) AS bookings,
+              (SELECT count(*) FROM booking_sessions WHERE tenant_id = $1) AS sessions,
+              (SELECT count(*) FROM quotations WHERE tenant_id = $1) AS quotations,
+              (SELECT count(*) FROM space_occupancies WHERE tenant_id = $1 AND active) AS occupancies`,
+      [victim.tenant.id],
+    );
+    expect(counts).toEqual({ bookings: '1', sessions: '1', quotations: '1', occupancies: '1' });
+    const [session] = await h.sql<{ status: string; guests: number }>(
+      `SELECT status, guests FROM booking_sessions WHERE id = $1`,
+      [victim.sessionId],
+    );
+    expect(session).toEqual({ status: 'ACTIVE', guests: 120 });
+    const [quotation] = await h.sql<{ sent_at: Date | null; accepted_at: Date | null }>(
+      `SELECT sent_at, accepted_at FROM quotations WHERE id = $1`,
+      [victim.quotationId],
+    );
+    expect(quotation).toEqual({ sent_at: null, accepted_at: null });
+    const mails = await h.sql<{ id: string }>(
+      `SELECT id FROM message_logs WHERE tenant_id = $1 AND template = 'quotation.send'`,
+      [victim.tenant.id],
+    );
+    expect(mails).toEqual([]);
   });
 
   it("the workspace list of tenant A's owner holds tenant A only", async () => {

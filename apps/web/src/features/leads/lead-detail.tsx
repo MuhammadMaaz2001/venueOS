@@ -1,6 +1,7 @@
 'use client';
 
-import { ArrowLeft, Pencil } from 'lucide-react';
+import { ArrowLeft, FileText, Pencil } from 'lucide-react';
+import { isOpenLeadStage } from '@venueos/shared';
 import { useTranslations } from 'next-intl';
 import Link from 'next/link';
 import { useState } from 'react';
@@ -140,18 +141,31 @@ export function LeadDetail({ id }: { id: string }) {
                 </Link>
               </div>
             </div>
-            {mayManage ? (
-              <Button
-                variant="outline"
-                size="lg"
-                className="h-10"
-                onClick={() => setEditing(true)}
-                data-testid="lead-edit"
-              >
-                <Pencil aria-hidden />
-                {t('detail.edit')}
-              </Button>
-            ) : null}
+            <div className="flex flex-wrap gap-2">
+              {can('quotation.manage') && can('booking.create') && isOpenLeadStage(data.stage) ? (
+                <Button asChild size="lg" className="h-10">
+                  <Link
+                    href={`/quotations/new?leadId=${data.id}`}
+                    data-testid="lead-create-quotation"
+                  >
+                    <FileText aria-hidden />
+                    {t('detail.createQuotation')}
+                  </Link>
+                </Button>
+              ) : null}
+              {mayManage ? (
+                <Button
+                  variant="outline"
+                  size="lg"
+                  className="h-10"
+                  onClick={() => setEditing(true)}
+                  data-testid="lead-edit"
+                >
+                  <Pencil aria-hidden />
+                  {t('detail.edit')}
+                </Button>
+              ) : null}
+            </div>
           </div>
 
           {mayManage && reachableStages(data.stage).length > 0 ? (

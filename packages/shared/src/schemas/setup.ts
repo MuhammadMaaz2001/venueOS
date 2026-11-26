@@ -43,6 +43,8 @@ export const TenantSettingsPatchSchema = z.object({
   reminderDays: settingsShape.reminderDays.removeDefault().optional(),
   eventReminderDays: settingsShape.eventReminderDays.removeDefault().optional(),
   minHours: settingsShape.minHours.removeDefault().optional(),
+  quotationValidDays: settingsShape.quotationValidDays.removeDefault().optional(),
+  holdWarnHours: settingsShape.holdWarnHours.removeDefault().optional(),
 });
 export type TenantSettingsPatch = z.infer<typeof TenantSettingsPatchSchema>;
 

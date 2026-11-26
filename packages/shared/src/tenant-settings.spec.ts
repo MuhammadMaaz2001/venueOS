@@ -12,6 +12,8 @@ describe('TenantSettings defaults (docs/05 §15)', () => {
     reminderDays: 3,
     eventReminderDays: 2,
     minHours: 2,
+    quotationValidDays: 14,
+    holdWarnHours: 6,
   };
 
   it('fills every default from an empty object, null and undefined', () => {

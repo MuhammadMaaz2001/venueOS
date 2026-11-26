@@ -271,7 +271,8 @@ describe('login', () => {
       expect(blocked.headers['set-cookie']).toBeUndefined();
       // Another address elsewhere is unaffected.
       expect((await post({ email: member.email, password: TEST_PASSWORD })).status).toBe(200);
-    });
+      // 21 real password hashes: slower than the 20 s default when the whole suite runs in parallel.
+    }, 90_000);
 
     it('validates the body (400) and the CSRF headers (403)', async () => {
       expect((await post({ email: 'nope', password: 'x' })).status).toBe(400);

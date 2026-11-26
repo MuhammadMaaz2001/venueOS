@@ -45,6 +45,9 @@ class ScriptedStorage implements ObjectStorage {
     this.puts.push({ key, bytes: body.length, contentType });
     return Promise.resolve();
   }
+  get(): Promise<Buffer> {
+    return Promise.reject(new StorageError());
+  }
 }
 
 /** A kind that records the key it is handed, and reads another tenant's row on request (RLS must hide it). */

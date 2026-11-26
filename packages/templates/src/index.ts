@@ -11,3 +11,4 @@ export type { EmailSender, EmailTemplateSource, RenderedEmail } from './email/ty
 export { UnknownPdfTemplateError, hasPdfTemplate, renderPdfHtml } from './pdf/render-pdf-html.js';
 export { BUNDLED_FONT_FILES, pdfFontFaceCss } from './pdf/fonts.js';
 export type { RenderedPdfHtml } from './pdf/types.js';
+export type { QuotationPdfVars } from './pdf/quotation.js';

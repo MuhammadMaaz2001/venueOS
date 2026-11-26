@@ -166,6 +166,15 @@ export async function enqueueEmail(
 ): Promise<EnqueuedEmail> {
   const data = enqueueEmailInputSchema.parse(input);
   const messageKey = randomUUID();
+  // Attachments are S3 KEYS of this tenant's files; the worker downloads them when it sends (docs/04 section 6).
+  for (const attachment of data.attachments ?? []) {
+    if (
+      !attachment.key.startsWith(`tenants/${tenantId}/`) ||
+      attachment.key.split('/').includes('..')
+    ) {
+      throw new Error('enqueueEmail: an attachment key must belong to the tenant');
+    }
+  }
   // Secret variables (links with tokens) are sealed, bound to this exact row by the AAD, and stored inside
   // template_vars; they are never written in plain text anywhere (docs/04-security.md section 6).
   const secrets =
@@ -196,6 +205,7 @@ export async function enqueueEmail(
       template: data.template,
       locale: data.locale,
       templateVars,
+      ...(data.attachments && data.attachments.length > 0 ? { attachments: data.attachments } : {}),
     },
   });
   const jobId = await queue.send(

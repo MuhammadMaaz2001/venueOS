@@ -28,7 +28,7 @@ Read before non-trivial work:
 
 ```bash
 pnpm install
-pnpm dev                 # web :3000, api :4000, worker
+pnpm dev                 # web :3000 (WEB_PORT), api :4000 (PORT), worker; see README "Ports"
 pnpm build
 pnpm lint && pnpm typecheck
 pnpm test                # unit + integration (api and db tests need the docker Postgres: docker compose up -d postgres)

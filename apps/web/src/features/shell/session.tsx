@@ -4,7 +4,8 @@ import { createContext, useContext, useMemo } from 'react';
 import type { ReactNode } from 'react';
 import { useLocale } from 'next-intl';
 import type { AccessSummary, Permission, TenantSummary, UserSummary } from '@venueos/shared';
-import { formatDate, formatDateTime, formatMoney, formatTime } from '@/lib/format';
+import { formatDate, formatDateOnly, formatDateTime, formatMoney, formatTime } from '@/lib/format';
+import type { DateOnlyStyle } from '@/lib/format';
 
 /** Who is working, in which workspace, with which rights: one object for every screen below the shell. */
 export interface Session {
@@ -41,6 +42,7 @@ export function useFormatters() {
       date: (instant: string | Date) => formatDate(instant, options),
       time: (instant: string | Date) => formatTime(instant, options),
       dateTime: (instant: string | Date) => formatDateTime(instant, options),
+      dateOnly: (value: string, style?: DateOnlyStyle) => formatDateOnly(value, locale, style),
     };
   }, [locale, tenant.currency, tenant.timezone]);
 }
