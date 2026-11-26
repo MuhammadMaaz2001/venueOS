@@ -49,6 +49,10 @@ interface Victim {
   quotationId: string;
   sessionId: string;
   bookingSpaceId: string;
+  /** Module 9: B's cleared cash receipt, its pending cheque, and a refund request. */
+  paymentId: string;
+  chequeId: string;
+  refundId: string;
 }
 
 interface IsolationCase {
@@ -58,6 +62,7 @@ interface IsolationCase {
     method: 'get' | 'post' | 'patch' | 'put' | 'delete';
     path: string;
     body?: object;
+    headers?: Record<string, string>;
   };
 }
 
@@ -712,6 +717,108 @@ const ISOLATION_CASES: Record<string, IsolationCase> = {
       body: { rev: 1, reason: 'Hijacked' },
     }),
   },
+
+  // ── module 9: payments, refunds, receivables ───────────────────────────────────────────────────────────
+  'BookingPaymentsController.overview': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/bookings/${v.bookingId}/payments` }),
+  },
+  'BookingPaymentsController.record': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/payments`,
+      headers: { 'Idempotency-Key': 'sweep-record-0001' },
+      body: { method: 'CASH', amount: '1.00' },
+    }),
+  },
+  'BookingPaymentsController.replaceSchedule': {
+    owner: 404,
+    request: (v) => ({
+      method: 'put',
+      path: `/v1/bookings/${v.bookingId}/payment-schedule`,
+      body: { items: [{ label: 'Hijacked', dueDate: '2031-01-01', amount: '98100.00' }] },
+    }),
+  },
+  'BookingPaymentsController.requestRefund': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/bookings/${v.bookingId}/refund-requests`,
+      headers: { 'Idempotency-Key': 'sweep-refund-0001' },
+      body: { amount: '1.00', reason: 'Hijacked' },
+    }),
+  },
+  'PaymentsController.clear': {
+    owner: 404,
+    request: (v) => ({ method: 'post', path: `/v1/payments/${v.chequeId}/clear`, body: {} }),
+  },
+  'PaymentsController.bounce': {
+    owner: 404,
+    request: (v) => ({ method: 'post', path: `/v1/payments/${v.chequeId}/bounce`, body: {} }),
+  },
+  'PaymentsController.reverse': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/payments/${v.paymentId}/reverse`,
+      headers: { 'Idempotency-Key': 'sweep-reverse-0001' },
+      body: { reason: 'Hijacked' },
+    }),
+  },
+  'PaymentsController.receipt': {
+    owner: 404,
+    request: (v) => ({ method: 'get', path: `/v1/payments/${v.paymentId}/receipt` }),
+  },
+  'PaymentsController.resend': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/payments/${v.paymentId}/receipt/resend`,
+      body: { to: 'attacker@example.test' },
+    }),
+  },
+  'RefundRequestsController.list': {
+    // Asking for B's booking only filters the rows of A: nothing of B comes back.
+    owner: 200,
+    request: (v) => ({
+      method: 'get',
+      path: `/v1/refund-requests?bookingId=${v.bookingId}&limit=100`,
+    }),
+  },
+  'RefundRequestsController.approve': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/refund-requests/${v.refundId}/approve`,
+      body: { rev: 1 },
+    }),
+  },
+  'RefundRequestsController.reject': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/refund-requests/${v.refundId}/reject`,
+      body: { rev: 1, note: 'Hijacked' },
+    }),
+  },
+  'RefundRequestsController.pay': {
+    owner: 404,
+    request: (v) => ({
+      method: 'post',
+      path: `/v1/refund-requests/${v.refundId}/pay`,
+      headers: { 'Idempotency-Key': 'sweep-pay-out-0001' },
+      body: { rev: 1, method: 'CASH' },
+    }),
+  },
+  'ReceivablesController.list': {
+    owner: 200,
+    request: (v) => ({ method: 'get', path: `/v1/receivables?venueId=${v.venueId}&limit=100` }),
+  },
+  'ReceivablesController.summary': {
+    owner: 200,
+    request: () => ({ method: 'get', path: '/v1/receivables/summary' }),
+  },
 };
 
 /** A quotation body naming the venue, customer, space and slot of tenant B. */
@@ -867,8 +974,35 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       .send({ rev: bookingB.body.rev });
     expect(held.status, JSON.stringify(held.body)).toBe(200);
 
+    // Module 9: B's money: a cash receipt, a cheque still pending, and a refund request against the cash.
+    const idem = (suffix: string) => ({ 'Idempotency-Key': `sweep-b-${suffix}-0001` });
+    const cashB = await t
+      .http()
+      .post(`/v1/bookings/${bookingIdB}/payments`)
+      .set(ownerBHeaders)
+      .set(idem('cash'))
+      .send({ method: 'CASH', amount: '50000.00', reference: 'B-SECRET-CASH-REF' });
+    expect(cashB.status, JSON.stringify(cashB.body)).toBe(201);
+    const chequeB = await t
+      .http()
+      .post(`/v1/bookings/${bookingIdB}/payments`)
+      .set(ownerBHeaders)
+      .set(idem('cheque'))
+      .send({ method: 'CHEQUE', amount: '12345.67', reference: 'B-SECRET-CHEQUE-NO' });
+    expect(chequeB.status, JSON.stringify(chequeB.body)).toBe(201);
+    const refundB = await t
+      .http()
+      .post(`/v1/bookings/${bookingIdB}/refund-requests`)
+      .set(ownerBHeaders)
+      .set(idem('refund'))
+      .send({ amount: '3333.33', reason: 'B secret refund reason' });
+    expect(refundB.status, JSON.stringify(refundB.body)).toBe(201);
+
     victim = {
       tenant: tenantB,
+      paymentId: cashB.body.id as string,
+      chequeId: chequeB.body.id as string,
+      refundId: refundB.body.id as string,
       bookingId: bookingIdB,
       bookingNumber: held.body.number as string,
       quotationId: quotationB.id,
@@ -955,6 +1089,16 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       bookingB.body.sessions[0].id as string,
       hallB.id,
       'B secret hall',
+      cashB.body.id as string,
+      cashB.body.receiptNo as string,
+      chequeB.body.id as string,
+      chequeB.body.receiptNo as string,
+      refundB.body.id as string,
+      'B-SECRET-CASH-REF',
+      'B-SECRET-CHEQUE-NO',
+      'B secret refund reason',
+      '12345.67',
+      '3333.33',
     ];
     // Explicit and generous: this world needs ~10 argon2 logins plus dozens of API calls, which took longer than
     // the 10 s default when the whole suite ran in parallel.
@@ -982,8 +1126,9 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
 
   describe.each(Object.entries(ISOLATION_CASES))('%s', (name, c) => {
     const send = (headers: Record<string, string>) => {
-      const { method, path, body } = c.request(victim);
-      const req = t.http()[method](path).set(headers);
+      const { method, path, body, headers: extra } = c.request(victim);
+      const call = t.http()[method](path);
+      const req = call.set(headers).set(extra ?? {});
       return body ? req.send(body) : req;
     };
 
@@ -1159,6 +1304,42 @@ describe('tenant isolation sweep (Phase 0 exit gate)', () => {
       [victim.tenant.id],
     );
     expect(mails).toEqual([]);
+
+    // Module 9: B's ledger is as created: two entries, the cheque still pending, the refund still requested, nothing reversed,
+    // no receipt email, the schedule untouched.
+    const ledger = await h.sql<{ id: string; status: string; entry_type: string }>(
+      `SELECT id, status, entry_type FROM payments WHERE tenant_id = $1 ORDER BY created_at`,
+      [victim.tenant.id],
+    );
+    expect(ledger.map((r) => [r.id, r.status, r.entry_type])).toEqual([
+      [victim.paymentId, 'CLEARED', 'RECEIPT'],
+      [victim.chequeId, 'PENDING', 'RECEIPT'],
+    ]);
+    const [refund] = await h.sql<{ status: string; rev: number }>(
+      `SELECT status, rev FROM refund_requests WHERE id = $1`,
+      [victim.refundId],
+    );
+    expect(refund).toEqual({ status: 'REQUESTED', rev: 1 });
+    const strayRefunds = await h.sql<{ n: string }>(
+      `SELECT count(*) AS n FROM refund_requests WHERE tenant_id = $1`,
+      [victim.tenant.id],
+    );
+    expect(strayRefunds[0]?.n).toBe('1');
+    const schedule = await h.sql<{ label: string }>(
+      `SELECT label FROM payment_schedule_items WHERE booking_id = $1 ORDER BY due_date`,
+      [victim.bookingId],
+    );
+    expect(schedule.map((r) => r.label)).toEqual(['Advance', 'Balance']);
+    const [paid] = await h.sql<{ paid_total: string }>(
+      `SELECT paid_total FROM bookings WHERE id = $1`,
+      [victim.bookingId],
+    );
+    expect(Number(paid?.paid_total)).toBe(50000);
+    const receiptMails = await h.sql<{ id: string }>(
+      `SELECT id FROM message_logs WHERE tenant_id = $1 AND template = 'receipt.sent'`,
+      [victim.tenant.id],
+    );
+    expect(receiptMails).toEqual([]);
   });
 
   it("the workspace list of tenant A's owner holds tenant A only", async () => {

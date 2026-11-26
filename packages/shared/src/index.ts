@@ -8,6 +8,7 @@ export * from './lead-stages.js';
 export * from './ledger.js';
 export * from './mask.js';
 export * from './money.js';
+export * from './payment-schedule.js';
 export * from './permissions.js';
 export * from './phone.js';
 export * from './roles.js';

@@ -62,6 +62,7 @@ import {
   toTotalsDto,
 } from './core/support';
 import type { TenantContext } from './core/support';
+import { PaymentSchedule } from '../payments/core/schedule.service';
 import {
   BOOKING_INCLUDE,
   SESSION_INCLUDE,
@@ -113,6 +114,7 @@ export class BookingsService {
     private readonly builder: QuoteBuilder,
     private readonly writer: BookingWriter,
     private readonly leadLink: LeadLink,
+    private readonly schedule: PaymentSchedule,
   ) {}
 
   private get canSeePrices(): boolean {
@@ -267,8 +269,28 @@ export class BookingsService {
         currency: true,
       },
     });
+    // The money steps of the booking (payments, cheques, reversals, refunds) belong to its history for those who may see
+    // payments; they are audited under their own entities.
+    const mayReadMoney = this.caller.has('payment.view');
+    const [paymentIds, refundIds] = mayReadMoney
+      ? await Promise.all([
+          tx.payment.findMany({ where: { tenantId, bookingId: b.id }, select: { id: true } }),
+          tx.refundRequest.findMany({ where: { tenantId, bookingId: b.id }, select: { id: true } }),
+        ])
+      : [[], []];
     const auditRows = await tx.auditLog.findMany({
-      where: { tenantId, entityType: 'booking', entityId: b.id },
+      where: {
+        tenantId,
+        OR: [
+          { entityType: 'booking', entityId: b.id },
+          ...(paymentIds.length > 0
+            ? [{ entityType: 'payment', entityId: { in: paymentIds.map((p) => p.id) } }]
+            : []),
+          ...(refundIds.length > 0
+            ? [{ entityType: 'refund_request', entityId: { in: refundIds.map((r) => r.id) } }]
+            : []),
+        ],
+      },
       orderBy: [{ createdAt: 'desc' }, { id: 'desc' }],
       take: 100,
       select: {
@@ -512,6 +534,14 @@ export class BookingsService {
           ...(overridden ? { overrideRules: true, reason: overridden.reason } : {}),
         },
       });
+      // Token, advance and balance (docs/05 section 5), once: a re-hold keeps the schedule it already has.
+      await this.schedule.ensure(tx, tenant, {
+        id,
+        venueId: b.venueId,
+        currency: b.currency,
+        grandTotal: b.grandTotal.toString(),
+        holdExpiresAt,
+      });
       return this.detail(tx, await this.load(tx, id));
     });
   }
@@ -599,6 +629,13 @@ export class BookingsService {
       });
       if (updated.count !== 1) throw new VersionConflictError();
       await this.leadLink.advance(tx, tenantId, b.leadId, 'WON');
+      await this.schedule.ensure(tx, tenant, {
+        id,
+        venueId: b.venueId,
+        currency: b.currency,
+        grandTotal: b.grandTotal.toString(),
+        holdExpiresAt: null,
+      });
       await this.audit.record(tx, {
         action: 'booking.confirm',
         entityType: 'booking',
@@ -1137,6 +1174,22 @@ export class BookingsService {
         ...(overridden ? { reason: overridden.reason } : {}),
       },
     });
+    // A new total means the items of the payment schedule no longer add up: generate them again (docs/05 section 5).
+    if (b.status === 'TENTATIVE' || b.status === 'CONFIRMED') {
+      const now = await tx.booking.findFirst({
+        where: { id: b.id, tenantId: b.tenantId },
+        select: { grandTotal: true, holdExpiresAt: true },
+      });
+      if (now) {
+        await this.schedule.onRequote(tx, tenant, {
+          id: b.id,
+          venueId: b.venueId,
+          currency: b.currency,
+          grandTotal: now.grandTotal.toString(),
+          holdExpiresAt: now.holdExpiresAt,
+        });
+      }
+    }
   }
 
   private assertNotLockedFor(b: BookingRow, instants: Date[], tenant: TenantContext): void {

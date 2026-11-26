@@ -277,7 +277,7 @@ test('composite FKs: another tenant\'s customer / booking / space / session cann
                               VALUES ('oz','t1','sess2','hallB','2027-05-01 10:00+05','2027-05-01 12:00+05')`), /foreign key/);
   await rejects(sql(app, T1, `INSERT INTO space_occupancies (id, tenant_id, session_id, space_id, starts_at, ends_at)
                               VALUES ('oy','t1','s4','g1','2027-05-01 10:00+05','2027-05-01 12:00+05')`), /foreign key/);
-  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount) VALUES ('px','t1','bk2','CASH',10)`), /foreign key/);
+  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, receipt_no) VALUES ('px','t1','bk2','CASH',10,'R-px')`), /foreign key/);
 });
 
 // ───────────────────────────── combined spaces ─────────────────────────────
@@ -313,8 +313,8 @@ test('auth-only tables: venueos_app has no access, venueos_auth does', async () 
 test('append-only: payments allow INSERT, and UPDATE only of status/cleared_at; never DELETE', async () => {
   await sql(app, T1, `INSERT INTO bookings (id, tenant_id, venue_id, customer_id, currency, status, number)
                       VALUES ('b5','t1','v1','c1','PKR','CONFIRMED','RB-2027-0005')`);
-  await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status, idempotency_key)
-                      VALUES ('p1','t1','b5','CHEQUE',50000.5,'PENDING','key-1')`);
+  await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status, idempotency_key, receipt_no)
+                      VALUES ('p1','t1','b5','CHEQUE',50000.5,'PENDING','key-1','R-p1')`);
   await sql(app, T1, `UPDATE payments SET status = 'CLEARED', cleared_at = now() WHERE id = 'p1'`);
   await rejects(sql(app, T1, `UPDATE payments SET amount = 1 WHERE id = 'p1'`), /permission denied/);
   await rejects(sql(app, T1, `UPDATE payments SET booking_id = 'b1' WHERE id = 'p1'`), /permission denied/);
@@ -344,23 +344,23 @@ test('plans are read-only for the app role', async () => {
 // ───────────────────────────── payments / expenses rules ─────────────────────────────
 
 test('payments: positive amount, reversal link, one reversal per entry, refund link', async () => {
-  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount) VALUES ('p0','t1','b5','CASH',0)`), /payments_amount_positive/);
+  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, receipt_no) VALUES ('p0','t1','b5','CASH',0,'R-p0')`), /payments_amount_positive/);
   await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, entry_type) VALUES ('p0','t1','b5','CASH',10,'REVERSAL')`), /payments_reversal_link/);
-  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, reverses_id) VALUES ('p0','t1','b5','CASH',10,'p1')`), /payments_reversal_link/);
+  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, reverses_id, receipt_no) VALUES ('p0','t1','b5','CASH',10,'p1','R-p0')`), /payments_reversal_link/);
   await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, entry_type, reverses_id, notes)
                       VALUES ('p2','t1','b5','CHEQUE',50000.5,'REVERSAL','p1','wrong booking')`);
   await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, entry_type, reverses_id)
                       VALUES ('p3','t1','b5','CHEQUE',50000.5,'REVERSAL','p1')`), /payments_reverses_id_key/);
-  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, refund_request_id) VALUES ('p4','t1','b5','CASH',5,'rr-none')`), /payments_refund_link|foreign key/);
+  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, refund_request_id, receipt_no) VALUES ('p4','t1','b5','CASH',5,'rr-none','R-p4')`), /payments_refund_link|foreign key/);
 });
 
 test('payment status: only CHEQUE may be PENDING/BOUNCED; other methods are CLEARED on entry', async () => {
   for (const method of ['CASH', 'BANK_TRANSFER', 'CARD', 'MOBILE_WALLET', 'ONLINE_GATEWAY']) {
-    await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status) VALUES ('ps','t1','b5','${method}',5,'PENDING')`), /payments_status_by_method/);
-    await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status) VALUES ('ps','t1','b5','${method}',5,'BOUNCED')`), /payments_status_by_method/);
-    await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount) VALUES ('ps-${method}','t1','b5','${method}',5)`); // default CLEARED
+    await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status, receipt_no) VALUES ('ps','t1','b5','${method}',5,'PENDING','R-ps')`), /payments_status_by_method/);
+    await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status, receipt_no) VALUES ('ps','t1','b5','${method}',5,'BOUNCED','R-ps')`), /payments_status_by_method/);
+    await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, receipt_no) VALUES ('ps-${method}','t1','b5','${method}',5,'R-ps-${method}')`); // default CLEARED
   }
-  await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status) VALUES ('ps-chq','t1','b5','CHEQUE',5,'PENDING')`);
+  await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, status, receipt_no) VALUES ('ps-chq','t1','b5','CHEQUE',5,'PENDING','R-chq')`);
   await sql(app, T1, `UPDATE payments SET status = 'BOUNCED' WHERE id = 'ps-chq'`);
   await rejects(sql(app, T1, `UPDATE payments SET status = 'PENDING' WHERE id = 'ps-CASH'`), /payments_status_by_method/); // cannot "reopen" a cash payment
   const def = await sql(app, T1, `SELECT status FROM payments WHERE id = 'ps-CASH'`);
@@ -399,9 +399,9 @@ test('refunds: request + approval creates the REFUND payment linked to it', asyn
 });
 
 test('idempotency keys are unique per tenant (payments, refund_requests, expenses, inventory_movements)', async () => {
-  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, idempotency_key) VALUES ('p7','t1','b5','CASH',5,'key-1')`), /idempotency_key/);
-  await sql(app, { tenant: 't2' }, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, idempotency_key) VALUES ('p8','t2','bk2','CASH',5,'key-1')`); // other tenant: fine
-  await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount) VALUES ('p9','t1','b5','CASH',5),('p10','t1','b5','CASH',5)`); // NULL keys never collide
+  await rejects(sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, idempotency_key, receipt_no) VALUES ('p7','t1','b5','CASH',5,'key-1','R-p7')`), /idempotency_key/);
+  await sql(app, { tenant: 't2' }, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, idempotency_key, receipt_no) VALUES ('p8','t2','bk2','CASH',5,'key-1','R-p8')`); // other tenant: fine
+  await sql(app, T1, `INSERT INTO payments (id, tenant_id, booking_id, method, amount, receipt_no) VALUES ('p9','t1','b5','CASH',5,'R-p9'),('p10','t1','b5','CASH',5,'R-p10')`); // NULL keys never collide
   await sql(app, T1, `INSERT INTO refund_requests (id, tenant_id, booking_id, amount, reason, requested_by_id, idempotency_key) VALUES ('rr2','t1','b5',5,'x','u1','rk')`);
   await rejects(sql(app, T1, `INSERT INTO refund_requests (id, tenant_id, booking_id, amount, reason, requested_by_id, idempotency_key) VALUES ('rr3','t1','b5',5,'x','u1','rk')`), /idempotency_key/);
   await sql(app, T1, `INSERT INTO expenses (id, tenant_id, category, description, amount, method, idempotency_key) VALUES ('e2','t1','OTHER','x',5,'CASH','ek')`);
@@ -876,4 +876,123 @@ test('modules 6-8 queues: the hold and completion queues and their dead letters 
 test('modules 6-8: the bookings-specific touch_row function is installed', async () => {
   const { rows } = await migrator.query(`SELECT 1 FROM pg_proc WHERE proname = 'touch_row_bookings'`);
   assert.equal(rows.length, 1);
+});
+
+// ───────────────────────────── module 9 (payments and receipts) ─────────────────────────────
+
+test('module 9 payments: a receipt has a number and nothing else has one; a REVERSAL points at what it negates', async () => {
+  await sql(
+    app,
+    T1,
+    `INSERT INTO bookings (id, tenant_id, venue_id, customer_id, currency, status, number, updated_at)
+     VALUES ('bkp','t1','v1','c1','PKR','CONFIRMED','BK-2031-9100', now())`,
+  );
+  const insert = (id, entry, number, extra = '') =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO payments (id, tenant_id, booking_id, entry_type, method, amount, status, receipt_no ${extra ? ', ' + extra.split('=')[0] : ''})
+       VALUES ($1,'t1','bkp',$2,'CASH',10,'CLEARED',$3 ${extra ? ', ' + extra.split('=')[1] : ''})`,
+      [id, entry, number],
+    );
+  await rejects(insert('pm0', 'RECEIPT', null), /payments_receipt_no_by_type/);
+  await rejects(insert('pm1', 'REFUND', 'BK-R-2031-00009'), /payments_receipt_no_by_type/);
+  await insert('pm2', 'RECEIPT', 'BK-R-2031-00001');
+  await rejects(insert('pm3', 'RECEIPT', 'BK-R-2031-00001'), /payments_tenant_id_receipt_no_key/);
+  await rejects(insert('pm4', 'REVERSAL', null), /payments_reversal_link/);
+  await insert('pm5', 'REVERSAL', null, "reverses_id='pm2'");
+  // Once per entry.
+  await rejects(insert('pm6', 'REVERSAL', null, "reverses_id='pm2'"), /payments_reverses_id_key/);
+});
+
+test('module 9 payments: the idempotency key is unique per workspace, not across workspaces', async () => {
+  const put = (tenant, booking, id, key, no) =>
+    sql(
+      app,
+      { tenant },
+      `INSERT INTO payments (id, tenant_id, booking_id, method, amount, receipt_no, idempotency_key)
+       VALUES ($1,$2,$3,'CASH',5,$4,$5)`,
+      [id, tenant, booking, no, key],
+    );
+  await put('t1', 'bkp', 'pk1', 'same-key-0001', 'BK-R-2031-00101');
+  await rejects(put('t1', 'bkp', 'pk2', 'same-key-0001', 'BK-R-2031-00102'), /payments_tenant_id_idempotency_key_key/);
+  await put('t2', 'bk2', 'pk3', 'same-key-0001', 'BK-R-2031-00101');
+});
+
+test('module 9 refunds: the decision is recorded and the two-person rule is a CHECK', async () => {
+  await sql(
+    app,
+    T1,
+    `INSERT INTO refund_requests (id, tenant_id, booking_id, amount, reason, requested_by_id, updated_at)
+     VALUES ('rf1','t1','bkp',100,'Customer cancelled','u1', now())`,
+  );
+  // A request that is decided names who decided it, and the other way round.
+  await rejects(sql(app, T1, `UPDATE refund_requests SET status = 'APPROVED' WHERE id = 'rf1'`), /refund_requests_decision_consistent/);
+  await rejects(sql(app, T1, `UPDATE refund_requests SET approved_by_id = 'u2' WHERE id = 'rf1'`), /refund_requests_decision_consistent/);
+  // The requester decides their own request only as a recorded self-approval; another user never as one.
+  await rejects(
+    sql(app, T1, `UPDATE refund_requests SET status='APPROVED', approved_by_id='u1', self_approved=false WHERE id='rf1'`),
+    /refund_requests_two_person_rule/,
+  );
+  await rejects(
+    sql(app, T1, `UPDATE refund_requests SET status='APPROVED', approved_by_id='u2', self_approved=true WHERE id='rf1'`),
+    /refund_requests_two_person_rule/,
+  );
+  await sql(app, T1, `UPDATE refund_requests SET status='APPROVED', approved_by_id='u2', self_approved=false WHERE id='rf1'`);
+  await rejects(sql(app, T1, `DELETE FROM refund_requests WHERE id = 'rf1'`), /permission denied/);
+});
+
+test('module 9 schedule: an item has a positive amount and a label; the reminder scanner can read the schedule but not change it', async () => {
+  const item = (id, label, amount) =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO payment_schedule_items (id, tenant_id, booking_id, label, due_date, amount, updated_at)
+       VALUES ($1,'t1','bkp',$2,'2031-02-01',$3, now())`,
+      [id, label, amount],
+    );
+  await rejects(item('ps0', 'Advance', 0), /payment_schedule_items_amount_positive/);
+  await rejects(item('ps1', '  ', 10), /payment_schedule_items_label_not_blank/);
+  await item('ps2', 'Advance', 10);
+  const due = await jobs.query(
+    `SELECT i.id, i.tenant_id FROM payment_schedule_items i JOIN bookings b ON b.id = i.booking_id
+      JOIN tenants t ON t.id = i.tenant_id WHERE NOT i.reminded AND i.id = 'ps2'`,
+  );
+  assert.equal(due.rows.length, 1);
+  await rejects(jobs.query(`UPDATE payment_schedule_items SET reminded = true WHERE id = 'ps2'`), /permission denied/);
+});
+
+test('module 9 bookings: a payment changes paid_total without bumping rev or updated_at; a real edit still does', async () => {
+  const read = async () => (await sql(app, T1, `SELECT rev, updated_at, paid_total FROM bookings WHERE id = 'bkp'`)).rows[0];
+  const first = await read();
+  await sql(app, T1, `UPDATE bookings SET paid_total = 5000 WHERE id = 'bkp'`);
+  const paid = await read();
+  assert.equal(paid.rev, first.rev);
+  assert.equal(paid.updated_at.getTime(), first.updated_at.getTime());
+  assert.equal(Number(paid.paid_total), 5000);
+  await sql(app, T1, `UPDATE bookings SET notes = 'edited' WHERE id = 'bkp'`);
+  assert.equal((await read()).rev, first.rev + 1);
+  // Together with a real change it counts as an edit.
+  await sql(app, T1, `UPDATE bookings SET paid_total = 6000, notes = 'again' WHERE id = 'bkp'`);
+  assert.equal((await read()).rev, first.rev + 2);
+});
+
+test('module 9: receipt_files is tenant-isolated, one row per payment, and the payment-due queues exist', async () => {
+  await sql(app, T1, `INSERT INTO receipt_files (id, tenant_id, payment_id, pdf_key, updated_at) VALUES ('rfile1','t1','pm2','tenants/t1/pdf/receipt/pm2.pdf', now())`);
+  await rejects(
+    sql(app, T1, `INSERT INTO receipt_files (id, tenant_id, payment_id, pdf_key, updated_at) VALUES ('rfile2','t1','pm2','x', now())`),
+    /receipt_files_payment_id_key/,
+  );
+  assert.equal((await sql(app, T2, `SELECT id FROM receipt_files`)).rows.length, 0);
+  await rejects(
+    sql(app, T2, `INSERT INTO receipt_files (id, tenant_id, payment_id, pdf_key, updated_at) VALUES ('rfile3','t1','pm2','x', now())`),
+    /row-level security|violates/,
+  );
+  const queues = await migrator.query(`SELECT name FROM pgboss.queue WHERE name LIKE 'reminders.payment-due%' ORDER BY name`);
+  assert.deepEqual(queues.rows.map((r) => r.name), [
+    'reminders.payment-due',
+    'reminders.payment-due.dead',
+    'reminders.payment-due.run',
+    'reminders.payment-due.run.dead',
+  ]);
 });

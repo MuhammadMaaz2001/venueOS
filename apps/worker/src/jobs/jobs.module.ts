@@ -16,6 +16,8 @@ import { LeadFollowUpNotifyJob } from '../leads/lead-follow-up-notify.job';
 import { LeadsFollowUpScanner } from '../leads/leads-follow-up.scanner';
 import { LeadsModule } from '../leads/leads.module';
 import { OpsModule } from '../ops/ops.module';
+import { PaymentDueRunJob, PaymentDueScanner } from '../payments/payment-due';
+import { WorkerPaymentsModule } from '../payments/payments.module';
 import { PdfRenderJob } from '../pdf/pdf-render.job';
 import { PdfModule } from '../pdf/pdf.module';
 import { QueueModule } from '../queue/queue.module';
@@ -40,6 +42,8 @@ export const BASE_JOBS = [
   HoldWarnRunJob,
   BookingsCompleteScanner,
   BookingCompleteRunJob,
+  PaymentDueScanner,
+  PaymentDueRunJob,
 ] as const;
 
 @Module({
@@ -52,6 +56,7 @@ export const BASE_JOBS = [
     PdfModule,
     LeadsModule,
     WorkerBookingsModule,
+    WorkerPaymentsModule,
   ],
   providers: [
     { provide: JOBS, inject: [...BASE_JOBS], useFactory: (...jobs: unknown[]) => jobs },

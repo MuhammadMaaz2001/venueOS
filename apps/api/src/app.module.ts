@@ -25,6 +25,7 @@ import { EventTypesModule } from './modules/event-types/event-types.module';
 import { LeadsModule } from './modules/leads/leads.module';
 import { AvailabilityModule } from './modules/availability/availability.module';
 import { BookingsModule } from './modules/bookings/bookings.module';
+import { PaymentsModule } from './modules/payments/payments.module';
 import { QuotationsModule } from './modules/quotations/quotations.module';
 import { PricingModule } from './modules/pricing/pricing.module';
 import { RolesModule } from './modules/roles/roles.module';
@@ -66,6 +67,7 @@ import { VenuesModule } from './modules/venues/venues.module';
     LeadsModule,
     QuotationsModule,
     BookingsModule,
+    PaymentsModule,
     AvailabilityModule,
   ],
   providers: [

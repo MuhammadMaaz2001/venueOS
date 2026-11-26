@@ -107,6 +107,7 @@ model Tenant {
   paymentSchedules     PaymentScheduleItem[]
   payments             Payment[]
   refundRequests       RefundRequest[]
+  receiptFiles         ReceiptFile[]
   vendors              Vendor[]
   vendorAssignments    VendorAssignment[]
   expenses             Expense[]
@@ -1050,6 +1051,8 @@ model Payment {
   reversesId       String?          @unique @map("reverses_id")
   reverses         Payment?         @relation("PaymentReversal", fields: [reversesId], references: [id])
   reversedBy       Payment?         @relation("PaymentReversal")
+  // The receipt PDF (the worker writes it; this table cannot be updated, so the key is not here).
+  receiptFile      ReceiptFile?
   // REFUND rows created by approving a refund request point back to it.
   refundRequestId  String?          @unique @map("refund_request_id")
   refundRequest    RefundRequest?   @relation(fields: [refundRequestId], references: [id])
@@ -1068,6 +1071,21 @@ enum RefundRequestStatus {
   PAID     // the REFUND payment is CLEARED
 
   @@map("refund_request_status")
+}
+
+// Where the receipt PDF of a payment lives (module 9). A separate table because `payments` is append-only.
+model ReceiptFile {
+  id        String   @id @default(cuid())
+  tenantId  String   @map("tenant_id")
+  tenant    Tenant   @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  paymentId String   @unique @map("payment_id")
+  payment   Payment  @relation(fields: [paymentId], references: [id])
+  pdfKey    String   @map("pdf_key") // S3 object key, never a URL
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([tenantId])
+  @@map("receipt_files")
 }
 
 // One user requests, another approves (a tenant with a single user holding the refund

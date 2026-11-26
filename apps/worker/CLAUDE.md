@@ -95,3 +95,10 @@
 - Emails may carry `attachments` (S3 keys under `tenants/{tenantId}/`); `email-send.job.ts` downloads them between transactions.
 - Chromium must be launchable for the PDFs (`playwright install chromium`); the dev stack and the e2e reuse one worker, so a stale worker
   that cannot start Chromium leaves quotations without a PDF (`BROWSER_UNAVAILABLE` on `pdf.render` in `pgboss.job`).
+
+## Payments (module 9)
+
+- `src/pdf/receipt-kind.ts`: the `receipt` kind. `saveKey` locks the payment row (`FOR UPDATE`), upserts `receipt_files` and, for a CLEARED, unreversed
+  receipt whose customer has an address and that was not emailed yet (message log checked), queues `receipt.sent` with the PDF attached in the same
+  transaction. `src/payments`: `PaymentDueScanner` (`reminders.payment-due`, hourly, ids only; the SQL holds the "after 09:00 of the workspace clock"
+  and "within `reminderDays`" rules) and `PaymentDueRunJob` (one item: FIFO against the cleared receipts, claim `reminded`, queue `payment.due`).

@@ -91,3 +91,50 @@ export async function mailWithAttachment(
   }
   throw new Error(`No email with an attachment to ${to} within ${timeoutMs} ms`);
 }
+
+export interface MailSummary {
+  subject: string;
+  text: string;
+  attachments: { fileName: string; contentType: string }[];
+}
+
+/** Every email sent to `to` so far, newest first. */
+export async function mailsTo(to: string): Promise<MailSummary[]> {
+  const found = await json<{ messages?: MailpitMessage[] }>(
+    `/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`,
+  );
+  const out: MailSummary[] = [];
+  for (const message of found.messages ?? []) {
+    const full = await json<{
+      Subject?: string;
+      Text?: string;
+      Attachments?: { FileName: string; ContentType: string }[];
+    }>(`/api/v1/message/${message.ID}`);
+    out.push({
+      subject: full.Subject ?? '',
+      text: full.Text ?? '',
+      attachments: (full.Attachments ?? []).map((a) => ({
+        fileName: a.FileName,
+        contentType: a.ContentType,
+      })),
+    });
+  }
+  return out;
+}
+
+/** Waits until at least `count` emails to `to` have a subject starting with `prefix`; returns them. */
+export async function waitForMails(
+  to: string,
+  prefix: string,
+  count: number,
+  timeoutMs = 90_000,
+): Promise<MailSummary[]> {
+  const deadline = Date.now() + timeoutMs;
+  let last: MailSummary[] = [];
+  while (Date.now() < deadline) {
+    last = (await mailsTo(to)).filter((m) => m.subject.startsWith(prefix));
+    if (last.length >= count) return last;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`Expected ${count} email(s) "${prefix}..." to ${to}, found ${last.length}`);
+}

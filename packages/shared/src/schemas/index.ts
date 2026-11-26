@@ -10,3 +10,4 @@ export * from './customers.js';
 export * from './leads.js';
 export * from './bookings.js';
 export * from './quotations.js';
+export * from './payments.js';

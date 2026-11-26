@@ -2,9 +2,9 @@
 
 Loaded with `next/font/local` (`src/app/fonts.ts`): self-hosted, no download at build or run time.
 
-| File                                     | Family    | Use                          |
-| ---------------------------------------- | --------- | ---------------------------- |
-| `noto-sans-latin-{400,700}-normal.woff2` | Noto Sans | Latin text and digits (UI)   |
+| File                                     | Family    | Use                        |
+| ---------------------------------------- | --------- | -------------------------- |
+| `noto-sans-latin-{400,700}-normal.woff2` | Noto Sans | Latin text and digits (UI) |
 
 Noto Sans is (c) The Noto Project Authors, **SIL Open Font License 1.1** (`OFL-noto-sans.txt`). The files are a
 copy of those in `packages/templates/fonts` (same `@fontsource/noto-sans` 5.3.0 source), not modified or renamed.

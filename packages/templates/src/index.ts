@@ -12,3 +12,4 @@ export { UnknownPdfTemplateError, hasPdfTemplate, renderPdfHtml } from './pdf/re
 export { BUNDLED_FONT_FILES, pdfFontFaceCss } from './pdf/fonts.js';
 export type { RenderedPdfHtml } from './pdf/types.js';
 export type { QuotationPdfVars } from './pdf/quotation.js';
+export type { ReceiptPdfVars } from './pdf/receipt.js';

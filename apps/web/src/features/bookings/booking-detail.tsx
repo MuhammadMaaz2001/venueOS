@@ -24,6 +24,8 @@ import {
 } from './api';
 import { offeredActions, subtract } from './logic';
 import { HoldCountdown, StatusBadge } from './parts';
+import { PaymentsPanel } from '../payments/payments-panel';
+import { Tabs } from '@/components/tabs';
 import { QuoteLines, QuoteWarnings } from './quote-view';
 
 type Dialog = 'hold' | 'confirm' | 'cancel' | { cancelSession: string } | null;
@@ -406,6 +408,7 @@ export function BookingDetail({ id }: { id: string }) {
   const booking = useBooking(id);
   const action = useBookingAction();
   const [dialog, setDialog] = useState<Dialog>(null);
+  const [tab, setTab] = useState<'details' | 'payments'>('details');
 
   if (!can('booking.view')) return <NoAccess text={t('noAccess')} />;
   const data = booking.data;
@@ -564,113 +567,132 @@ export function BookingDetail({ id }: { id: string }) {
               </AlertDescription>
             </Alert>
           ) : null}
-          <QuoteWarnings warnings={data.warnings} sessions={data.sessions} />
+          {can('payment.view') && data.status !== 'DRAFT' ? (
+            <Tabs
+              label={t('tabs.label')}
+              active={tab}
+              onChange={setTab}
+              tabs={[
+                { id: 'details', label: t('tabs.details') },
+                { id: 'payments', label: t('tabs.payments') },
+              ]}
+            />
+          ) : null}
+          {tab === 'payments' && can('payment.view') && data.status !== 'DRAFT' ? (
+            <div role="tabpanel" id="panel-payments" aria-labelledby="tab-payments">
+              <PaymentsPanel bookingId={data.id} onConfirm={() => setDialog('confirm')} />
+            </div>
+          ) : (
+            <>
+              <QuoteWarnings warnings={data.warnings} sessions={data.sessions} />
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('sessions')}</CardTitle>
-            </CardHeader>
-            <CardContent className="p-0">
-              <ul className="divide-y" data-testid="booking-sessions">
-                {data.sessions.map((session) => (
-                  <li
-                    key={session.id ?? session.index}
-                    className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
-                    data-testid="booking-session"
-                    data-status={session.status}
-                  >
-                    <div className="grid gap-0.5">
-                      <span className="font-medium">
-                        {session.eventTypeName ?? t('session', { n: session.index + 1 })} ·{' '}
-                        {session.spaceName} · {session.slotName}
-                        {session.status === 'CANCELLED' ? ` (${t('sessionCancelled')})` : ''}
-                      </span>
-                      <span className="text-muted-foreground text-xs">
-                        {format.dateTime(session.startsAt)} – {format.time(session.endsAt)} ·{' '}
-                        {t('guests', { n: session.guests })}
-                        {session.billedGuests !== session.guests
-                          ? ` (${t('billed', { n: session.billedGuests })})`
-                          : ''}
-                        {session.packageName ? ` · ${session.packageName}` : ''}
-                      </span>
-                    </div>
-                    {session.status === 'ACTIVE' &&
-                    session.id &&
-                    can('booking.edit') &&
-                    (data.status === 'TENTATIVE' || data.status === 'CONFIRMED') &&
-                    data.sessions.filter((s) => s.status === 'ACTIVE').length > 1 ? (
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={() => setDialog({ cancelSession: session.id as string })}
-                        data-testid="session-cancel"
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('sessions')}</CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                  <ul className="divide-y" data-testid="booking-sessions">
+                    {data.sessions.map((session) => (
+                      <li
+                        key={session.id ?? session.index}
+                        className="flex flex-wrap items-center justify-between gap-2 px-4 py-3 text-sm"
+                        data-testid="booking-session"
+                        data-status={session.status}
                       >
-                        {t('cancelSession')}
-                      </Button>
-                    ) : null}
-                  </li>
-                ))}
-              </ul>
-            </CardContent>
-          </Card>
+                        <div className="grid gap-0.5">
+                          <span className="font-medium">
+                            {session.eventTypeName ?? t('session', { n: session.index + 1 })} ·{' '}
+                            {session.spaceName} · {session.slotName}
+                            {session.status === 'CANCELLED' ? ` (${t('sessionCancelled')})` : ''}
+                          </span>
+                          <span className="text-muted-foreground text-xs">
+                            {format.dateTime(session.startsAt)} – {format.time(session.endsAt)} ·{' '}
+                            {t('guests', { n: session.guests })}
+                            {session.billedGuests !== session.guests
+                              ? ` (${t('billed', { n: session.billedGuests })})`
+                              : ''}
+                            {session.packageName ? ` · ${session.packageName}` : ''}
+                          </span>
+                        </div>
+                        {session.status === 'ACTIVE' &&
+                        session.id &&
+                        can('booking.edit') &&
+                        (data.status === 'TENTATIVE' || data.status === 'CONFIRMED') &&
+                        data.sessions.filter((s) => s.status === 'ACTIVE').length > 1 ? (
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            onClick={() => setDialog({ cancelSession: session.id as string })}
+                            data-testid="session-cancel"
+                          >
+                            {t('cancelSession')}
+                          </Button>
+                        ) : null}
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('pricing')}</CardTitle>
-            </CardHeader>
-            <CardContent className="grid gap-4">
-              <QuoteLines sessions={data.sessions} lines={data.lines} totals={data.totals} />
-              {data.paidTotal !== null ? (
-                <dl className="grid gap-2 sm:grid-cols-2">
-                  <Detail label={t('paid')}>{format.money(data.paidTotal)}</Detail>
-                  {data.grandTotal !== null ? (
-                    <Detail label={t('balance')} testId="booking-balance">
-                      {format.money(
-                        // The balance is shown from the two strings the API gave: exact, no number arithmetic on money.
-                        subtract(data.grandTotal, data.paidTotal),
-                      )}
-                    </Detail>
+              <Card>
+                <CardHeader>
+                  <CardTitle>{t('pricing')}</CardTitle>
+                </CardHeader>
+                <CardContent className="grid gap-4">
+                  <QuoteLines sessions={data.sessions} lines={data.lines} totals={data.totals} />
+                  {data.paidTotal !== null ? (
+                    <dl className="grid gap-2 sm:grid-cols-2">
+                      <Detail label={t('paid')}>{format.money(data.paidTotal)}</Detail>
+                      {data.grandTotal !== null ? (
+                        <Detail label={t('balance')} testId="booking-balance">
+                          {format.money(
+                            // The balance is shown from the two strings the API gave: exact, no number arithmetic on money.
+                            subtract(data.grandTotal, data.paidTotal),
+                          )}
+                        </Detail>
+                      ) : null}
+                    </dl>
                   ) : null}
-                </dl>
-              ) : null}
-              {data.discount ? (
-                <p className="text-muted-foreground text-xs">
-                  {t('discountApplied', {
-                    value:
-                      data.discount.type === 'PERCENT'
-                        ? `${data.discount.value}%`
-                        : format.money(data.discount.value),
-                  })}
-                </p>
-              ) : null}
-            </CardContent>
-          </Card>
+                  {data.discount ? (
+                    <p className="text-muted-foreground text-xs">
+                      {t('discountApplied', {
+                        value:
+                          data.discount.type === 'PERCENT'
+                            ? `${data.discount.value}%`
+                            : format.money(data.discount.value),
+                      })}
+                    </p>
+                  ) : null}
+                </CardContent>
+              </Card>
 
-          {data.cancellationPolicy ? (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t('policy')}</CardTitle>
-              </CardHeader>
-              <CardContent className="text-sm">
-                <p className="font-medium">{data.cancellationPolicy.name}</p>
-                <ul className="text-muted-foreground text-xs">
-                  {data.cancellationPolicy.tiers.map((tier) => (
-                    <li key={tier.minDaysBefore}>
-                      {t('tier', { days: tier.minDaysBefore, pct: tier.refundPct })}
-                    </li>
-                  ))}
-                </ul>
-              </CardContent>
-            </Card>
-          ) : null}
+              {data.cancellationPolicy ? (
+                <Card>
+                  <CardHeader>
+                    <CardTitle>{t('policy')}</CardTitle>
+                  </CardHeader>
+                  <CardContent className="text-sm">
+                    <p className="font-medium">{data.cancellationPolicy.name}</p>
+                    <ul className="text-muted-foreground text-xs">
+                      {data.cancellationPolicy.tiers.map((tier) => (
+                        <li key={tier.minDaysBefore}>
+                          {t('tier', { days: tier.minDaysBefore, pct: tier.refundPct })}
+                        </li>
+                      ))}
+                    </ul>
+                  </CardContent>
+                </Card>
+              ) : null}
 
-          {data.notes ? (
-            <Card>
-              <CardContent className="pt-4 text-sm">{data.notes}</CardContent>
-            </Card>
-          ) : null}
-          <Quotations booking={data} />
-          <Timeline booking={data} />
+              {data.notes ? (
+                <Card>
+                  <CardContent className="pt-4 text-sm">{data.notes}</CardContent>
+                </Card>
+              ) : null}
+              <Quotations booking={data} />
+              <Timeline booking={data} />
+            </>
+          )}
 
           {dialog === 'hold' || dialog === 'confirm' || dialog === 'cancel' ? (
             <ReasonDialog kind={dialog} booking={data} onClose={() => setDialog(null)} />

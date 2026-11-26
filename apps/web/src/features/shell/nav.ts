@@ -3,6 +3,8 @@ import {
   CalendarDays,
   ClipboardList,
   Contact,
+  HandCoins,
+  Receipt,
   Inbox,
   LayoutDashboard,
   ScrollText,
@@ -27,6 +29,8 @@ export interface NavItem {
     | 'leads'
     | 'calendar'
     | 'bookings'
+    | 'receivables'
+    | 'refunds'
     | 'staff'
     | 'roles'
     | 'audit'
@@ -45,6 +49,8 @@ export const NAV_ITEMS: readonly NavItem[] = [
   { href: '/leads', label: 'leads', icon: Inbox, permission: 'lead.view' },
   { href: '/calendar', label: 'calendar', icon: CalendarDays, permission: 'booking.view' },
   { href: '/bookings', label: 'bookings', icon: ClipboardList, permission: 'booking.view' },
+  { href: '/receivables', label: 'receivables', icon: Receipt, permission: 'payment.view' },
+  { href: '/refunds', label: 'refunds', icon: HandCoins, permission: 'payment.view' },
   { href: '/customers', label: 'customers', icon: Contact, permission: 'customer.view' },
   { href: '/staff', label: 'staff', icon: Users, permission: 'staff.manage' },
   { href: '/roles', label: 'roles', icon: ShieldCheck, permission: 'role.manage' },

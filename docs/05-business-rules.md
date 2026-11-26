@@ -153,9 +153,12 @@ never alter existing bookings. Any change creates a new quote version
 - **Refund**: a `refund_requests` row (`requested_by`, amount, reason) is created by a user with
   `payment.refund.request` and approved or rejected by a different user with
   `payment.refund.approve`. A tenant with exactly one active member holding refund permissions
-  may self-approve (`self_approved = true`, audited). Approval creates the `REFUND` payment
-  (linked by `refund_request_id`); the request becomes `PAID` when that payment is `CLEARED`
-  (immediately for cash/bank; a cheque refund stays `APPROVED` until cleared).
+  may self-approve (`self_approved = true`, audited). Approval only decides. **Mark paid** (by a
+  user with `payment.record`, naming the method) writes the `REFUND` payment (linked by
+  `refund_request_id`); the request becomes `PAID` when that payment is `CLEARED` (immediately
+  for cash/bank/card/wallet; a cheque refund is `PENDING` and the request stays `APPROVED` until the
+  cheque is cleared). The amount of a request cannot exceed what was paid and is not already being
+  refunded.
 - **Reversal** (wrong entry) = a new `REVERSAL` row with `reverses_id` pointing to the original,
   reason required. The original is never edited; each entry can be reversed once.
 - Payments are append-only in the database; the only update allowed is `status`/`cleared_at`
@@ -374,3 +377,19 @@ Where the rules above left a question open, this is what the code does.
 - **Lists.** `from` / `to` on the bookings list match when ANY active session starts in the range (workspace time zone).
 - **Sending.** A quotation can be sent once its PDF is ready (`422` before that, the page polls); the email goes to the customer's
   address or the `to` the agent typed, with the PDF attached. The WhatsApp link is `wa.me` with a text summary.
+
+## 19. Module 9: decisions
+
+Where the rules above left a question open, this is what the code does.
+
+- **Schedule.** Generated once, at the first hold (and at confirmation if there is none): Token (the fixed `tokenAmount`, due the day of the hold), Advance (`advancePct` of the grand total, LESS the token: the token counts towards the advance; due on the last day of the hold) and Balance (the rest, due `balanceDueDays` before the first session, never before the advance). Zero-amount items are left out; the items always add up to the grand total (the Balance takes the rounding). A re-hold keeps the schedule it has. A new quote version that changes the total generates the items again from the settings but keeps the dates the schedule already had (the reminders already sent for an unchanged item are kept). Staff with `payment.record` may replace the items while the slot is held or the booking is confirmed; they must add up to the grand total.
+- **Status per item** is never stored: the CLEARED net receipts (`bookings.paid_total`) fill the items in due-date order (ties in creation order). An item is PAID, PARTLY (money reached it, not yet due or not covered), UNPAID, or OVERDUE (something is still owed and its due date, in the venue's time zone, is before today; a partly paid item past due is OVERDUE).
+- **Recording.** Allowed while the slot is held, or the booking is confirmed or completed (not for a quotation, an expired or a cancelled booking). The receipt number is `{prefix}-R-{year}-{seq:5}`; the counter is per workspace and year. A cheque needs its number. A payment cannot be dated in the future. An overpayment is credit.
+- **Cheques.** Clear: PENDING to CLEARED. Bounce: PENDING or CLEARED to BOUNCED (a bank can return a cheque after it cleared, which lowers the paid total and can make a confirmed booking's advance "no longer covered": the booking page says so, nothing is undone automatically). A refund cheque clears but never bounces here; a reversed entry cannot bounce.
+- **Reversal.** Only a CLEARED receipt can be reversed (a pending or bounced cheque has nothing to take back; a refund is money already paid out), once, with a reason. The reversal copies the method and amount and points to the original.
+- **Receipts.** The PDF is rendered when the payment is recorded (a cheque again when it clears). The customer's email goes out when the PDF of a CLEARED receipt is saved, once per payment; a pending cheque is emailed when it clears; a reversed receipt is never emailed; a customer without an address gets none. The resend action sends the existing PDF to the customer or to another address.
+- **Ready to confirm.** `readyToConfirm` is true while the booking is held and the cleared receipts reach the advance. It is shown, never acted on: nobody and nothing confirms by itself.
+- **Refund queue.** Anyone with `payment.view` reads it; `payment.refund.approve` decides; `payment.record` pays out. A rejection needs a reason. The suggested refund of a cancelled booking (from the policy snapshot) is shown and pre-fills the request, which may be for another amount.
+- **Receivables.** Confirmed and completed bookings whose paid total is below the grand total, sorted by how long they have been overdue, then by the next due date. A held booking is not a receivable yet: its token and advance are what confirmation waits for. "Due this week" counts unpaid items due from today to six days ahead that are not overdue.
+- **Reminders.** One email per schedule item, from `reminderDays` before its due date (also for an item that is already late and was never reminded), after 09:00 in the workspace's time zone, for held and confirmed bookings only. Overdue items are flagged in the API and the screens; there is no overdue email in the MVP.
+- **Money never bumps a booking's `rev`**, and the booking history shows the money steps to people who hold `payment.view`.

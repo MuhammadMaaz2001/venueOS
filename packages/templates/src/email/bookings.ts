@@ -41,3 +41,33 @@ export const holdExpiring: EmailTemplateDefinition = {
     },
   },
 };
+
+/**
+ * `receipt.sent`: to the CUSTOMER, with the receipt PDF attached. Variables `customerName`, `tenantName`, `receiptNo`,
+ * `amount` (with the currency), `method`, `receivedOn`, `bookingNumber`.
+ */
+export const receiptSent: EmailTemplateDefinition = {
+  sender: 'tenant',
+  locales: {
+    en: {
+      subject: 'Receipt {{ receiptNo }} from {{ tenantName }}',
+      html: '<p>Dear {{ customerName }},</p><p>Thank you. We have received <strong>{{ amount }}</strong> ({{ method }}) on {{ receivedOn }} for booking {{ bookingNumber }}. Your receipt <strong>{{ receiptNo }}</strong> is attached as a PDF.</p><p>Kind regards,<br>{{ tenantName }}</p>',
+      text: 'Dear {{ customerName }},\n\nThank you. We have received {{ amount }} ({{ method }}) on {{ receivedOn }} for booking {{ bookingNumber }}. Your receipt {{ receiptNo }} is attached as a PDF.\n\nKind regards,\n{{ tenantName }}\n',
+    },
+  },
+};
+
+/**
+ * `payment.due`: a reminder to the CUSTOMER that a payment of the schedule is due. Variables `customerName`, `tenantName`,
+ * `bookingNumber`, `label` (Token, Advance, Balance), `amount` (what is still owed on it, with the currency), `dueDate`.
+ */
+export const paymentDue: EmailTemplateDefinition = {
+  sender: 'tenant',
+  locales: {
+    en: {
+      subject: 'Payment due {{ dueDate }}: booking {{ bookingNumber }}',
+      html: '<p>Dear {{ customerName }},</p><p>This is a friendly reminder that the <strong>{{ label }}</strong> payment of <strong>{{ amount }}</strong> for booking {{ bookingNumber }} is due on {{ dueDate }}. If you have already paid, thank you, and please ignore this message.</p><p>Kind regards,<br>{{ tenantName }}</p>',
+      text: 'Dear {{ customerName }},\n\nThis is a friendly reminder that the {{ label }} payment of {{ amount }} for booking {{ bookingNumber }} is due on {{ dueDate }}. If you have already paid, thank you, and please ignore this message.\n\nKind regards,\n{{ tenantName }}\n',
+    },
+  },
+};

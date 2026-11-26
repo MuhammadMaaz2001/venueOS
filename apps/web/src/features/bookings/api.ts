@@ -111,7 +111,12 @@ export function useQuotePreview() {
 
 function useInvalidateBookings() {
   const queryClient = useQueryClient();
-  return () => queryClient.invalidateQueries({ queryKey: bookingKeys.all });
+  // A booking action also changes what the Payments tab says (ready to confirm, the status, the schedule).
+  return () =>
+    Promise.all([
+      queryClient.invalidateQueries({ queryKey: bookingKeys.all }),
+      queryClient.invalidateQueries({ queryKey: ['payments'] }),
+    ]);
 }
 
 export function useCreateQuotation() {
