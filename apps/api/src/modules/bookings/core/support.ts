@@ -26,16 +26,20 @@ export async function nextCounter(tx: DbTx, tenantId: string, key: string): Prom
   return Number(value);
 }
 
-/** `{prefix}-{year}-{seq:4}` and `{prefix}-Q-{year}-{seq:4}` (docs/05 section 13). The year is the workspace's current year. */
+/**
+ * `{prefix}-{year}-{seq:4}`, `{prefix}-Q-{year}-{seq:4}` and `{prefix}-R-{year}-{seq:5}` (docs/05 section 13). The year is the
+ * workspace's current year; each kind and year has its own counter.
+ */
 export async function nextNumber(
   tx: DbTx,
   tenant: { id: string; timezone: string; settings: TenantSettings },
-  kind: 'booking' | 'quotation',
+  kind: 'booking' | 'quotation' | 'receipt',
   now: Date = new Date(),
 ): Promise<string> {
   const year = localDateOf(now, tenant.timezone).slice(0, 4);
   const seq = await nextCounter(tx, tenant.id, `${kind}:${year}`);
   const prefix = tenant.settings.bookingPrefix;
+  if (kind === 'receipt') return `${prefix}-R-${year}-${String(seq).padStart(5, '0')}`;
   const padded = String(seq).padStart(4, '0');
   return kind === 'booking' ? `${prefix}-${year}-${padded}` : `${prefix}-Q-${year}-${padded}`;
 }

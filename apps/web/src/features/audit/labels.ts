@@ -46,6 +46,18 @@ export const AUDIT_ACTIONS: readonly string[] = [
   'booking.session.cancel',
   'booking.expire',
   'booking.complete',
+  'payment.record',
+  'payment.clear',
+  'payment.bounce',
+  'payment.reverse',
+  'payment.receipt_resend',
+  'payment_schedule.generate',
+  'payment_schedule.regenerate',
+  'payment_schedule.update',
+  'refund.request',
+  'refund.approve',
+  'refund.reject',
+  'refund.pay',
 ];
 
 /** The entity types of those actions, for the "what was changed" filter. */
@@ -62,4 +74,6 @@ export const AUDIT_ENTITY_TYPES: readonly string[] = [
   'lead',
   'booking',
   'quotation',
+  'payment',
+  'refund_request',
 ];

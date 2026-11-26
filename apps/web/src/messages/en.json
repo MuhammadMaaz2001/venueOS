@@ -152,7 +152,9 @@
       "customers": "Customers",
       "leads": "Leads",
       "calendar": "Calendar",
-      "bookings": "Bookings"
+      "bookings": "Bookings",
+      "receivables": "Receivables",
+      "refunds": "Refunds"
     },
     "tenant": {
       "switch": "Switch workspace",
@@ -717,7 +719,9 @@
       "customer": "Customer",
       "lead": "Lead",
       "booking": "Booking",
-      "quotation": "Quotation"
+      "quotation": "Quotation",
+      "payment": "Payment",
+      "refund_request": "Refund request"
     },
     "actions": {
       "tenant_signup": "Workspace created",
@@ -762,7 +766,19 @@
       "booking_complete": "Booking completed",
       "quotation_create": "Quotation made",
       "quotation_send": "Quotation sent",
-      "quotation_accept": "Quotation accepted"
+      "quotation_accept": "Quotation accepted",
+      "payment_record": "Payment recorded",
+      "payment_clear": "Cheque cleared",
+      "payment_bounce": "Cheque bounced",
+      "payment_reverse": "Payment reversed",
+      "payment_receipt_resend": "Receipt sent again",
+      "refund_request": "Refund requested",
+      "refund_approve": "Refund approved",
+      "refund_reject": "Refund rejected",
+      "refund_pay": "Refund paid out",
+      "payment_schedule_generate": "Payment schedule made",
+      "payment_schedule_regenerate": "Payment schedule made again",
+      "payment_schedule_update": "Payment schedule changed"
     }
   },
   "Catalogue": {
@@ -1519,7 +1535,12 @@
       "balance": "Balance",
       "discountApplied": "Discount: {value}",
       "policy": "Cancellation policy",
-      "tier": "{days} days or more before: {pct}% refund"
+      "tier": "{days} days or more before: {pct}% refund",
+      "tabs": {
+        "label": "Booking sections",
+        "details": "Details",
+        "payments": "Payments"
+      }
     },
     "dialog": {
       "reason": "Reason",
@@ -1595,8 +1616,255 @@
         "booking_complete": "Booking completed",
         "quotation_create": "Quotation made",
         "quotation_send": "Quotation sent",
-        "quotation_accept": "Quotation accepted"
+        "quotation_accept": "Quotation accepted",
+        "payment_record": "Payment recorded",
+        "payment_clear": "Cheque cleared",
+        "payment_bounce": "Cheque bounced",
+        "payment_reverse": "Payment reversed",
+        "payment_receipt_resend": "Receipt sent again",
+        "refund_request": "Refund requested",
+        "refund_approve": "Refund approved",
+        "refund_reject": "Refund rejected",
+        "refund_pay": "Refund paid out",
+        "payment_schedule_generate": "Payment schedule made",
+        "payment_schedule_regenerate": "Payment schedule made again",
+        "payment_schedule_update": "Payment schedule changed"
       }
+    }
+  },
+  "Payments": {
+    "loadFailed": "The payments could not be loaded. Reload and try again.",
+    "errors": {
+      "changedByOthers": "This was changed by someone else. It has been reloaded; check it and try again.",
+      "stateNotAllowed": "That cannot be done in the current state of this entry or booking.",
+      "idempotencyConflict": "This submission was already used for a different payment. Close the form and start again.",
+      "forbidden": "You may not do that."
+    },
+    "methods": {
+      "CASH": "Cash",
+      "BANK_TRANSFER": "Bank transfer",
+      "CHEQUE": "Cheque",
+      "CARD": "Card",
+      "MOBILE_WALLET": "Mobile wallet",
+      "ONLINE_GATEWAY": "Online"
+    },
+    "ready": {
+      "text": "The advance has been received. The booking is ready to be confirmed.",
+      "action": "Confirm the booking"
+    },
+    "advanceLost": "The advance of {required} is no longer covered by cleared payments (a cheque came back or a payment was reversed).",
+    "summary": {
+      "total": "Booking total",
+      "paid": "Paid",
+      "balance": "Balance due",
+      "advance": "Advance ({pct}%)",
+      "advanceIn": "received",
+      "advanceOut": "not yet received",
+      "pending": "Cheques not cleared yet",
+      "credit": "Credit (paid beyond the total)"
+    },
+    "schedule": {
+      "title": "Payment schedule",
+      "edit": "Edit schedule",
+      "empty": "The schedule is made when the slot is held.",
+      "due": "due {date}",
+      "status": {
+        "PAID": "Paid",
+        "PARTLY": "Partly paid",
+        "UNPAID": "Unpaid",
+        "OVERDUE": "Overdue"
+      },
+      "description": "The items must add up to the booking total. Payments are applied to the earliest due item first.",
+      "label": "Name",
+      "dueDate": "Due date",
+      "amount": "Amount ({currency})",
+      "removeRow": "Remove item {n}",
+      "addRow": "Add an item",
+      "addsUp": "The items add up to the total of {total}.",
+      "toFill": "{gap} is still to be divided so that the items add up to {total}.",
+      "noItems": "The schedule needs at least one item.",
+      "rowInvalid": "Item {n} needs a name, a due date and an amount above zero.",
+      "totalMismatch": "The items must add up to the booking total ({gap} off).",
+      "saved": "The schedule was saved.",
+      "save": "Save schedule",
+      "cancel": "Cancel"
+    },
+    "entries": {
+      "title": "Payments",
+      "record": "Record a payment",
+      "requestRefund": "Request a refund",
+      "empty": "No payments yet.",
+      "receipt": "Receipt",
+      "type": {
+        "RECEIPT": "Receipt",
+        "REFUND": "Refund",
+        "REVERSAL": "Reversal"
+      },
+      "status": {
+        "PENDING": "Not cleared",
+        "CLEARED": "Cleared",
+        "BOUNCED": "Bounced"
+      },
+      "reversed": "Reversed by a later entry"
+    },
+    "receipt": {
+      "download": "Receipt PDF",
+      "preparing": "Receipt being made",
+      "resend": "Send again",
+      "sent": "The receipt was sent to {to}.",
+      "failed": "The receipt could not be opened."
+    },
+    "cheque": {
+      "clear": "Cheque cleared",
+      "bounce": "Cheque bounced",
+      "cleared": "The cheque is marked as cleared."
+    },
+    "reverse": {
+      "action": "Reverse",
+      "title": "Reverse this payment",
+      "description": "A new entry takes the payment back. The original stays as it is, and a payment can be reversed once.",
+      "reason": "Reason",
+      "reasonRequired": "Give a reason of at least 3 letters.",
+      "submit": "Reverse payment",
+      "cancel": "Cancel",
+      "done": "The payment was reversed."
+    },
+    "bounce": {
+      "title": "Cheque bounced",
+      "description": "A cheque that comes back no longer counts towards what the customer has paid.",
+      "reasonOptional": "Reason (optional)",
+      "reasonRequired": "A reason needs at least 3 letters.",
+      "submit": "Mark as bounced",
+      "cancel": "Cancel",
+      "done": "The cheque is marked as bounced."
+    },
+    "record": {
+      "title": "Record a payment",
+      "description": "A cheque counts once it has cleared; every other method counts at once.",
+      "method": "Method",
+      "amount": "Amount ({currency})",
+      "amountInvalid": "Enter an amount above zero with at most {decimals} decimals.",
+      "reference": "Reference (optional)",
+      "chequeNumber": "Cheque number",
+      "chequeHint": "Required for a cheque.",
+      "referenceRequired": "Enter the cheque number.",
+      "notes": "Notes (optional)",
+      "submit": "Save payment",
+      "cancel": "Cancel",
+      "saved": "Payment recorded. Receipt {receipt}.",
+      "savedPending": "Cheque recorded. It counts once it has cleared."
+    },
+    "refundRequest": {
+      "title": "Request a refund",
+      "description": "Someone else approves it, and then it is paid out.",
+      "suggested": "The cancellation policy suggests {amount}.",
+      "amount": "Amount ({currency})",
+      "upTo": "Up to {amount}.",
+      "reason": "Reason",
+      "amountInvalid": "Enter an amount above zero with at most {decimals} decimals.",
+      "reasonRequired": "Give a reason of at least 3 letters.",
+      "submit": "Request refund",
+      "cancel": "Cancel",
+      "done": "The refund was requested."
+    },
+    "refunds": {
+      "title": "Refund requests",
+      "decidedBy": "by {name}",
+      "status": {
+        "REQUESTED": "Requested",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "PAID": "Paid"
+      }
+    },
+    "refundQueue": {
+      "title": "Refunds",
+      "subtitle": "Approve or reject the refunds staff ask for, then pay them out.",
+      "noAccess": "You do not have access to refunds.",
+      "status": "Status",
+      "all": "All",
+      "statuses": {
+        "REQUESTED": "Requested",
+        "APPROVED": "Approved",
+        "REJECTED": "Rejected",
+        "PAID": "Paid"
+      },
+      "empty": "No refund requests here.",
+      "loadFailed": "The refunds could not be loaded. Reload and try again.",
+      "draft": "Draft quotation",
+      "chequePending": "cheque not cleared yet",
+      "requestedBy": "Requested by {name} on {at}",
+      "approvedBy": "approved by {name}",
+      "rejectedBy": "rejected by {name}",
+      "selfApproved": "their own request",
+      "approve": "Approve",
+      "reject": "Reject",
+      "pay": "Mark as paid",
+      "ownHint": "You asked for this one yourself. Another approver has to decide it.",
+      "more": "Show more",
+      "cancel": "Cancel",
+      "method": "Paid by",
+      "chequeNumber": "Cheque number",
+      "reference": "Reference (optional)",
+      "chequeRequired": "Enter the cheque number.",
+      "noteRequired": "Give a reason of at least 3 letters.",
+      "noteReject": "Reason for rejecting",
+      "noteApprove": "Note (optional)",
+      "submit": {
+        "approve": "Approve",
+        "reject": "Reject request",
+        "pay": "Mark as paid"
+      },
+      "approved": "The refund was approved.",
+      "rejected": "The refund request was rejected.",
+      "paid": "The refund is marked as paid.",
+      "paidCheque": "The refund cheque is recorded. The request is complete once it has cleared.",
+      "dialog": {
+        "approve": {
+          "title": "Approve this refund",
+          "description": "It can then be paid out."
+        },
+        "reject": {
+          "title": "Reject this refund",
+          "description": "The requester sees your reason."
+        },
+        "pay": {
+          "title": "Pay out this refund",
+          "description": "Record how the money was returned. The refund is entered in the payments of the booking."
+        }
+      }
+    },
+    "receivables": {
+      "title": "Receivables",
+      "subtitle": "What customers still owe on confirmed bookings, overdue first.",
+      "noAccess": "You do not have access to receivables.",
+      "summary": {
+        "overdue": "Overdue",
+        "dueThisWeek": "Due this week",
+        "outstanding": "Outstanding in total"
+      },
+      "bookings": "{count, plural, one {# booking} other {# bookings}}",
+      "filters": "Filter receivables",
+      "venue": "Venue",
+      "allVenues": "All venues",
+      "from": "Next due from",
+      "to": "Next due to",
+      "overdueOnly": "Overdue only",
+      "empty": "Nothing is owed right now.",
+      "loadFailed": "The receivables could not be loaded. Reload and try again.",
+      "draft": "Draft",
+      "overdueDays": "{days, plural, one {# day overdue} other {# days overdue}}",
+      "nextDue": "Next: {amount} due {date}",
+      "noSchedule": "No payment schedule",
+      "paidOf": "{paid} of {total} paid",
+      "more": "Show more"
+    },
+    "dashboard": {
+      "dueThisWeek": "Payments due this week",
+      "overdue": "Overdue payments",
+      "bookings": "{count, plural, one {# booking} other {# bookings}}",
+      "open": "Open receivables",
+      "loading": "Loading…"
     }
   }
 }

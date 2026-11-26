@@ -34,7 +34,7 @@ erDiagram
   BOOKING ||--o{ PAYMENT_SCHEDULE_ITEM : "due"
   BOOKING ||--o{ PAYMENT : "paid"
   BOOKING ||--o{ REFUND_REQUEST : "refunded by"
-  REFUND_REQUEST ||--o| PAYMENT : "approval creates"
+  REFUND_REQUEST ||--o| PAYMENT : "mark paid creates"
   BOOKING_SESSION ||--o{ VENDOR_ASSIGNMENT : uses
   BOOKING_SESSION ||--o{ INVENTORY_MOVEMENT : "issues stock"
   BOOKING ||--o{ EXPENSE : costs
@@ -170,6 +170,20 @@ Migrations `module6_8_bookings` and `bookings_touch_row`.
 `updated_at`, every other change does (the same idea as `leads.follow_up_notified_for`). Queues: `holds.expire`, `holds.expire.run`,
 `holds.warn.run`, `bookings.complete`, `bookings.complete.run`, each with its `.dead` queue.
 
+## Module 9 tables and checks
+
+Migration `module9_payments`.
+
+| Table | Added |
+| --- | --- |
+| `receipt_files` | New. `payment_id` (unique) and `pdf_key` (an S3 KEY, never a URL): where the receipt PDF of a payment lives. `payments` is append-only (only `status` and `cleared_at` may be updated), so the pointer cannot be a column of it. RLS like every tenant table |
+| `payments` | CHECK `payments_receipt_no_by_type`: a RECEIPT has a receipt number, nothing else has one. Index on `(tenant_id, received_at)` |
+| `payment_schedule_items` | CHECKs: `amount > 0`, label not blank. Partial index of the items not reminded yet (the reminder scanner) and `(booking_id, due_date)` |
+| `refund_requests` | CHECK `refund_requests_decision_consistent` (a request is decided exactly when `approved_by_id` is set) and `refund_requests_two_person_rule` (the approver is another user than the requester unless `self_approved`): the two-person rule is the database's too |
+| `bookings` | `paid_total` is written by the ledger in the transaction that changes a payment and is left out of the `touch_row_bookings()` comparison, so a payment never bumps `rev` or `updated_at` |
+
+Queues: `reminders.payment-due` and `reminders.payment-due.run`, each with its `.dead` queue. The migration also gives `payment.view` to every role that holds another payment permission.
+
 ## Derived and computed values
 
 | Value | How |
@@ -177,7 +191,7 @@ Migrations `module6_8_bookings` and `bookings_touch_row`.
 | Stock on hand | **Stored** in `inventory_items.on_hand` (CHECK >= 0), changed in the same transaction as the movement, after `SELECT ... FOR UPDATE` on the item row. The ledger invariant `on_hand = SUM(stock_delta)` is not enforced by a constraint; the nightly `inventory.reconcile` job checks it and alerts the branch manager (the constraint tests prove the issue 10 / return 8 / damaged 2 example) |
 | Session stock reconciliation | issued (`−ΣISSUE.stock_delta`) = `Σreturned_qty + Σdamaged_qty` over the session's movements |
 | Booking balance due | `grandTotal − paidTotal` (`paidTotal` maintained in the payment transaction) |
-| Paid total | `Σ` of CLEARED `RECEIPT` payments − CLEARED `REFUND` payments, where a `REVERSAL` negates the entry it points to |
+| Paid total | `Σ` of CLEARED `RECEIPT` payments − CLEARED `REFUND` payments, where a `REVERSAL` negates the entry it points to (`clearedNet` in `packages/shared`; a cheque that bounces after it cleared stops counting). Written to `bookings.paid_total` in the same transaction as the change |
 | Schedule item paid/unpaid | **FIFO**: received payments are applied to schedule items by due date; no allocation table |
 | Event profit | Booking revenue (line items, excl. tax) + vendor commission − expenses linked to the booking/sessions (reversals net out) − damage value (`damaged_qty × unit_cost` snapshot on the RETURN, plus session-linked DAMAGE) charged to the event |
 | Event sheet | Query over session + package items + add-ons + vendor assignments + inventory movements |

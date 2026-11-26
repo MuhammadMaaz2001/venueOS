@@ -1,5 +1,6 @@
 import { QuotePreviewSchema, formatMoney, money, roundMoney } from '@venueos/shared';
 import type { QuotationPdfVars } from '@venueos/templates';
+import { date, group, time } from './format';
 import type { PdfKindHandler } from './pdf-kind';
 
 const Snapshot = QuotePreviewSchema.pick({
@@ -8,31 +9,6 @@ const Snapshot = QuotePreviewSchema.pick({
   totals: true,
   taxRate: true,
 });
-
-/** `1234567.5` -> `1,234,567.50` (the money strings of the snapshot already have the currency's decimals). */
-const group = (value: string): string => {
-  const [whole = '', fraction] = value.split('.');
-  const sign = whole.startsWith('-') ? '-' : '';
-  const digits = sign ? whole.slice(1) : whole;
-  const grouped = digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
-  return `${sign}${grouped}${fraction === undefined ? '' : `.${fraction}`}`;
-};
-
-const date = (instant: Date, timeZone: string): string =>
-  new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    weekday: 'short',
-    day: 'numeric',
-    month: 'short',
-    year: 'numeric',
-  }).format(instant);
-const time = (instant: Date, timeZone: string): string =>
-  new Intl.DateTimeFormat('en-GB', {
-    timeZone,
-    hour: '2-digit',
-    minute: '2-digit',
-    hourCycle: 'h23',
-  }).format(instant);
 
 /**
  * `quotation`: the PDF of one quotation version. It prints the FROZEN snapshot of that version (`quotations.line_items`), so

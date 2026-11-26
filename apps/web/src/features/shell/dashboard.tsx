@@ -6,6 +6,7 @@ import { useEffect } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardDescription, CardHeader } from '@/components/ui/card';
 import { FollowUpsCard } from '../leads/follow-ups-card';
+import { PaymentsCard } from '../payments/payments-card';
 import { useVenues } from '../setup/api';
 import { useRoleName } from '../roles/use-role-name';
 import { useSession } from './session';
@@ -60,6 +61,8 @@ export function Dashboard() {
       </div>
 
       <FollowUpsCard />
+
+      <PaymentsCard />
 
       <Card>
         <CardContent className="text-muted-foreground text-sm">{t('comingSoon')}</CardContent>

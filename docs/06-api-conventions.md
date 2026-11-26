@@ -153,6 +153,27 @@ scoped to a space or slot of the caller's venues.
 
 Every booking route takes the booking's `rev` and answers `409 VERSION_CONFLICT` when it moved on. Actions answer `200`.
 
+## Payments, refunds and receivables (module 9)
+
+Every request that creates a payment, a reversal, a refund request or a refund payment needs an `Idempotency-Key` header; a retry returns the first result with `200` (201 the first time).
+
+| Endpoint | Access | Notes |
+| --- | --- | --- |
+| `GET /v1/bookings/{id}/payments` | `payment.view` | `summary` (paid total = cleared net, pending cheques, credit, balance, advance, `readyToConfirm`, suggested and possible refund), `schedule` (items with their FIFO status), `payments` (every entry), `refundRequests` |
+| `POST /v1/bookings/{id}/payments` | `payment.record` | `{ method, amount, reference?, receivedAt?, notes? }`; a cheque needs `reference` and starts PENDING; 422 for a quotation, expired or cancelled booking |
+| `PUT /v1/bookings/{id}/payment-schedule` | `payment.record` | `{ items: [{ label, dueDate, amount }] }`; must add up to the grand total (400); 422 unless held or confirmed |
+| `POST /v1/payments/{id}/clear` | `payment.record` | a pending cheque becomes CLEARED |
+| `POST /v1/payments/{id}/bounce` | `payment.record` | `{ reason? }`; a received cheque, PENDING or CLEARED, becomes BOUNCED |
+| `POST /v1/payments/{id}/reverse` | `payment.reverse` | `{ reason }`; a new REVERSAL entry; a cleared receipt, once |
+| `GET /v1/payments/{id}/receipt` | `payment.view` | `{ url, expiresInSeconds }` pre-signed (5 minutes); 422 while the PDF is being made |
+| `POST /v1/payments/{id}/receipt/resend` | `payment.record` | `{ to? }`; 422 for a payment that has not cleared or a customer without an address |
+| `POST /v1/bookings/{id}/refund-requests` | `payment.refund.request` | `{ amount, reason }`; up to what was paid and is not already being refunded (422) |
+| `GET /v1/refund-requests?status&bookingId&limit&cursor` | `payment.view` | newest first; the queue |
+| `POST /v1/refund-requests/{id}/approve`, `/reject` | `payment.refund.approve` | `{ rev, note? }` (reject: `note` required); not the requester's own unless they are the one approver (403) |
+| `POST /v1/refund-requests/{id}/pay` | `payment.record` | `{ rev, method, reference?, notes? }`; writes the REFUND payment; the request becomes PAID (a cheque: when it clears) |
+| `GET /v1/receivables?venueId&from&to&overdue&limit&cursor` | `payment.view` | confirmed and completed bookings with a balance, overdue first |
+| `GET /v1/receivables/summary` | `payment.view` | `dueThisWeek`, `overdue`, `outstanding` (count and amount): the dashboard cards |
+
 ## Lists
 
 - Cursor pagination: `?limit=25&cursor=<opaque>`; response

@@ -37,6 +37,12 @@ export const JOB_NAMES = {
   /** One per such booking: completes it when its balance is paid. */
   BOOKINGS_COMPLETE_RUN: 'bookings.complete.run',
   BOOKINGS_COMPLETE_RUN_DEAD: 'bookings.complete.run.dead',
+  /** Hourly: finds payment schedule items due soon that were not reminded yet (scanner, ids only). */
+  PAYMENT_DUE: 'reminders.payment-due',
+  PAYMENT_DUE_DEAD: 'reminders.payment-due.dead',
+  /** One per such item: emails the customer once, unless the item is already paid. */
+  PAYMENT_DUE_RUN: 'reminders.payment-due.run',
+  PAYMENT_DUE_RUN_DEAD: 'reminders.payment-due.run.dead',
 } as const;
 export type JobName = (typeof JOB_NAMES)[keyof typeof JOB_NAMES];
 
@@ -88,6 +94,10 @@ export type LeadFollowUpNotifyPayload = z.infer<typeof leadFollowUpNotifyPayload
 /** Payload of `holds.expire.run`, `holds.warn.run` and `bookings.complete.run`: identifiers only. */
 export const bookingJobPayloadSchema = z.object({ tenantId: id, bookingId: id }).strict();
 export type BookingJobPayload = z.infer<typeof bookingJobPayloadSchema>;
+
+/** Payload of `reminders.payment-due.run`: identifiers only. */
+export const paymentDueJobPayloadSchema = z.object({ tenantId: id, itemId: id }).strict();
+export type PaymentDueJobPayload = z.infer<typeof paymentDueJobPayloadSchema>;
 
 /** Values a template can print: strings, numbers, booleans, and nested objects of those. */
 export type TemplateVars = { [key: string]: string | number | boolean | TemplateVars };
@@ -200,7 +210,7 @@ export const PERMANENT_EMAIL_FAILURE_CODES: readonly EmailFailureCode[] = [
  * `kind` is any well-formed name; the worker answers an unregistered one with the permanent code
  * `UNKNOWN_KIND` (so a rolled-back deploy cannot wedge the queue). `PDF_KINDS` lists the kinds that ship.
  */
-export const PDF_KINDS = ['sample', 'quotation'] as const;
+export const PDF_KINDS = ['sample', 'quotation', 'receipt'] as const;
 export const pdfRenderPayloadSchema = z
   .object({ tenantId: id, kind: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/), entityId: id })
   .strict();

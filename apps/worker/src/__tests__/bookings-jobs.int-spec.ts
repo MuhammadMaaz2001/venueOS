@@ -278,6 +278,7 @@ describe('booking jobs', () => {
           amount: '100000',
           status: 'CLEARED',
           entryType: 'RECEIPT',
+          receiptNo: uid('r'),
         },
       });
       await tx.payment.create({
@@ -288,6 +289,7 @@ describe('booking jobs', () => {
           amount: '99999.99',
           status: 'CLEARED',
           entryType: 'RECEIPT',
+          receiptNo: uid('r'),
         },
       });
     });

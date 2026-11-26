@@ -110,3 +110,10 @@
   constraint decide (`409 SLOT_TAKEN`); status first, occupancies second. Amounts go through `toLineDto` / `toTotalsDto` with `visible =
   caller.has('booking.view_prices')`. Money is compared and summed with `money()` / `clearedNet()`, never numbers. Documents: the `quotation` PDF
   is queued with `pdf.render`; `PresignService` signs download links; emails carry attachments by S3 KEY. Test fixtures: `helpers/booking-fixtures.ts`.
+
+- **Payments (module 9)** (`modules/payments`; `core/` is shared with bookings): every money change goes through `PaymentsLedger` (rows, `refreshPaidTotal`
+  in the SAME transaction; `bookings.paid_total` never bumps `rev`) and is audited under its own entity (`payment`, `refund_request`). The schedule is
+  `PaymentSchedule` (generated at the hold, regenerated on a new total, FIFO status computed on read, never stored). Creating a payment, a reversal, a
+  refund request or a refund payment takes `@IdempotencyKey()`: look the key up first, compare the request (`IdempotencyConflictError` if it differs), and
+  treat a unique violation as the loser of a race that replays the winner (`200`, not `201`). Receipt PDFs: `pdf.render` kind `receipt`, key in
+  `receipt_files`, pre-signed link and the email with the PDF by KEY. Never edit a payment: `status` / `cleared_at` of a cheque only (the grant says so).

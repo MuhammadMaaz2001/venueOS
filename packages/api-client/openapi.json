@@ -4183,6 +4183,740 @@
         ]
       }
     },
+    "/v1/bookings/{id}/payments": {
+      "get": {
+        "description": "The schedule items carry their FIFO status (PAID, PARTLY, UNPAID, OVERDUE) from the cleared receipts. `summary.readyToConfirm` is true while the hold is open and the advance is in; nothing confirms by itself.",
+        "operationId": "BookingPaymentsController_overview",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentsOverviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Totals, payment schedule, entries and refund requests of a booking",
+        "tags": [
+          "payments"
+        ]
+      },
+      "post": {
+        "description": "A RECEIPT. Cash, bank transfer, card and wallet are CLEARED at once; a cheque is PENDING until it is cleared. The receipt number comes from the workspace counter and the receipt PDF is made in the background. An overpayment is allowed and shown as credit.",
+        "operationId": "BookingPaymentsController_record",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RecordPaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A retry with the same Idempotency-Key: the first result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Record a payment received",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/payment-schedule": {
+      "put": {
+        "description": "The items must add up to the grand total. Allowed while the slot is held or the booking is confirmed.",
+        "operationId": "BookingPaymentsController_replaceSchedule",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReplaceScheduleDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentsOverviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Replace the payment schedule",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/refund-requests": {
+      "post": {
+        "description": "The amount cannot be more than what is paid and not yet requested. Someone with payment.refund.approve decides; the booking page pre-fills the suggested refund of a cancelled booking.",
+        "operationId": "BookingPaymentsController_requestRefund",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateRefundRequestDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A retry with the same Idempotency-Key: the first result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Ask for a refund",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/payments/{id}/clear": {
+      "post": {
+        "description": "PENDING -> CLEARED; it counts towards the paid total from now on and the receipt is sent. A refund cheque completes its refund request.",
+        "operationId": "PaymentsController_clear",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A pending cheque cleared",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/payments/{id}/bounce": {
+      "post": {
+        "description": "PENDING or CLEARED -> BOUNCED. A bounced receipt stops counting, which lowers the paid total.",
+        "operationId": "PaymentsController_bounce",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BouncePaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A cheque bounced",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/payments/{id}/reverse": {
+      "post": {
+        "description": "Writes a REVERSAL entry that points to the original (a reason is required); the original is never changed and can be reversed once. Only a cleared receipt can be reversed.",
+        "operationId": "PaymentsController_reverse",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReversePaymentDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A retry with the same Idempotency-Key: the first result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PaymentResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Reverse a wrong entry",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/payments/{id}/receipt": {
+      "get": {
+        "description": "422 while the PDF is still being prepared.",
+        "operationId": "PaymentsController_receipt",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceiptLinkResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A pre-signed link to the receipt PDF (valid 5 minutes)",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/payments/{id}/receipt/resend": {
+      "post": {
+        "description": "To the customer's email address, or to `to`. The PDF is attached. 422 for a payment that has not cleared.",
+        "operationId": "PaymentsController_resend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ResendReceiptDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ResendReceiptResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Send the receipt to the customer again",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/refund-requests": {
+      "get": {
+        "description": "Filters: status, bookingId. Cursor pagination. Only the caller's venues.",
+        "operationId": "RefundRequestsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "REQUESTED",
+                "APPROVED",
+                "REJECTED",
+                "PAID"
+              ]
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Refund requests, newest first",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/refund-requests/{id}/approve": {
+      "post": {
+        "description": "Someone other than the requester. A workspace with exactly one active member who may approve refunds can approve its own request (`selfApproved`, audited).",
+        "operationId": "RefundRequestsController_approve",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DecideRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Approve a refund request",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/refund-requests/{id}/reject": {
+      "post": {
+        "description": "A note with the reason is required.",
+        "operationId": "RefundRequestsController_reject",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RejectRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Reject a refund request",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/refund-requests/{id}/pay": {
+      "post": {
+        "description": "Writes the REFUND payment with the method used: CLEARED at once, or PENDING for a cheque (the request stays APPROVED until the cheque is cleared).",
+        "operationId": "RefundRequestsController_pay",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "Idempotency-Key",
+            "in": "header",
+            "description": "A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT.",
+            "required": true,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PayRefundDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "A retry with the same Idempotency-Key: the first result",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestResponseDto"
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/RefundRequestResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Mark an approved refund as paid out",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/receivables": {
+      "get": {
+        "description": "Filters: venueId, from / to (next due date), overdue=true. Cursor pagination.",
+        "operationId": "ReceivablesController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "venueId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "overdue",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "true",
+                "false"
+              ]
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivablesResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Bookings with a balance due, overdue first",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
+    "/v1/receivables/summary": {
+      "get": {
+        "operationId": "ReceivablesController_summary",
+        "parameters": [],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ReceivablesSummaryResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Due this week, overdue and outstanding (the dashboard cards)",
+        "tags": [
+          "payments"
+        ]
+      }
+    },
     "/v1/availability": {
       "get": {
         "description": "Up to 62 days. Only taken cells are listed; every other cell of the grid is free. Each taken cell names the booking number and the customer (no prices). A combined space is taken when any component is, and the other way round. A venue outside the caller scope is 404.",
@@ -13027,6 +13761,1080 @@
         },
         "required": [
           "rev"
+        ]
+      },
+      "PaymentsOverviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "bookingId": {
+            "type": "string"
+          },
+          "bookingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "bookingStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "TENTATIVE",
+              "CONFIRMED",
+              "COMPLETED",
+              "CANCELLED",
+              "EXPIRED"
+            ]
+          },
+          "currency": {
+            "type": "string"
+          },
+          "summary": {
+            "type": "object",
+            "properties": {
+              "grandTotal": {
+                "type": "string"
+              },
+              "paidTotal": {
+                "type": "string"
+              },
+              "pendingCheques": {
+                "type": "string"
+              },
+              "credit": {
+                "type": "string"
+              },
+              "balanceDue": {
+                "type": "string"
+              },
+              "advancePct": {
+                "type": "number"
+              },
+              "advanceRequired": {
+                "type": "string"
+              },
+              "advanceMet": {
+                "type": "boolean"
+              },
+              "readyToConfirm": {
+                "type": "boolean"
+              },
+              "suggestedRefund": {
+                "type": "string",
+                "nullable": true
+              },
+              "refundable": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "grandTotal",
+              "paidTotal",
+              "pendingCheques",
+              "credit",
+              "balanceDue",
+              "advancePct",
+              "advanceRequired",
+              "advanceMet",
+              "readyToConfirm",
+              "suggestedRefund",
+              "refundable"
+            ]
+          },
+          "schedule": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "label": {
+                  "type": "string"
+                },
+                "dueDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount": {
+                  "type": "string"
+                },
+                "allocated": {
+                  "type": "string"
+                },
+                "remaining": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "PAID",
+                    "PARTLY",
+                    "UNPAID",
+                    "OVERDUE"
+                  ]
+                },
+                "reminded": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "label",
+                "dueDate",
+                "amount",
+                "allocated",
+                "remaining",
+                "status",
+                "reminded"
+              ]
+            }
+          },
+          "payments": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "bookingId": {
+                  "type": "string"
+                },
+                "entryType": {
+                  "type": "string",
+                  "enum": [
+                    "RECEIPT",
+                    "REFUND",
+                    "REVERSAL"
+                  ]
+                },
+                "method": {
+                  "type": "string",
+                  "enum": [
+                    "CASH",
+                    "BANK_TRANSFER",
+                    "CHEQUE",
+                    "CARD",
+                    "MOBILE_WALLET",
+                    "ONLINE_GATEWAY"
+                  ]
+                },
+                "amount": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "CLEARED",
+                    "BOUNCED"
+                  ]
+                },
+                "clearedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "reference": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "receiptNo": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "receivedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "receivedByName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "notes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reversesId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reversedById": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "refundRequestId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "receiptReady": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "bookingId",
+                "entryType",
+                "method",
+                "amount",
+                "status",
+                "clearedAt",
+                "reference",
+                "receiptNo",
+                "receivedAt",
+                "receivedByName",
+                "notes",
+                "reversesId",
+                "reversedById",
+                "refundRequestId",
+                "receiptReady",
+                "createdAt"
+              ]
+            }
+          },
+          "refundRequests": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "bookingId": {
+                  "type": "string"
+                },
+                "bookingNumber": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "REQUESTED",
+                    "APPROVED",
+                    "REJECTED",
+                    "PAID"
+                  ]
+                },
+                "amount": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "requestedById": {
+                  "type": "string"
+                },
+                "requestedByName": {
+                  "type": "string"
+                },
+                "approvedByName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "selfApproved": {
+                  "type": "boolean"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "decisionNote": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paymentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paymentStatus": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "CLEARED",
+                    "BOUNCED",
+                    null
+                  ],
+                  "nullable": true
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "bookingId",
+                "bookingNumber",
+                "customerName",
+                "status",
+                "amount",
+                "reason",
+                "requestedById",
+                "requestedByName",
+                "approvedByName",
+                "selfApproved",
+                "decidedAt",
+                "decisionNote",
+                "paymentId",
+                "paymentStatus",
+                "rev",
+                "createdAt"
+              ]
+            }
+          }
+        },
+        "required": [
+          "bookingId",
+          "bookingNumber",
+          "bookingStatus",
+          "currency",
+          "summary",
+          "schedule",
+          "payments",
+          "refundRequests"
+        ]
+      },
+      "RecordPaymentDto": {
+        "type": "object",
+        "properties": {
+          "method": {
+            "type": "string",
+            "enum": [
+              "CASH",
+              "BANK_TRANSFER",
+              "CHEQUE",
+              "CARD",
+              "MOBILE_WALLET"
+            ]
+          },
+          "amount": {
+            "type": "string",
+            "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "method",
+          "amount"
+        ]
+      },
+      "PaymentResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bookingId": {
+            "type": "string"
+          },
+          "entryType": {
+            "type": "string",
+            "enum": [
+              "RECEIPT",
+              "REFUND",
+              "REVERSAL"
+            ]
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "CASH",
+              "BANK_TRANSFER",
+              "CHEQUE",
+              "CARD",
+              "MOBILE_WALLET",
+              "ONLINE_GATEWAY"
+            ]
+          },
+          "amount": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CLEARED",
+              "BOUNCED"
+            ]
+          },
+          "clearedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "reference": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptNo": {
+            "type": "string",
+            "nullable": true
+          },
+          "receivedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "receivedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "reversesId": {
+            "type": "string",
+            "nullable": true
+          },
+          "reversedById": {
+            "type": "string",
+            "nullable": true
+          },
+          "refundRequestId": {
+            "type": "string",
+            "nullable": true
+          },
+          "receiptReady": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "bookingId",
+          "entryType",
+          "method",
+          "amount",
+          "status",
+          "clearedAt",
+          "reference",
+          "receiptNo",
+          "receivedAt",
+          "receivedByName",
+          "notes",
+          "reversesId",
+          "reversedById",
+          "refundRequestId",
+          "receiptReady",
+          "createdAt"
+        ]
+      },
+      "ReplaceScheduleDto": {
+        "type": "object",
+        "properties": {
+          "items": {
+            "minItems": 1,
+            "maxItems": 12,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "label": {
+                  "type": "string",
+                  "minLength": 1,
+                  "maxLength": 40
+                },
+                "dueDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "amount": {
+                  "type": "string",
+                  "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+                }
+              },
+              "required": [
+                "label",
+                "dueDate",
+                "amount"
+              ]
+            }
+          }
+        },
+        "required": [
+          "items"
+        ]
+      },
+      "CreateRefundRequestDto": {
+        "type": "object",
+        "properties": {
+          "amount": {
+            "type": "string",
+            "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "amount",
+          "reason"
+        ]
+      },
+      "RefundRequestResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "bookingId": {
+            "type": "string"
+          },
+          "bookingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "customerName": {
+            "type": "string"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "REQUESTED",
+              "APPROVED",
+              "REJECTED",
+              "PAID"
+            ]
+          },
+          "amount": {
+            "type": "string"
+          },
+          "reason": {
+            "type": "string"
+          },
+          "requestedById": {
+            "type": "string"
+          },
+          "requestedByName": {
+            "type": "string"
+          },
+          "approvedByName": {
+            "type": "string",
+            "nullable": true
+          },
+          "selfApproved": {
+            "type": "boolean"
+          },
+          "decidedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "decisionNote": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentId": {
+            "type": "string",
+            "nullable": true
+          },
+          "paymentStatus": {
+            "type": "string",
+            "enum": [
+              "PENDING",
+              "CLEARED",
+              "BOUNCED",
+              null
+            ],
+            "nullable": true
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          }
+        },
+        "required": [
+          "id",
+          "bookingId",
+          "bookingNumber",
+          "customerName",
+          "status",
+          "amount",
+          "reason",
+          "requestedById",
+          "requestedByName",
+          "approvedByName",
+          "selfApproved",
+          "decidedAt",
+          "decisionNote",
+          "paymentId",
+          "paymentStatus",
+          "rev",
+          "createdAt"
+        ]
+      },
+      "BouncePaymentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        }
+      },
+      "ReversePaymentDto": {
+        "type": "object",
+        "properties": {
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "reason"
+        ]
+      },
+      "ReceiptLinkResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "url",
+          "expiresInSeconds"
+        ]
+      },
+      "ResendReceiptDto": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          }
+        }
+      },
+      "ResendReceiptResponseDto": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "to"
+        ]
+      },
+      "RefundRequestListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "bookingId": {
+                  "type": "string"
+                },
+                "bookingNumber": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "REQUESTED",
+                    "APPROVED",
+                    "REJECTED",
+                    "PAID"
+                  ]
+                },
+                "amount": {
+                  "type": "string"
+                },
+                "reason": {
+                  "type": "string"
+                },
+                "requestedById": {
+                  "type": "string"
+                },
+                "requestedByName": {
+                  "type": "string"
+                },
+                "approvedByName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "selfApproved": {
+                  "type": "boolean"
+                },
+                "decidedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "decisionNote": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paymentId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paymentStatus": {
+                  "type": "string",
+                  "enum": [
+                    "PENDING",
+                    "CLEARED",
+                    "BOUNCED",
+                    null
+                  ],
+                  "nullable": true
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "bookingId",
+                "bookingNumber",
+                "customerName",
+                "status",
+                "amount",
+                "reason",
+                "requestedById",
+                "requestedByName",
+                "approvedByName",
+                "selfApproved",
+                "decidedAt",
+                "decisionNote",
+                "paymentId",
+                "paymentStatus",
+                "rev",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "DecideRefundDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "note": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "RejectRefundDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "note": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev",
+          "note"
+        ]
+      },
+      "PayRefundDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "method": {
+            "type": "string",
+            "enum": [
+              "CASH",
+              "BANK_TRANSFER",
+              "CHEQUE",
+              "CARD",
+              "MOBILE_WALLET"
+            ]
+          },
+          "reference": {
+            "type": "string",
+            "minLength": 1,
+            "maxLength": 100
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        },
+        "required": [
+          "rev",
+          "method"
+        ]
+      },
+      "ReceivablesResponseDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "bookingId": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "DRAFT",
+                    "TENTATIVE",
+                    "CONFIRMED",
+                    "COMPLETED",
+                    "CANCELLED",
+                    "EXPIRED"
+                  ]
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "venueName": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "phone"
+                  ]
+                },
+                "firstSessionAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "grandTotal": {
+                  "type": "string"
+                },
+                "paidTotal": {
+                  "type": "string"
+                },
+                "balanceDue": {
+                  "type": "string"
+                },
+                "nextDueDate": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "nullable": true
+                },
+                "nextDueAmount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "overdueAmount": {
+                  "type": "string"
+                },
+                "overdueDays": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "bookingId",
+                "number",
+                "status",
+                "venueId",
+                "venueName",
+                "customer",
+                "firstSessionAt",
+                "grandTotal",
+                "paidTotal",
+                "balanceDue",
+                "nextDueDate",
+                "nextDueAmount",
+                "overdueAmount",
+                "overdueDays"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "currency",
+          "data",
+          "nextCursor"
+        ]
+      },
+      "ReceivablesSummaryResponseDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "dueThisWeek": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ]
+          },
+          "overdue": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ]
+          },
+          "outstanding": {
+            "type": "object",
+            "properties": {
+              "count": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "amount": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "count",
+              "amount"
+            ]
+          }
+        },
+        "required": [
+          "currency",
+          "dueThisWeek",
+          "overdue",
+          "outstanding"
         ]
       },
       "AvailabilityResponseDto": {

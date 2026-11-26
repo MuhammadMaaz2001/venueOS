@@ -23,3 +23,8 @@
   builder (prices come from `POST /v1/quotations/preview`, never from the browser), the bookings list and booking page (actions, reasons, hold
   timer). Display rules live in `logic.ts` (date-only arithmetic in UTC, which buttons a status offers, exact money subtraction); the API decides
   again. Amounts are `null` without `booking.view_prices`: show nothing, not zero.
+
+- **Payments (module 9)** (`src/features/payments`): the Payments tab (`payments-panel.tsx`), refund queue, receivables page and dashboard cards. Every
+  figure comes from the API (never add or compare money with JS numbers: use `sumAmounts` / the API strings). A form that creates a payment makes ONE
+  `Idempotency-Key` per opening of its dialog (`newIdempotencyKey`), so a double click or a retry replays instead of paying twice. Booking actions also
+  invalidate `['payments']` (confirm changes what the tab says).

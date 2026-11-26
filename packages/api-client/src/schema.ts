@@ -1528,6 +1528,287 @@ export interface paths {
         patch?: never;
         trace?: never;
     };
+    "/v1/bookings/{id}/payments": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Totals, payment schedule, entries and refund requests of a booking
+         * @description The schedule items carry their FIFO status (PAID, PARTLY, UNPAID, OVERDUE) from the cleared receipts. `summary.readyToConfirm` is true while the hold is open and the advance is in; nothing confirms by itself.
+         */
+        get: operations["BookingPaymentsController_overview"];
+        put?: never;
+        /**
+         * Record a payment received
+         * @description A RECEIPT. Cash, bank transfer, card and wallet are CLEARED at once; a cheque is PENDING until it is cleared. The receipt number comes from the workspace counter and the receipt PDF is made in the background. An overpayment is allowed and shown as credit.
+         */
+        post: operations["BookingPaymentsController_record"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/payment-schedule": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        /**
+         * Replace the payment schedule
+         * @description The items must add up to the grand total. Allowed while the slot is held or the booking is confirmed.
+         */
+        put: operations["BookingPaymentsController_replaceSchedule"];
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/bookings/{id}/refund-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Ask for a refund
+         * @description The amount cannot be more than what is paid and not yet requested. Someone with payment.refund.approve decides; the booking page pre-fills the suggested refund of a cancelled booking.
+         */
+        post: operations["BookingPaymentsController_requestRefund"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{id}/clear": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A pending cheque cleared
+         * @description PENDING -> CLEARED; it counts towards the paid total from now on and the receipt is sent. A refund cheque completes its refund request.
+         */
+        post: operations["PaymentsController_clear"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{id}/bounce": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * A cheque bounced
+         * @description PENDING or CLEARED -> BOUNCED. A bounced receipt stops counting, which lowers the paid total.
+         */
+        post: operations["PaymentsController_bounce"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{id}/reverse": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reverse a wrong entry
+         * @description Writes a REVERSAL entry that points to the original (a reason is required); the original is never changed and can be reversed once. Only a cleared receipt can be reversed.
+         */
+        post: operations["PaymentsController_reverse"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{id}/receipt": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * A pre-signed link to the receipt PDF (valid 5 minutes)
+         * @description 422 while the PDF is still being prepared.
+         */
+        get: operations["PaymentsController_receipt"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/payments/{id}/receipt/resend": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Send the receipt to the customer again
+         * @description To the customer's email address, or to `to`. The PDF is attached. 422 for a payment that has not cleared.
+         */
+        post: operations["PaymentsController_resend"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refund-requests": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Refund requests, newest first
+         * @description Filters: status, bookingId. Cursor pagination. Only the caller's venues.
+         */
+        get: operations["RefundRequestsController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refund-requests/{id}/approve": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Approve a refund request
+         * @description Someone other than the requester. A workspace with exactly one active member who may approve refunds can approve its own request (`selfApproved`, audited).
+         */
+        post: operations["RefundRequestsController_approve"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refund-requests/{id}/reject": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Reject a refund request
+         * @description A note with the reason is required.
+         */
+        post: operations["RefundRequestsController_reject"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/refund-requests/{id}/pay": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        get?: never;
+        put?: never;
+        /**
+         * Mark an approved refund as paid out
+         * @description Writes the REFUND payment with the method used: CLEARED at once, or PENDING for a cheque (the request stays APPROVED until the cheque is cleared).
+         */
+        post: operations["RefundRequestsController_pay"];
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/receivables": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /**
+         * Bookings with a balance due, overdue first
+         * @description Filters: venueId, from / to (next due date), overdue=true. Cursor pagination.
+         */
+        get: operations["ReceivablesController_list"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
+    "/v1/receivables/summary": {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        /** Due this week, overdue and outstanding (the dashboard cards) */
+        get: operations["ReceivablesController_summary"];
+        put?: never;
+        post?: never;
+        delete?: never;
+        options?: never;
+        head?: never;
+        patch?: never;
+        trace?: never;
+    };
     "/v1/availability": {
         parameters: {
             query?: never;
@@ -3505,6 +3786,252 @@ export interface components {
         CancelSessionDto: {
             rev: number;
             reason?: string;
+        };
+        PaymentsOverviewResponseDto: {
+            bookingId: string;
+            bookingNumber: string | null;
+            /** @enum {string} */
+            bookingStatus: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+            currency: string;
+            summary: {
+                grandTotal: string;
+                paidTotal: string;
+                pendingCheques: string;
+                credit: string;
+                balanceDue: string;
+                advancePct: number;
+                advanceRequired: string;
+                advanceMet: boolean;
+                readyToConfirm: boolean;
+                suggestedRefund: string | null;
+                refundable: string;
+            };
+            schedule: {
+                id: string;
+                label: string;
+                dueDate: string;
+                amount: string;
+                allocated: string;
+                remaining: string;
+                /** @enum {string} */
+                status: "PAID" | "PARTLY" | "UNPAID" | "OVERDUE";
+                reminded: boolean;
+            }[];
+            payments: {
+                id: string;
+                bookingId: string;
+                /** @enum {string} */
+                entryType: "RECEIPT" | "REFUND" | "REVERSAL";
+                /** @enum {string} */
+                method: "CASH" | "BANK_TRANSFER" | "CHEQUE" | "CARD" | "MOBILE_WALLET" | "ONLINE_GATEWAY";
+                amount: string;
+                /** @enum {string} */
+                status: "PENDING" | "CLEARED" | "BOUNCED";
+                /** Format: date-time */
+                clearedAt: string | null;
+                reference: string | null;
+                receiptNo: string | null;
+                /** Format: date-time */
+                receivedAt: string;
+                receivedByName: string | null;
+                notes: string | null;
+                reversesId: string | null;
+                reversedById: string | null;
+                refundRequestId: string | null;
+                receiptReady: boolean;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            refundRequests: {
+                id: string;
+                bookingId: string;
+                bookingNumber: string | null;
+                customerName: string;
+                /** @enum {string} */
+                status: "REQUESTED" | "APPROVED" | "REJECTED" | "PAID";
+                amount: string;
+                reason: string;
+                requestedById: string;
+                requestedByName: string;
+                approvedByName: string | null;
+                selfApproved: boolean;
+                /** Format: date-time */
+                decidedAt: string | null;
+                decisionNote: string | null;
+                paymentId: string | null;
+                /** @enum {string|null} */
+                paymentStatus: "PENDING" | "CLEARED" | "BOUNCED" | null;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+        };
+        RecordPaymentDto: {
+            /** @enum {string} */
+            method: "CASH" | "BANK_TRANSFER" | "CHEQUE" | "CARD" | "MOBILE_WALLET";
+            amount: string;
+            reference?: string;
+            /** Format: date-time */
+            receivedAt?: string;
+            notes?: string;
+        };
+        PaymentResponseDto: {
+            id: string;
+            bookingId: string;
+            /** @enum {string} */
+            entryType: "RECEIPT" | "REFUND" | "REVERSAL";
+            /** @enum {string} */
+            method: "CASH" | "BANK_TRANSFER" | "CHEQUE" | "CARD" | "MOBILE_WALLET" | "ONLINE_GATEWAY";
+            amount: string;
+            /** @enum {string} */
+            status: "PENDING" | "CLEARED" | "BOUNCED";
+            /** Format: date-time */
+            clearedAt: string | null;
+            reference: string | null;
+            receiptNo: string | null;
+            /** Format: date-time */
+            receivedAt: string;
+            receivedByName: string | null;
+            notes: string | null;
+            reversesId: string | null;
+            reversedById: string | null;
+            refundRequestId: string | null;
+            receiptReady: boolean;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        ReplaceScheduleDto: {
+            items: {
+                label: string;
+                dueDate: string;
+                amount: string;
+            }[];
+        };
+        CreateRefundRequestDto: {
+            amount: string;
+            reason: string;
+        };
+        RefundRequestResponseDto: {
+            id: string;
+            bookingId: string;
+            bookingNumber: string | null;
+            customerName: string;
+            /** @enum {string} */
+            status: "REQUESTED" | "APPROVED" | "REJECTED" | "PAID";
+            amount: string;
+            reason: string;
+            requestedById: string;
+            requestedByName: string;
+            approvedByName: string | null;
+            selfApproved: boolean;
+            /** Format: date-time */
+            decidedAt: string | null;
+            decisionNote: string | null;
+            paymentId: string | null;
+            /** @enum {string|null} */
+            paymentStatus: "PENDING" | "CLEARED" | "BOUNCED" | null;
+            rev: number;
+            /** Format: date-time */
+            createdAt: string;
+        };
+        BouncePaymentDto: {
+            reason?: string;
+        };
+        ReversePaymentDto: {
+            reason: string;
+        };
+        ReceiptLinkResponseDto: {
+            url: string;
+            expiresInSeconds: number;
+        };
+        ResendReceiptDto: {
+            /** Format: email */
+            to?: string;
+        };
+        ResendReceiptResponseDto: {
+            to: string;
+        };
+        RefundRequestListResponseDto: {
+            data: {
+                id: string;
+                bookingId: string;
+                bookingNumber: string | null;
+                customerName: string;
+                /** @enum {string} */
+                status: "REQUESTED" | "APPROVED" | "REJECTED" | "PAID";
+                amount: string;
+                reason: string;
+                requestedById: string;
+                requestedByName: string;
+                approvedByName: string | null;
+                selfApproved: boolean;
+                /** Format: date-time */
+                decidedAt: string | null;
+                decisionNote: string | null;
+                paymentId: string | null;
+                /** @enum {string|null} */
+                paymentStatus: "PENDING" | "CLEARED" | "BOUNCED" | null;
+                rev: number;
+                /** Format: date-time */
+                createdAt: string;
+            }[];
+            nextCursor: string | null;
+        };
+        DecideRefundDto: {
+            rev: number;
+            note?: string;
+        };
+        RejectRefundDto: {
+            rev: number;
+            note: string;
+        };
+        PayRefundDto: {
+            rev: number;
+            /** @enum {string} */
+            method: "CASH" | "BANK_TRANSFER" | "CHEQUE" | "CARD" | "MOBILE_WALLET";
+            reference?: string;
+            notes?: string;
+        };
+        ReceivablesResponseDto: {
+            currency: string;
+            data: {
+                bookingId: string;
+                number: string | null;
+                /** @enum {string} */
+                status: "DRAFT" | "TENTATIVE" | "CONFIRMED" | "COMPLETED" | "CANCELLED" | "EXPIRED";
+                venueId: string;
+                venueName: string;
+                customer: {
+                    id: string;
+                    name: string;
+                    phone: string;
+                };
+                /** Format: date-time */
+                firstSessionAt: string | null;
+                grandTotal: string;
+                paidTotal: string;
+                balanceDue: string;
+                nextDueDate: string | null;
+                nextDueAmount: string | null;
+                overdueAmount: string;
+                overdueDays: number | null;
+            }[];
+            nextCursor: string | null;
+        };
+        ReceivablesSummaryResponseDto: {
+            currency: string;
+            dueThisWeek: {
+                count: number;
+                amount: string;
+            };
+            overdue: {
+                count: number;
+                amount: string;
+            };
+            outstanding: {
+                count: number;
+                amount: string;
+            };
         };
         AvailabilityResponseDto: {
             venueId: string;
@@ -6052,6 +6579,411 @@ export interface operations {
                 };
                 content: {
                     "application/json": components["schemas"]["BookingDetailResponseDto"];
+                };
+            };
+        };
+    };
+    BookingPaymentsController_overview: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentsOverviewResponseDto"];
+                };
+            };
+        };
+    };
+    BookingPaymentsController_record: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RecordPaymentDto"];
+            };
+        };
+        responses: {
+            /** @description A retry with the same Idempotency-Key: the first result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponseDto"];
+                };
+            };
+        };
+    };
+    BookingPaymentsController_replaceSchedule: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReplaceScheduleDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentsOverviewResponseDto"];
+                };
+            };
+        };
+    };
+    BookingPaymentsController_requestRefund: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["CreateRefundRequestDto"];
+            };
+        };
+        responses: {
+            /** @description A retry with the same Idempotency-Key: the first result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_clear: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_bounce: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["BouncePaymentDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_reverse: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ReversePaymentDto"];
+            };
+        };
+        responses: {
+            /** @description A retry with the same Idempotency-Key: the first result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["PaymentResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_receipt: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceiptLinkResponseDto"];
+                };
+            };
+        };
+    };
+    PaymentsController_resend: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["ResendReceiptDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ResendReceiptResponseDto"];
+                };
+            };
+        };
+    };
+    RefundRequestsController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                status?: "REQUESTED" | "APPROVED" | "REJECTED" | "PAID";
+                bookingId?: string;
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestListResponseDto"];
+                };
+            };
+        };
+    };
+    RefundRequestsController_approve: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["DecideRefundDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestResponseDto"];
+                };
+            };
+        };
+    };
+    RefundRequestsController_reject: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["RejectRefundDto"];
+            };
+        };
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestResponseDto"];
+                };
+            };
+        };
+    };
+    RefundRequestsController_pay: {
+        parameters: {
+            query?: never;
+            header: {
+                /** @description A client-made key (8-100 letters, digits or _ . : -). A retry with the same key returns the first result (200 instead of 201); the same key with a different request is 409 IDEMPOTENCY_CONFLICT. */
+                "Idempotency-Key": string;
+            };
+            path: {
+                id: string;
+            };
+            cookie?: never;
+        };
+        requestBody: {
+            content: {
+                "application/json": components["schemas"]["PayRefundDto"];
+            };
+        };
+        responses: {
+            /** @description A retry with the same Idempotency-Key: the first result */
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestResponseDto"];
+                };
+            };
+            201: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["RefundRequestResponseDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_list: {
+        parameters: {
+            query?: {
+                limit?: number;
+                cursor?: string;
+                venueId?: string;
+                from?: string;
+                to?: string;
+                overdue?: "true" | "false";
+            };
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivablesResponseDto"];
+                };
+            };
+        };
+    };
+    ReceivablesController_summary: {
+        parameters: {
+            query?: never;
+            header?: never;
+            path?: never;
+            cookie?: never;
+        };
+        requestBody?: never;
+        responses: {
+            200: {
+                headers: {
+                    [name: string]: unknown;
+                };
+                content: {
+                    "application/json": components["schemas"]["ReceivablesSummaryResponseDto"];
                 };
             };
         };

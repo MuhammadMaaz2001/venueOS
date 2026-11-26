@@ -290,8 +290,7 @@ item inside that tenant's context. Resource IDs from another tenant return **404
   `cleared_at` for cheque clearing). Corrections are `REVERSAL` entries linked to the original
   (`reverses_id`, one per original, reason required). `amount` is always positive; `entry_type`
   (`RECEIPT`, `REFUND`, `REVERSAL`) decides the effect.
-- Refunds go through `refund_requests` (requested → approved/rejected → paid); approval creates
-  the `REFUND` payment.
+- Refunds go through `refund_requests` (requested → approved/rejected → paid): approval only decides, and "mark paid" (with the method used) writes the `REFUND` payment. The two-person rule is enforced by the service AND by a database CHECK (`refund_requests_two_person_rule`); a workspace with exactly one active member who may approve can approve its own request, recorded as `self_approved` and audited.
 - Payment, refund request, expense and inventory movement creation requires an
   `Idempotency-Key` header; the unique `(tenant_id, idempotency_key)` makes retries safe.
 - Booking, quotation and receipt numbers come from `tenant_counters` inside the same
@@ -359,3 +358,7 @@ If a leak or compromise is suspected: revoke sessions and rotate affected secret
 preserve logs (`login_attempts` keeps 30 days of hashed-email and IP history for exactly this; copy what you
 need out before it ages away), identify affected tenants from audit and access logs, inform affected tenant
 owners in writing, then write a short post-mortem in `docs/incidents/`.
+
+### Module 9: who may do what with money
+
+`payment.view` reads the Payments tab, the receipts, the refund queue and receivables; `payment.record` records a payment, clears or bounces a cheque, edits the payment schedule, resends a receipt and marks an approved refund as paid; `payment.reverse` reverses an entry; `payment.refund.request` asks for a refund; `payment.refund.approve` approves or rejects one (never the requester's own, except as the single approver). Every route is venue-scoped (a booking of another venue is 404 like another workspace's). Every payment, reversal, refund request and refund payment needs an `Idempotency-Key` header (8-100 characters of `A-Z a-z 0-9 _ . : -`): a retry returns the first result with `200`, the same key with a different request is `409 IDEMPOTENCY_CONFLICT`, and the key is unique per workspace in the database. Receipt PDFs live under `tenants/{tenantId}/pdf/receipt/{paymentId}.pdf`; the browser gets a pre-signed URL of 5 minutes and the email carries the PDF by key. A money change never bumps the booking's `rev`; it is audited under its own entity (`payment`, `refund_request`) and appears in the booking history for people who hold `payment.view`.

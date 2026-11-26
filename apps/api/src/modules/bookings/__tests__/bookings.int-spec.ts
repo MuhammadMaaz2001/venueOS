@@ -62,6 +62,10 @@ describe('bookings endpoints', () => {
           amount,
           status: 'CLEARED',
           entryType: 'RECEIPT',
+          // A receipt always has a number (payments_receipt_no_by_type); other entries have none.
+          ...(over.entryType === undefined || over.entryType === 'RECEIPT'
+            ? { receiptNo: `R-${Math.random().toString(36).slice(2, 10)}` }
+            : {}),
           ...over,
         } as never,
       }),

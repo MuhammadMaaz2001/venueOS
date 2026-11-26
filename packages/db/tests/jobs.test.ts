@@ -409,6 +409,10 @@ describe('pg-boss schema', () => {
       dead('ops.dead-letter-check.dead'),
       live('pdf.render', 5, 3600),
       dead('pdf.render.dead'),
+      live('reminders.payment-due', 5, 3600),
+      dead('reminders.payment-due.dead'),
+      live('reminders.payment-due.run', 5, 3600),
+      dead('reminders.payment-due.run.dead'),
     ]);
   });
 });
