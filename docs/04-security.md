@@ -160,6 +160,17 @@ price rules scoped to a space or slot carry that venue's id for venue-scoped rea
 `booking.edit_locked` is the extra permission inside the guest-lock window;
 `quotation.manage` drafts and prices quotations, `quotation.send` emails/shares them.
 
+**Modules 6-8 rules.** Every quotation endpoint also needs `booking.view_prices` (a quotation IS the price), and a booking read
+without it returns `null` for every amount (lines, totals, grand total, paid total, suggested refund). `booking.view` is the way
+into the calendar, the bookings list and a booking; the migration `module6_8_bookings` added it to every role that already holds
+one of the other booking permissions. The calendar shows who has a slot (number and customer name) but never a price. Overrides
+need their own permission AND a reason that is kept in the audit row: `booking.override_rules` (a local rule), `booking.confirm_override`
+(confirm without the advance), `booking.edit_locked` (a guest change inside the lock window), `booking.extend_hold` (a second
+extension). A discount above the role's `maxDiscountPct` is `403 DISCOUNT_LIMIT` and is checked only for a new or changed
+discount, so a colleague with a lower limit can still edit a booking that already carries a larger one. The quotation PDF is stored
+under `tenants/{tenantId}/pdf/quotation/{id}.pdf` and handed out as a pre-signed URL of 5 minutes; the WhatsApp link carries a text
+summary only, never the PDF.
+
 ## 3. Tenant isolation (three layers)
 
 1. **Guard layer:** `TenantGuard` sets `tenantId` from the session's active tenant after

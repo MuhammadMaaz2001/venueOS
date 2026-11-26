@@ -148,17 +148,36 @@ dev over HTTPS.
   the booking's current `booking_line_items` and as an immutable `quotations` row (version N,
   JSON snapshot). The client never sends prices.
 - The booking number is assigned at the first hold, not when the quotation is drafted.
+- **A quotation is a DRAFT booking** (module 7). `POST /v1/quotations` writes the booking, its sessions, the priced
+  `booking_line_items` and `quotations` version 1 (number `{prefix}-Q-{year}-{seq:4}`; every version of a booking keeps the same
+  number) in one transaction and queues the `quotation` PDF. A priced change of a sent quotation, or of a held or confirmed
+  booking, writes a new version; an unsent draft is re-priced in place.
+- **One pricing function** (`apps/api/src/pricing/quote.ts`, pure, no Nest, no database): rent with price rules (module 3 code) ->
+  package per head x max(guests, package minimum, guaranteed guests) -> add-ons (FIXED, PER_HEAD, PER_HOUR, PER_UNIT) -> discount on
+  the subtotal (capped by the role's `maxDiscountPct`, else 403 `DISCOUNT_LIMIT`) -> tax. Output: signed line items and totals.
+  The inputs of every session (rent rules, package rate, add-on prices) are frozen in `booking_sessions.pricing` and the tax and
+  discount in `bookings.pricing`, so a held booking is re-priced at its own rates unless the caller asks for `requote: CURRENT`.
+- **Holds** insert one `space_occupancies` row per physical space of every active session (a combined space expands to its
+  components; the larger of the combined and component buffers applies). The booking status is updated BEFORE the occupancy rows
+  are inserted, because the triggers derive `active` from it. An overlap is the exclusion violation, mapped to `409 SLOT_TAKEN`.
+  Quotes never block: they warn (`warnings`) about taken slots and broken local rules.
+- **Layers:** `modules/bookings/core` holds the shared services (`QuoteBuilder`, `BookingWriter`, numbering, ledger, lead link);
+  `modules/quotations`, `modules/bookings` and `modules/availability` are thin controllers and services over them.
 
 ## Background jobs (apps/worker, pg-boss)
 
 | Job | Trigger | Does |
 | --- | --- | --- |
-| `holds.expire` | Every 5 min scanner | Sets TENTATIVE bookings past `holdExpiresAt` to EXPIRED (trigger frees the slots), emails the agent |
+| `holds.expire` | Every 5 min scanner (UTC cron) | System job (`venueos_jobs`, ids only). Enqueues one `holds.expire.run` per TENTATIVE booking past `holdExpiresAt` (singleton key `hold-expire:<bookingId>`) and one `holds.warn.run` per hold that ends within `holdWarnHours` and was not warned about yet (`hold-warn:<bookingId>`) |
+| `holds.expire.run` | Per booking | Tenant job, payload `{ tenantId, bookingId }`. Re-checks inside the tenant, sets TENTATIVE -> EXPIRED with a conditional UPDATE (a confirmation or extension that just happened wins; the trigger frees the slots), writes a SYSTEM audit row `booking.expire` and queues the `hold.expired` email to the agent who made the hold, all in one transaction |
+| `holds.warn.run` | Per booking | Tenant job. Stamps `bookings.hold_warned_at` (does not bump `rev`) and queues the `hold.expiring` email to the agent, once per hold; an extension clears the stamp |
+| `bookings.complete` | Hourly scanner (minute 7) | Finds CONFIRMED bookings whose last active session ended at least 24 hours ago and enqueues `bookings.complete.run` (`booking-complete:<bookingId>`) |
+| `bookings.complete.run` | Per booking | Tenant job. CONFIRMED -> COMPLETED when cleared receipts cover the grand total (SYSTEM audit `booking.complete`); otherwise it stays CONFIRMED (result `BALANCE_DUE`) and shows up in receivables (module 14) |
 | `reminders.payment-due` | Daily 09:00 venue time | Emails customers with unpaid schedule items (FIFO allocation of received payments) due in N days; marks `reminded` |
 | `reminders.event` | Daily | Event reminder to customer N days before; event sheet email to ops staff the day before |
 | `leads.follow-up` | Every 15 min | Internal email to assignee when `nextFollowUpAt` passes |
 | `email.send` | Enqueued by API (same transaction as the business change), payload `{ tenantId, messageKey }` only | Loads the `queued` `message_logs` row (recipient, template, locale, variables, reply-to), renders the template in its locale, sends via the configured provider (SES, or SMTP/Mailpit in development), appends `sent` / `failed` rows. Unknown template or invalid payload: final `failed` row and dead-letter at once |
-| `pdf.render` | Enqueued by API, payload `{ tenantId, kind, entityId }` only | Loads the document's data for that `kind` in a short tenant transaction, fills the `packages/templates` HTML, renders it to PDF in headless Chromium (bundled Latin font, JavaScript and network off), uploads it to `tenants/{tenantId}/pdf/{kind}/{entityId}.pdf` and lets the kind record the **key** (`quotations.pdf_key`, ...). Kinds are registered by their modules (`PdfKindHandler`); only `sample` ships with P0-6b. Fixed failure codes; unknown kind, missing entity, template error and oversize are dead-lettered at once |
+| `pdf.render` | Enqueued by API, payload `{ tenantId, kind, entityId }` only | Loads the document's data for that `kind` in a short tenant transaction, fills the `packages/templates` HTML, renders it to PDF in headless Chromium (bundled Latin font, JavaScript and network off), uploads it to `tenants/{tenantId}/pdf/{kind}/{entityId}.pdf` and lets the kind record the **key** (`quotations.pdf_key`, ...). Kinds are registered by their modules (`PdfKindHandler`): `sample` (P0-6b) and `quotation` (module 7: prints the FROZEN snapshot `quotations.line_items`, so a version never changes after it was priced). Fixed failure codes; unknown kind, missing entity, template error and oversize are dead-lettered at once |
 | `inventory.low-stock` | Daily | Internal email when `on_hand` < `reorderLevel` |
 | `inventory.reconcile` | Nightly | Scanner (`venueos_jobs`, tenants only) enqueues one job per tenant; the job (as `venueos_app` in that tenant) compares each item's `on_hand` with `SUM(stock_delta)` and emails the venue's branch manager(s) on any mismatch, plus a SYSTEM audit entry. Report only, never auto-corrects |
 | `auth.purge` | Daily 03:00 Asia/Karachi | System job (no tenant), the only worker code that uses `AuthDb`. Deletes sessions ended or revoked > 1 day ago or idle > 2 days, used or expired `auth_tokens`, invitations accepted/revoked/expired > 30 days ago, `login_attempts` > 30 days and `auth_requests` > 1 day, and for signups never verified after 30 days (no session) only the `user_credentials` and `auth_tokens`: the `users` row, the tenant and the audit rows stay |
@@ -209,6 +228,10 @@ without retries.
 - Language: customer emails and receipts use `customers.preferred_locale`, falling back to the
   tenant's `default_locale`.
 - PDFs are rendered with JavaScript off and every network request blocked; fonts (Noto Sans, SIL OFL; an Arabic family is added with the Arabic templates) are bundled in `packages/templates/fonts` and inlined into each document. Details and the worker image requirements: docs/08, "PDF rendering".
+- **Attachments.** `message_logs.attachments` holds S3 object KEYS (never a file or a URL). `enqueueEmail` refuses a key outside
+  `tenants/{tenantId}/`, and the worker checks the prefix again, downloads the objects between transactions and attaches them
+  (`ATTACHMENT_UNAVAILABLE` is a retryable fixed code). Downloads for staff are short-lived pre-signed GET URLs built in the API
+  (`PresignService`, SigV4 query signing with the S3 client's credential chain, 5 minutes); the key never reaches the browser.
 - Files (venue photos, expense bill photos, generated PDFs) go to a private S3 bucket under
   `tenants/{tenantId}/...`. The database stores the object **key** (`pdf_key`, `receipt_key`,
   `photo_keys`), never a URL; the browser gets short-lived pre-signed URLs only.

@@ -1,4 +1,4 @@
-import { PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
+import { GetObjectCommand, PutObjectCommand, S3Client } from '@aws-sdk/client-s3';
 import type { WorkerConfig } from '../config/config.module';
 import { StorageError } from './object-storage';
 import type { ObjectStorage } from './object-storage';
@@ -42,6 +42,18 @@ export class S3ObjectStorage implements ObjectStorage {
       );
     } catch {
       // The SDK's message can carry the endpoint, bucket and request ids: say nothing of it.
+      throw new StorageError();
+    }
+  }
+
+  async get(key: string): Promise<Buffer> {
+    try {
+      const out = await this.client.send(
+        new GetObjectCommand({ Bucket: this.config.S3_BUCKET, Key: key }),
+      );
+      if (!out.Body) throw new Error('empty');
+      return Buffer.from(await out.Body.transformToByteArray());
+    } catch {
       throw new StorageError();
     }
   }

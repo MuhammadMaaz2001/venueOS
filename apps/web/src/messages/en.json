@@ -150,7 +150,9 @@
       "catalogue": "Catalogue",
       "pricing": "Pricing",
       "customers": "Customers",
-      "leads": "Leads"
+      "leads": "Leads",
+      "calendar": "Calendar",
+      "bookings": "Bookings"
     },
     "tenant": {
       "switch": "Switch workspace",
@@ -713,7 +715,9 @@
       "event_type": "Event type",
       "user": "User",
       "customer": "Customer",
-      "lead": "Lead"
+      "lead": "Lead",
+      "booking": "Booking",
+      "quotation": "Quotation"
     },
     "actions": {
       "tenant_signup": "Workspace created",
@@ -743,7 +747,22 @@
       "lead_create": "Lead added",
       "lead_update": "Lead changed",
       "lead_stage_change": "Lead stage changed",
-      "lead_assign": "Lead assigned"
+      "lead_assign": "Lead assigned",
+      "booking_hold": "Slot held",
+      "booking_extend_hold": "Hold extended",
+      "booking_rehold": "Hold renewed",
+      "booking_confirm": "Booking confirmed",
+      "booking_cancel": "Booking cancelled",
+      "booking_restore": "Booking restored",
+      "booking_update": "Booking changed",
+      "booking_session_add": "Session added",
+      "booking_session_update": "Session changed",
+      "booking_session_cancel": "Session cancelled",
+      "booking_expire": "Hold expired",
+      "booking_complete": "Booking completed",
+      "quotation_create": "Quotation made",
+      "quotation_send": "Quotation sent",
+      "quotation_accept": "Quotation accepted"
     }
   },
   "Catalogue": {
@@ -1258,7 +1277,8 @@
       "budgetLabel": "Budget",
       "followUp": "Next follow-up",
       "contact": "Phone",
-      "notes": "Notes"
+      "notes": "Notes",
+      "createQuotation": "Create quotation"
     },
     "activity": {
       "title": "Activity",
@@ -1301,6 +1321,282 @@
       "loadFailed": "Follow-ups could not be loaded.",
       "none": "Nothing is due. Nice.",
       "openLeads": "Open the leads"
+    }
+  },
+  "Bookings": {
+    "status": {
+      "DRAFT": "Draft",
+      "TENTATIVE": "Held",
+      "CONFIRMED": "Confirmed",
+      "COMPLETED": "Completed",
+      "CANCELLED": "Cancelled",
+      "EXPIRED": "Expired"
+    },
+    "errors": {
+      "changedByOthers": "This booking was changed by someone else. It has been reloaded; check it and try again.",
+      "slotTaken": "That space is already held or booked for this time.",
+      "stateNotAllowed": "This booking cannot do that in its current status.",
+      "advanceRequired": "The advance payment has not been received yet. Record it first, or confirm with an override and a reason.",
+      "localRule": "A venue rule prevents this (for example a closing time or a minimum notice). An override with a reason is needed.",
+      "discountLimit": "This discount is higher than your role allows."
+    },
+    "hold": {
+      "ended": "Hold ended",
+      "leftDays": "{days, plural, one {# day} other {# days}} {hours} h left",
+      "leftHours": "{hours} h {minutes} min left"
+    },
+    "customer": {
+      "label": "Customer",
+      "hint": "Type at least 2 letters of the name, phone or email.",
+      "change": "Change",
+      "searching": "Searching…",
+      "none": "No customer found. Add the customer first."
+    },
+    "calendar": {
+      "title": "Availability calendar",
+      "noAccess": "You do not have access to the calendar.",
+      "venue": "Venue",
+      "view": "View",
+      "month": "Month",
+      "week": "Week",
+      "previous": "Previous",
+      "next": "Next",
+      "today": "Today",
+      "prevDay": "Previous day",
+      "nextDay": "Next day",
+      "legend": "Legend",
+      "legendItems": {
+        "free": "Free",
+        "HELD": "Held",
+        "CONFIRMED": "Confirmed",
+        "off": "Not offered"
+      },
+      "free": "Free",
+      "held": "Held",
+      "confirmed": "Confirmed",
+      "heldShort": "Held",
+      "confirmedShort": "Booked",
+      "notOffered": "{space}, {slot}, {date}: not offered on this day",
+      "gridCaption": "Spaces and slots by day. Select a free cell to hold it, or a taken cell to see who has it.",
+      "spaceSlot": "Space and slot",
+      "noVenues": "There is no venue yet. Add a venue in Venues first.",
+      "nothingToShow": "This venue has no spaces or slots yet.",
+      "loadFailed": "The calendar could not be loaded. Reload and try again.",
+      "noNumber": "Draft",
+      "blockedByComponent": "Taken through a space it shares: {name}",
+      "holdEnds": "Hold ends",
+      "openBooking": "Open the booking"
+    },
+    "quickHold": {
+      "title": "Hold {space}, {slot}",
+      "customerRequired": "Choose a customer.",
+      "guestsInvalid": "Enter the number of guests (at least 1).",
+      "reasonRequired": "Give a reason of at least 3 letters for the override.",
+      "guests": "Guests",
+      "eventType": "Event type",
+      "noEventType": "Not set",
+      "override": "Hold even though a venue rule is broken",
+      "overrideReason": "Reason for the override",
+      "submit": "Hold this slot",
+      "cancel": "Cancel",
+      "fullBuilder": "Open the full quotation builder (packages, add-ons, discount)",
+      "held": "The slot is held."
+    },
+    "list": {
+      "title": "Bookings",
+      "noAccess": "You do not have access to bookings.",
+      "newQuotation": "New quotation",
+      "filters": "Filter bookings",
+      "search": "Search (number, customer)",
+      "status": "Status",
+      "allStatuses": "All statuses",
+      "venue": "Venue",
+      "allVenues": "All venues",
+      "from": "First session from",
+      "to": "First session to",
+      "rangeInvalid": "The start is after the end.",
+      "empty": "No bookings match these filters.",
+      "loadFailed": "The bookings could not be loaded. Reload and try again.",
+      "draft": "Draft quotation",
+      "noSession": "No session",
+      "sessions": "{n} sessions",
+      "more": "Show more"
+    },
+    "builder": {
+      "title": "New quotation",
+      "editTitle": "Edit quotation",
+      "back": "Back",
+      "noAccess": "You do not have access to quotations.",
+      "venue": "Venue",
+      "customer": "Customer",
+      "session": "Session {n}",
+      "removeSession": "Remove session {n}",
+      "remove": "Remove",
+      "addSession": "Add a session",
+      "eventType": "Event type",
+      "space": "Space",
+      "date": "Date",
+      "slot": "Slot",
+      "startTime": "Starts at",
+      "endTime": "Ends at",
+      "guests": "Guests",
+      "guaranteed": "Guaranteed guests",
+      "guaranteedHint": "Billed at least this many, whatever the actual number.",
+      "package": "Menu package",
+      "addOns": "Add-ons",
+      "addAddOn": "Add an add-on",
+      "quantity": "Quantity",
+      "removeAddOn": "Remove {name}",
+      "setupNotes": "Set-up notes",
+      "kitchenNotes": "Kitchen notes",
+      "none": "None",
+      "choose": "Choose…",
+      "discountTitle": "Discount, policy and notes",
+      "discountType": "Discount type",
+      "percent": "Percent",
+      "amount": "Amount",
+      "discountValue": "Discount",
+      "discountLimit": "Your role may give up to {pct}%.",
+      "policy": "Cancellation policy",
+      "policyDefault": "The workspace default",
+      "notes": "Notes for the customer",
+      "summary": "Price",
+      "pricing": "Pricing…",
+      "fillIn": "Choose the customer, space, date and slot to see the price.",
+      "save": "Save quotation",
+      "saveChanges": "Save changes",
+      "errors": {
+        "generic": "The price could not be worked out. Check the entries and try again.",
+        "DISCOUNT_LIMIT": "This discount is higher than your role allows.",
+        "VALIDATION_ERROR": "Some entries are not valid. Check the dates, guests and discount.",
+        "NOT_FOUND": "One of the choices no longer exists. Reload the page.",
+        "NETWORK": "The price could not be fetched. Check your connection."
+      },
+      "loadFailed": "This quotation could not be loaded."
+    },
+    "quote": {
+      "pricesHidden": "Prices are not shown for your role.",
+      "session": "Session {n}",
+      "subtotal": "Subtotal",
+      "discount": "Discount",
+      "tax": "Tax",
+      "grandTotal": "Total",
+      "warnSlotTaken": "{where} is already held or booked ({number}). You can still send this quotation, but the slot cannot be held.",
+      "warnLocalRule": "{where} breaks a venue rule. Holding it needs an override with a reason."
+    },
+    "detail": {
+      "title": "Booking",
+      "back": "All bookings",
+      "noAccess": "You do not have access to bookings.",
+      "loadFailed": "This booking could not be loaded.",
+      "draftTitle": "Draft quotation",
+      "holdEnds": "Hold ends",
+      "lead": "Lead",
+      "edit": "Edit quotation",
+      "actions": {
+        "hold": "Hold the slot",
+        "extend": "Extend the hold",
+        "rehold": "Hold again",
+        "confirm": "Confirm",
+        "restore": "Restore",
+        "cancel": "Cancel booking"
+      },
+      "done": {
+        "extend-hold": "The hold was extended.",
+        "rehold": "The slot is held again.",
+        "restore": "The booking was restored."
+      },
+      "cancelledBecause": "Cancelled because",
+      "suggestedRefund": "Suggested refund",
+      "sessions": "Sessions",
+      "session": "Session {n}",
+      "sessionCancelled": "cancelled",
+      "guests": "{n} guests",
+      "billed": "billed for {n}",
+      "cancelSession": "Cancel session",
+      "pricing": "Price",
+      "paid": "Paid",
+      "balance": "Balance",
+      "discountApplied": "Discount: {value}",
+      "policy": "Cancellation policy",
+      "tier": "{days} days or more before: {pct}% refund"
+    },
+    "dialog": {
+      "reason": "Reason",
+      "reasonOptional": "Reason (optional)",
+      "reasonRequired": "Give a reason of at least 3 letters.",
+      "close": "Close",
+      "held": "The slot is held.",
+      "confirmed": "The booking is confirmed.",
+      "cancelled": "The booking was cancelled.",
+      "hold": {
+        "title": "Hold the slot",
+        "description": "The slot is blocked in the calendar until the hold ends.",
+        "override": "Hold even though a venue rule is broken",
+        "submit": "Hold the slot"
+      },
+      "confirm": {
+        "title": "Confirm the booking",
+        "description": "The advance payment must have been received. The slot stays blocked for good.",
+        "override": "Confirm without the advance payment",
+        "submit": "Confirm"
+      },
+      "cancel": {
+        "title": "Cancel the booking",
+        "description": "The slot is freed. The refund the policy suggests is shown afterwards; refunds are decided by accounts.",
+        "submit": "Cancel booking"
+      },
+      "cancelSession": {
+        "title": "Cancel this session",
+        "description": "The session is cancelled and its slot is freed. The price is worked out again.",
+        "submit": "Cancel session"
+      }
+    },
+    "quotations": {
+      "title": "Quotations",
+      "version": "version {n}",
+      "latest": "latest",
+      "validUntil": "valid until",
+      "sentAt": "sent {at}",
+      "notSent": "not sent",
+      "accepted": "accepted",
+      "pdfPending": "PDF being made",
+      "pdf": "PDF",
+      "whatsapp": "WhatsApp",
+      "send": "Send",
+      "pdfFailed": "The PDF could not be opened.",
+      "whatsappFailed": "The WhatsApp link could not be made."
+    },
+    "send": {
+      "title": "Send {number}, version {version}",
+      "description": "The customer gets an email with the quotation as a PDF.",
+      "to": "Send to",
+      "toHint": "Leave empty to use the customer email address.",
+      "message": "A message to add (optional)",
+      "submit": "Send quotation",
+      "sent": "Sent to {to}."
+    },
+    "timeline": {
+      "title": "History",
+      "system": "System",
+      "reason": "Reason",
+      "actions": {
+        "booking_hold": "Slot held",
+        "booking_extend_hold": "Hold extended",
+        "booking_rehold": "Hold renewed",
+        "booking_confirm": "Booking confirmed",
+        "booking_cancel": "Booking cancelled",
+        "booking_restore": "Booking restored",
+        "booking_update": "Booking changed",
+        "booking_session_add": "Session added",
+        "booking_session_update": "Session changed",
+        "booking_session_cancel": "Session cancelled",
+        "booking_expire": "Hold expired",
+        "booking_complete": "Booking completed",
+        "quotation_create": "Quotation made",
+        "quotation_send": "Quotation sent",
+        "quotation_accept": "Quotation accepted"
+      }
     }
   }
 }

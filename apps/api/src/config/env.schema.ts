@@ -35,6 +35,15 @@ export const EnvSchema = z.object({
   // Validated when present, required by the modules that use them.
   S3_BUCKET: z.string().min(1).optional(),
   AWS_REGION: z.string().min(1).optional(),
+  /** Region the bucket lives in (signs download links); the local store accepts any. */
+  S3_REGION: z.string().min(1).default('us-east-1'),
+  /** Local S3 (SeaweedFS) only, e.g. http://localhost:9100. Unset in staging/production: the real S3 endpoint. */
+  S3_ENDPOINT: z
+    .string()
+    .refine((v) => /^https?:\/\/\S+$/.test(v), 'must be an http(s):// URL')
+    .optional(),
+  /** The local store needs path-style addressing; leave unset (false) for AWS S3. */
+  S3_FORCE_PATH_STYLE: z.stringbool().default(false),
   SENTRY_DSN: z.string().min(1).optional(),
 
   LOG_LEVEL: z.enum(['fatal', 'error', 'warn', 'info', 'debug', 'trace', 'silent']).default('info'),

@@ -447,3 +447,20 @@ new-inquiry dialog, the dashboard follow-ups card. **Tests:** customers and lead
 other-tenant 404, venue scoping, stage rules, assignee validation, reveal permission and audit, no clear value in the audit log,
 database or logs, duplicates, phone normalisation), worker spec (once per follow-up, Mailpit), constraint tests, isolation sweep
 and route scan extended, shared / web unit tests, e2e `customers-leads.spec.ts`.
+
+## Modules 6-8: availability, quotations and bookings (done)
+
+Plan and decisions: `.claude/plans/module-6-8.md`; business decisions: docs/05 section 18. **Database:** migrations
+`module6_8_bookings` and `bookings_touch_row` (docs/03, "Modules 6-8 columns and checks"). **Shared:** `booking-states.ts` (the state
+machine), `ledger.ts` (cleared net receipts), schemas `bookings.ts` / `quotations.ts`, `PHONE_COUNTRIES` (every signup country),
+settings `quotationValidDays` and `holdWarnHours`. **Backend:** `src/pricing/quote.ts` (the pricing engine), `src/booking/`
+(timing and refund rules, pure), `modules/bookings/core` (quote builder, writer, numbering, ledger, lead link), `modules/quotations`,
+`modules/bookings`, `modules/availability`, `common/storage/presign.service.ts`. **Worker:** `quotation` PDF kind and template, email
+attachments, `holds.expire` (+ `.run`, `holds.warn.run`) and `bookings.complete` (+ `.run`). **Web:** `/calendar`, `/quotations/new`,
+`/bookings`, `/bookings/{id}`, "Create quotation" on a lead. **Tests:** pricing and state-machine unit tests; integration tests of
+every endpoint (200/400/401/403/other-tenant 404, two concurrent holds give exactly one `409 SLOT_TAKEN`, combined space against
+component, buffers, local rules, confirm with and without the advance, cancel frees the slot, restore when taken); worker tests
+(expire frees the slot, warn once without a `rev` bump, complete, the quotation PDF, the attachment in Mailpit); the isolation sweep
+covers every new route; `e2e/bookings-calendar.spec.ts` is the journey of the task (lead -> two sessions -> send -> hold -> calendar ->
+confirm with override -> cancel -> free again) plus the calendar at 360 px. **Not in these modules:** the payment schedule, receipts and
+refunds (module 9), the event sheet (10), the confirmation and reminder emails (13).

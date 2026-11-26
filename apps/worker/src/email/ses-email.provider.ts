@@ -1,4 +1,5 @@
 import { SESv2Client, SendEmailCommand } from '@aws-sdk/client-sesv2';
+import MailComposer from 'nodemailer/lib/mail-composer';
 import type { SendEmailCommandOutput } from '@aws-sdk/client-sesv2';
 import { EmailProviderError, formatAddress } from './email-provider';
 import type { EmailProvider, OutgoingEmail, SendResult } from './email-provider';
@@ -36,6 +37,7 @@ export class SesEmailProvider implements EmailProvider {
 
   async send(message: OutgoingEmail): Promise<SendResult> {
     try {
+      if (message.attachments?.length) return await this.sendRaw(message);
       const output = await this.client.send(
         new SendEmailCommand({
           FromEmailAddress: formatAddress(message.from.name, message.from.address),
@@ -56,5 +58,31 @@ export class SesEmailProvider implements EmailProvider {
     } catch (error) {
       throw classify(error);
     }
+  }
+
+  /** A message with attachments is a raw MIME message (SES v2 `Simple` content cannot carry files). */
+  private async sendRaw(message: OutgoingEmail): Promise<SendResult> {
+    const raw = await new MailComposer({
+      from: formatAddress(message.from.name, message.from.address),
+      to: message.to,
+      ...(message.replyTo ? { replyTo: message.replyTo } : {}),
+      subject: message.subject,
+      html: message.html,
+      text: message.text,
+      attachments: (message.attachments ?? []).map((a) => ({
+        filename: a.filename,
+        content: a.content,
+        contentType: a.contentType,
+      })),
+    })
+      .compile()
+      .build();
+    const output = await this.client.send(
+      new SendEmailCommand({
+        Destination: { ToAddresses: [message.to] },
+        Content: { Raw: { Data: raw } },
+      }),
+    );
+    return { providerRef: output.MessageId ?? '' };
   }
 }

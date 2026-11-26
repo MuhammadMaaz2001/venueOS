@@ -18,3 +18,8 @@
 - Customer duplicate-by-phone is a warning in the UI, not an error.
 - Never run git commit/push/merge/rebase/branch commands; list changed files and suggest a
   conventional commit message at the end.
+
+- **Bookings (modules 6-8)** (`src/features/bookings`): the calendar (`calendar-page.tsx`: custom grid, a one-day list under 640 px), the quotation
+  builder (prices come from `POST /v1/quotations/preview`, never from the browser), the bookings list and booking page (actions, reasons, hold
+  timer). Display rules live in `logic.ts` (date-only arithmetic in UTC, which buttons a status offers, exact money subtraction); the API decides
+  again. Amounts are `null` without `booking.view_prices`: show nothing, not zero.

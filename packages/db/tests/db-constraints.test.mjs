@@ -803,3 +803,77 @@ test('module 4 customers: phone is not unique, search indexes exist, customers c
   await sql(app, T1, `INSERT INTO leads (id, tenant_id, venue_id, customer_id, source, stage, next_follow_up_at, updated_at) VALUES ('ld3','t1','v1','c1dup','phone','NEW', now(), now())`);
   await rejects(sql(app, T1, `DELETE FROM customers WHERE id = 'c1dup'`), /foreign key|violates/);
 });
+
+// ───────────────────────────── modules 6-8 (availability, quotations, bookings) ─────────────────────────────
+
+test('modules 6-8 bookings: hold_warned_at does not bump rev, every other change does; checks reject bad values', async () => {
+  await sql(
+    app,
+    T1,
+    `INSERT INTO bookings (id, tenant_id, venue_id, customer_id, currency, status, number, hold_expires_at, updated_at)
+     VALUES ('bkw','t1','v1','c1','PKR','TENTATIVE','BK-2031-9001', now() + interval '1 hour', now() - interval '1 day')`,
+  );
+  const read = async () => (await sql(app, T1, `SELECT rev, updated_at, hold_warned_at FROM bookings WHERE id = 'bkw'`)).rows[0];
+  const first = await read();
+  await sql(app, T1, `UPDATE bookings SET hold_warned_at = now() WHERE id = 'bkw'`);
+  const stamped = await read();
+  assert.equal(stamped.rev, first.rev);
+  assert.equal(stamped.updated_at.getTime(), first.updated_at.getTime());
+  assert.notEqual(stamped.hold_warned_at, null);
+  await sql(app, T1, `UPDATE bookings SET hold_extensions = 1 WHERE id = 'bkw'`);
+  assert.equal((await read()).rev, first.rev + 1);
+  await sql(app, T1, `UPDATE bookings SET hold_warned_at = NULL, hold_extensions = 2 WHERE id = 'bkw'`);
+  assert.equal((await read()).rev, first.rev + 2);
+  await rejects(sql(app, T1, `UPDATE bookings SET suggested_refund = -1 WHERE id = 'bkw'`), /bookings_suggested_refund_nonneg/);
+  await rejects(sql(app, T1, `UPDATE bookings SET hold_extensions = -1 WHERE id = 'bkw'`), /bookings_hold_extensions_nonneg/);
+  await sql(app, T1, `UPDATE bookings SET suggested_refund = 0, cancelled_from = 'TENTATIVE' WHERE id = 'bkw'`);
+});
+
+test('modules 6-8 sessions: guest ranges are checked; frozen pricing and add-on input are stored', async () => {
+  const insert = (id, guests, guaranteed) =>
+    sql(
+      app,
+      T1,
+      `INSERT INTO booking_sessions (id, tenant_id, booking_id, space_id, starts_at, ends_at, guests, guaranteed_guests, add_ons, pricing)
+       VALUES ($1,'t1','bkw','hallA','2031-03-01 19:00+05','2031-03-01 23:00+05',$2,$3,'[{"addOnId":"a"}]','{"unitRent":"1000"}')`,
+      [id, guests, guaranteed],
+    );
+  await rejects(insert('sg0', 0, null), /booking_sessions_guests_range/);
+  await rejects(insert('sg1', 100001, null), /booking_sessions_guests_range/);
+  await rejects(insert('sg2', 100, 0), /booking_sessions_guaranteed_range/);
+  await insert('sg3', 100, 120);
+  const row = (await sql(app, T1, `SELECT add_ons, pricing FROM booking_sessions WHERE id = 'sg3'`)).rows[0];
+  assert.deepEqual(row.add_ons, [{ addOnId: 'a' }]);
+  assert.deepEqual(row.pricing, { unitRent: '1000' });
+});
+
+test('modules 6-8 queues: the hold and completion queues and their dead letters exist; the scanner role can read the hold sets', async () => {
+  const { rows } = await migrator.query(
+    `SELECT name FROM pgboss.queue WHERE name LIKE 'holds.%' OR name LIKE 'bookings.complete%' ORDER BY name`,
+  );
+  assert.deepEqual(
+    rows.map((r) => r.name),
+    [
+      'bookings.complete',
+      'bookings.complete.dead',
+      'bookings.complete.run',
+      'bookings.complete.run.dead',
+      'holds.expire',
+      'holds.expire.dead',
+      'holds.expire.run',
+      'holds.expire.run.dead',
+      'holds.warn.run',
+      'holds.warn.run.dead',
+    ],
+  );
+  const ended = await jobs.query(
+    `SELECT b.id FROM bookings b WHERE b.status = 'TENTATIVE' AND b.hold_expires_at IS NOT NULL AND b.hold_expires_at <= now() + interval '2 hours' AND b.id = 'bkw'`,
+  );
+  assert.equal(ended.rows.length, 1);
+  await rejects(jobs.query(`UPDATE bookings SET status = 'EXPIRED' WHERE id = 'bkw'`), /permission denied/);
+});
+
+test('modules 6-8: the bookings-specific touch_row function is installed', async () => {
+  const { rows } = await migrator.query(`SELECT 1 FROM pg_proc WHERE proname = 'touch_row_bookings'`);
+  assert.equal(rows.length, 1);
+});

@@ -3280,6 +3280,959 @@
           "leads"
         ]
       }
+    },
+    "/v1/quotations/preview": {
+      "post": {
+        "description": "The live breakdown of the builder: rent and price rules, package, add-ons, discount (within your role limit, else 403 DISCOUNT_LIMIT) and tax, with warnings for taken slots and broken venue rules. The client sends ids and quantities only.",
+        "operationId": "QuotationsController_preview",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteInputDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotePreviewResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Price a quotation without saving it",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/quotations": {
+      "post": {
+        "description": "Give a customer or a lead (which moves to QUOTED). Numbered {prefix}-Q-{year}-{seq}; the PDF is rendered in the background (`pdfReady`).",
+        "operationId": "QuotationsController_create",
+        "parameters": [],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuotationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Create a quotation (a DRAFT booking with its first version)",
+        "tags": [
+          "quotations"
+        ]
+      },
+      "get": {
+        "operationId": "QuotationsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "bookingId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "leadId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List quotation versions, newest first",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/quotations/{id}": {
+      "get": {
+        "operationId": "QuotationsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/quotations/{id}/send": {
+      "post": {
+        "description": "To the customer address, or `to`. Only the newest version; 422 while the PDF is still being prepared.",
+        "operationId": "QuotationsController_send",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendQuotationDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SendQuotationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Email the quotation with its PDF attached",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/quotations/{id}/accept": {
+      "post": {
+        "operationId": "QuotationsController_accept",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Record that the customer accepted this version",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/quotations/{id}/pdf": {
+      "get": {
+        "description": "422 while the PDF is still being prepared.",
+        "operationId": "QuotationsController_pdf",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationPdfResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A pre-signed link to the PDF (valid 5 minutes)",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/quotations/{id}/whatsapp": {
+      "get": {
+        "description": "Text only: no link to the PDF, which stays private.",
+        "operationId": "QuotationsController_whatsapp",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuotationWhatsAppResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "A wa.me link with a text summary",
+        "tags": [
+          "quotations"
+        ]
+      }
+    },
+    "/v1/bookings": {
+      "get": {
+        "description": "Filters: status, venueId, customerId, leadId, from / to (a session starts in the range, workspace time zone), search (number, customer name or phone). Cursor pagination.",
+        "operationId": "BookingsController_list",
+        "parameters": [
+          {
+            "name": "limit",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minimum": 1,
+              "maximum": 100,
+              "default": 25,
+              "type": "integer"
+            }
+          },
+          {
+            "name": "cursor",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 200,
+              "type": "string"
+            }
+          },
+          {
+            "name": "status",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "type": "string",
+              "enum": [
+                "DRAFT",
+                "TENTATIVE",
+                "CONFIRMED",
+                "COMPLETED",
+                "CANCELLED",
+                "EXPIRED"
+              ]
+            }
+          },
+          {
+            "name": "venueId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "customerId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "leadId",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "search",
+            "required": false,
+            "in": "query",
+            "schema": {
+              "minLength": 1,
+              "maxLength": 100,
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingListResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "List bookings and quotations, newest first",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}": {
+      "get": {
+        "description": "A booking of another venue or workspace is 404.",
+        "operationId": "BookingsController_get",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "One booking: sessions, line items, versions and timeline",
+        "tags": [
+          "bookings"
+        ]
+      },
+      "patch": {
+        "description": "`rev` is required. A priced change writes a new quotation version (an unsent draft is re-priced in place); a held or confirmed booking is re-priced at its frozen rates unless `requote: CURRENT`. A discount above your role limit is 403 DISCOUNT_LIMIT.",
+        "operationId": "BookingsController_update",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change notes, policy, discount or (a DRAFT) the sessions",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/hold": {
+      "post": {
+        "description": "Blocks the calendar (every component of a combined space, with buffers), numbers the booking, starts the hold timer. A taken slot is 409 SLOT_TAKEN (the database decides). A broken venue rule is 422 LOCAL_RULE unless `overrideRules` with `booking.override_rules` and a reason.",
+        "operationId": "BookingsController_hold",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/HoldBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Hold the dates: DRAFT -> TENTATIVE",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/extend-hold": {
+      "post": {
+        "description": "Once for anyone who may hold; further extensions need `booking.extend_hold`.",
+        "operationId": "BookingsController_extend",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevOnlyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Extend the hold by the hold duration",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/rehold": {
+      "post": {
+        "description": "409 SLOT_TAKEN when somebody took the slot meanwhile.",
+        "operationId": "BookingsController_rehold",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevOnlyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Hold an EXPIRED booking again",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/confirm": {
+      "post": {
+        "description": "Needs the advance (cleared receipts of the advance percentage of the total): else 422 ADVANCE_REQUIRED, unless `override` with `booking.confirm_override` and a reason (audited). The lead becomes WON.",
+        "operationId": "BookingsController_confirm",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ConfirmBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Confirm: TENTATIVE -> CONFIRMED",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/cancel": {
+      "post": {
+        "description": "Frees the calendar. The answer carries the refund the cancellation policy snapshot suggests (executing refunds is the payments module).",
+        "operationId": "BookingsController_cancel",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelBookingDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/CancelResultResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Cancel with a reason",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/restore": {
+      "post": {
+        "description": "409 SLOT_TAKEN when the slot is taken meanwhile.",
+        "operationId": "BookingsController_restore",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/RevOnlyDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Restore a CANCELLED booking to the status it was cancelled from",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/sessions": {
+      "post": {
+        "description": "Re-prices the booking (new version). Inside the guest lock window it needs `booking.edit_locked`.",
+        "operationId": "BookingsController_addSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "201": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Add a session",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/sessions/{sessionId}": {
+      "patch": {
+        "description": "Re-prices at the frozen rates (guests below the guarantee never reduce the bill) unless `requote: CURRENT`. New dates or spaces must be free: 409 SLOT_TAKEN.",
+        "operationId": "BookingsController_updateSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Change a session (guests, add-ons, notes, date, space, slot)",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/bookings/{id}/sessions/{sessionId}/cancel": {
+      "post": {
+        "description": "Releases its calendar slot and re-prices without it. The last session cannot be cancelled this way.",
+        "operationId": "BookingsController_cancelSession",
+        "parameters": [
+          {
+            "name": "id",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "sessionId",
+            "required": true,
+            "in": "path",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          }
+        ],
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CancelSessionDto"
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BookingDetailResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Cancel one session (soft: it stays on record)",
+        "tags": [
+          "bookings"
+        ]
+      }
+    },
+    "/v1/availability": {
+      "get": {
+        "description": "Up to 62 days. Only taken cells are listed; every other cell of the grid is free. Each taken cell names the booking number and the customer (no prices). A combined space is taken when any component is, and the other way round. A venue outside the caller scope is 404.",
+        "operationId": "AvailabilityController_get",
+        "parameters": [
+          {
+            "name": "venueId",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "pattern": "^[A-Za-z0-9_-]{1,128}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "from",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          },
+          {
+            "name": "to",
+            "required": true,
+            "in": "query",
+            "schema": {
+              "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AvailabilityResponseDto"
+                }
+              }
+            }
+          }
+        },
+        "summary": "Spaces x dates x slots of a venue: what is held or confirmed",
+        "tags": [
+          "availability"
+        ]
+      }
     }
   },
   "info": {
@@ -4638,6 +5591,18 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 24
+              },
+              "quotationValidDays": {
+                "default": 14,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 365
+              },
+              "holdWarnHours": {
+                "default": 6,
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 168
               }
             }
           },
@@ -4720,6 +5685,16 @@
                 "type": "integer",
                 "minimum": 1,
                 "maximum": 24
+              },
+              "quotationValidDays": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 365
+              },
+              "holdWarnHours": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 168
               }
             }
           }
@@ -9031,6 +10006,3219 @@
         "required": [
           "data",
           "nextCursor"
+        ]
+      },
+      "QuoteInputDto": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "customerId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "leadId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "sessions": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "spaceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "nullable": true
+                },
+                "addOns": {
+                  "default": [],
+                  "maxItems": 30,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                      },
+                      "quantity": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000
+                      }
+                    },
+                    "required": [
+                      "addOnId"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "spaceId",
+                "date",
+                "slotId",
+                "guests"
+              ]
+            }
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "cancellationPolicyId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          }
+        },
+        "required": [
+          "venueId",
+          "sessions"
+        ]
+      },
+      "QuotePreviewResponseDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "CANCELLED"
+                  ]
+                },
+                "spaceId": {
+                  "type": "string"
+                },
+                "spaceName": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string"
+                },
+                "slotName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "billedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "addOns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "addOnId",
+                      "name",
+                      "quantity"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "subtotal": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "index",
+                "status",
+                "spaceId",
+                "spaceName",
+                "date",
+                "slotId",
+                "slotName",
+                "startsAt",
+                "endsAt",
+                "hours",
+                "eventTypeId",
+                "eventTypeName",
+                "packageId",
+                "packageName",
+                "guests",
+                "guaranteedGuests",
+                "billedGuests",
+                "addOns",
+                "setupNotes",
+                "kitchenNotes",
+                "subtotal"
+              ]
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "RENT",
+                    "PACKAGE",
+                    "ADD_ON",
+                    "ADJUSTMENT",
+                    "DISCOUNT",
+                    "TAX"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "refType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "refId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "quantity": {
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "amount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "taxAmount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "grossAmount": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "sessionIndex",
+                "kind",
+                "description",
+                "refType",
+                "refId",
+                "quantity",
+                "unitPrice",
+                "amount",
+                "taxAmount",
+                "grossAmount"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "subtotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "discountTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "taxTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "grandTotal": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "subtotal",
+              "discountTotal",
+              "taxTotal",
+              "grandTotal"
+            ]
+          },
+          "taxRate": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "ratePct": {
+                "type": "string"
+              },
+              "inclusive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "ratePct",
+              "inclusive"
+            ],
+            "nullable": true
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "maxDiscountPct": {
+            "type": "number"
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "SLOT_TAKEN",
+                    "LOCAL_RULE"
+                  ]
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "detail": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "code",
+                "sessionIndex",
+                "detail"
+              ]
+            }
+          }
+        },
+        "required": [
+          "currency",
+          "sessions",
+          "lines",
+          "totals",
+          "taxRate",
+          "discount",
+          "maxDiscountPct",
+          "warnings"
+        ]
+      },
+      "CreateQuotationDto": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "customerId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "leadId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "sessions": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "spaceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "nullable": true
+                },
+                "addOns": {
+                  "default": [],
+                  "maxItems": 30,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                      },
+                      "quantity": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000
+                      }
+                    },
+                    "required": [
+                      "addOnId"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "spaceId",
+                "date",
+                "slotId",
+                "guests"
+              ]
+            }
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "cancellationPolicyId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          }
+        },
+        "required": [
+          "venueId",
+          "sessions"
+        ]
+      },
+      "QuotationResponseDto": {
+        "type": "object",
+        "properties": {
+          "currency": {
+            "type": "string"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "CANCELLED"
+                  ]
+                },
+                "spaceId": {
+                  "type": "string"
+                },
+                "spaceName": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string"
+                },
+                "slotName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "billedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "addOns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "addOnId",
+                      "name",
+                      "quantity"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "subtotal": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "index",
+                "status",
+                "spaceId",
+                "spaceName",
+                "date",
+                "slotId",
+                "slotName",
+                "startsAt",
+                "endsAt",
+                "hours",
+                "eventTypeId",
+                "eventTypeName",
+                "packageId",
+                "packageName",
+                "guests",
+                "guaranteedGuests",
+                "billedGuests",
+                "addOns",
+                "setupNotes",
+                "kitchenNotes",
+                "subtotal"
+              ]
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "RENT",
+                    "PACKAGE",
+                    "ADD_ON",
+                    "ADJUSTMENT",
+                    "DISCOUNT",
+                    "TAX"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "refType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "refId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "quantity": {
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "amount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "taxAmount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "grossAmount": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "sessionIndex",
+                "kind",
+                "description",
+                "refType",
+                "refId",
+                "quantity",
+                "unitPrice",
+                "amount",
+                "taxAmount",
+                "grossAmount"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "subtotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "discountTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "taxTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "grandTotal": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "subtotal",
+              "discountTotal",
+              "taxTotal",
+              "grandTotal"
+            ]
+          },
+          "taxRate": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "ratePct": {
+                "type": "string"
+              },
+              "inclusive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "ratePct",
+              "inclusive"
+            ],
+            "nullable": true
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "id": {
+            "type": "string"
+          },
+          "bookingId": {
+            "type": "string"
+          },
+          "bookingStatus": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "TENTATIVE",
+              "CONFIRMED",
+              "COMPLETED",
+              "CANCELLED",
+              "EXPIRED"
+            ]
+          },
+          "bookingNumber": {
+            "type": "string",
+            "nullable": true
+          },
+          "number": {
+            "type": "string"
+          },
+          "version": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "isLatest": {
+            "type": "boolean"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              },
+              "email": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "phone",
+              "email"
+            ]
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "validUntil": {
+            "type": "string",
+            "nullable": true
+          },
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "acceptedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "pdfReady": {
+            "type": "boolean"
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "currency",
+          "sessions",
+          "lines",
+          "totals",
+          "taxRate",
+          "discount",
+          "id",
+          "bookingId",
+          "bookingStatus",
+          "bookingNumber",
+          "number",
+          "version",
+          "isLatest",
+          "customer",
+          "venueName",
+          "validUntil",
+          "sentAt",
+          "acceptedAt",
+          "pdfReady",
+          "createdAt",
+          "rev"
+        ]
+      },
+      "QuotationListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "number": {
+                  "type": "string"
+                },
+                "grandTotal": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "validUntil": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "nullable": true
+                },
+                "sentAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "acceptedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "pdfReady": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "bookingId": {
+                  "type": "string"
+                },
+                "bookingStatus": {
+                  "type": "string",
+                  "enum": [
+                    "DRAFT",
+                    "TENTATIVE",
+                    "CONFIRMED",
+                    "COMPLETED",
+                    "CANCELLED",
+                    "EXPIRED"
+                  ]
+                },
+                "customerName": {
+                  "type": "string"
+                },
+                "isLatest": {
+                  "type": "boolean"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "number",
+                "grandTotal",
+                "validUntil",
+                "sentAt",
+                "acceptedAt",
+                "pdfReady",
+                "createdAt",
+                "bookingId",
+                "bookingStatus",
+                "customerName",
+                "isLatest"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "SendQuotationDto": {
+        "type": "object",
+        "properties": {
+          "to": {
+            "type": "string",
+            "maxLength": 254,
+            "format": "email",
+            "pattern": "^(?:[A-Za-z0-9_'+\\-]+\\.)*[A-Za-z0-9_'+\\-]*[A-Za-z0-9_+-]@(?:[A-Za-z0-9][A-Za-z0-9\\-]*\\.)+[A-Za-z]{2,}$"
+          },
+          "message": {
+            "type": "string",
+            "maxLength": 1000
+          }
+        }
+      },
+      "SendQuotationResponseDto": {
+        "type": "object",
+        "properties": {
+          "sentAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "to": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "sentAt",
+          "to"
+        ]
+      },
+      "QuotationPdfResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "expiresInSeconds": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "url",
+          "expiresInSeconds"
+        ]
+      },
+      "QuotationWhatsAppResponseDto": {
+        "type": "object",
+        "properties": {
+          "url": {
+            "type": "string"
+          },
+          "text": {
+            "type": "string"
+          }
+        },
+        "required": [
+          "url",
+          "text"
+        ]
+      },
+      "BookingListResponseDto": {
+        "type": "object",
+        "properties": {
+          "data": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "DRAFT",
+                    "TENTATIVE",
+                    "CONFIRMED",
+                    "COMPLETED",
+                    "CANCELLED",
+                    "EXPIRED"
+                  ]
+                },
+                "venueId": {
+                  "type": "string"
+                },
+                "venueName": {
+                  "type": "string"
+                },
+                "customer": {
+                  "type": "object",
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "phone": {
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "phone"
+                  ]
+                },
+                "leadId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "firstSessionAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "sessionCount": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "quoteVersion": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "holdExpiresAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "grandTotal": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "paidTotal": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "rev": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "number",
+                "status",
+                "venueId",
+                "venueName",
+                "customer",
+                "leadId",
+                "firstSessionAt",
+                "sessionCount",
+                "quoteVersion",
+                "holdExpiresAt",
+                "grandTotal",
+                "paidTotal",
+                "rev",
+                "createdAt"
+              ]
+            }
+          },
+          "nextCursor": {
+            "type": "string",
+            "nullable": true
+          }
+        },
+        "required": [
+          "data",
+          "nextCursor"
+        ]
+      },
+      "BookingDetailResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "TENTATIVE",
+              "CONFIRMED",
+              "COMPLETED",
+              "CANCELLED",
+              "EXPIRED"
+            ]
+          },
+          "venueId": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "phone"
+            ]
+          },
+          "leadId": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstSessionAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "sessionCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "quoteVersion": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "holdExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "grandTotal": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidTotal": {
+            "type": "string",
+            "nullable": true
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "CANCELLED"
+                  ]
+                },
+                "spaceId": {
+                  "type": "string"
+                },
+                "spaceName": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string"
+                },
+                "slotName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "billedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "addOns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "addOnId",
+                      "name",
+                      "quantity"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "subtotal": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "index",
+                "status",
+                "spaceId",
+                "spaceName",
+                "date",
+                "slotId",
+                "slotName",
+                "startsAt",
+                "endsAt",
+                "hours",
+                "eventTypeId",
+                "eventTypeName",
+                "packageId",
+                "packageName",
+                "guests",
+                "guaranteedGuests",
+                "billedGuests",
+                "addOns",
+                "setupNotes",
+                "kitchenNotes",
+                "subtotal"
+              ]
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "RENT",
+                    "PACKAGE",
+                    "ADD_ON",
+                    "ADJUSTMENT",
+                    "DISCOUNT",
+                    "TAX"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "refType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "refId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "quantity": {
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "amount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "taxAmount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "grossAmount": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "sessionIndex",
+                "kind",
+                "description",
+                "refType",
+                "refId",
+                "quantity",
+                "unitPrice",
+                "amount",
+                "taxAmount",
+                "grossAmount"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "subtotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "discountTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "taxTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "grandTotal": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "subtotal",
+              "discountTotal",
+              "taxTotal",
+              "grandTotal"
+            ]
+          },
+          "taxRate": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "ratePct": {
+                "type": "string"
+              },
+              "inclusive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "ratePct",
+              "inclusive"
+            ],
+            "nullable": true
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "SLOT_TAKEN",
+                    "LOCAL_RULE"
+                  ]
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "detail": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "code",
+                "sessionIndex",
+                "detail"
+              ]
+            }
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "holdExtensions": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "suggestedRefund": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancellationPolicy": {
+            "type": "object",
+            "properties": {
+              "policyId": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "tiers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "minDaysBefore": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "refundPct": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "minDaysBefore",
+                    "refundPct"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "policyId",
+              "name",
+              "tiers"
+            ],
+            "nullable": true
+          },
+          "quotations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "number": {
+                  "type": "string"
+                },
+                "grandTotal": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "validUntil": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "nullable": true
+                },
+                "sentAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "acceptedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "pdfReady": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "number",
+                "grandTotal",
+                "validUntil",
+                "sentAt",
+                "acceptedAt",
+                "pdfReady",
+                "createdAt"
+              ]
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "actorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reason": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "action",
+                "at",
+                "actorName",
+                "reason"
+              ]
+            }
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "venueId",
+          "venueName",
+          "customer",
+          "leadId",
+          "firstSessionAt",
+          "sessionCount",
+          "quoteVersion",
+          "holdExpiresAt",
+          "grandTotal",
+          "paidTotal",
+          "rev",
+          "createdAt",
+          "currency",
+          "sessions",
+          "lines",
+          "totals",
+          "taxRate",
+          "discount",
+          "warnings",
+          "notes",
+          "holdExtensions",
+          "confirmedAt",
+          "cancelledAt",
+          "cancelReason",
+          "suggestedRefund",
+          "cancellationPolicy",
+          "quotations",
+          "timeline"
+        ]
+      },
+      "UpdateBookingDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "notes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string",
+                "pattern": "^\\d{1,15}(\\.\\d{1,3})?$"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "cancellationPolicyId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "sessions": {
+            "minItems": 1,
+            "maxItems": 10,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "spaceId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "startTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "endTime": {
+                  "type": "string",
+                  "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 100000,
+                  "nullable": true
+                },
+                "addOns": {
+                  "default": [],
+                  "maxItems": 30,
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string",
+                        "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                      },
+                      "quantity": {
+                        "default": 1,
+                        "type": "integer",
+                        "minimum": 1,
+                        "maximum": 1000
+                      }
+                    },
+                    "required": [
+                      "addOnId"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "maxLength": 2000,
+                  "nullable": true
+                }
+              },
+              "required": [
+                "spaceId",
+                "date",
+                "slotId",
+                "guests"
+              ]
+            }
+          },
+          "requote": {
+            "type": "string",
+            "enum": [
+              "FROZEN",
+              "CURRENT"
+            ]
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "HoldBookingDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "overrideRules": {
+            "default": false,
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "RevOnlyDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "ConfirmBookingDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "override": {
+            "default": false,
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "CancelBookingDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev",
+          "reason"
+        ]
+      },
+      "CancelResultResponseDto": {
+        "type": "object",
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "number": {
+            "type": "string",
+            "nullable": true
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "DRAFT",
+              "TENTATIVE",
+              "CONFIRMED",
+              "COMPLETED",
+              "CANCELLED",
+              "EXPIRED"
+            ]
+          },
+          "venueId": {
+            "type": "string"
+          },
+          "venueName": {
+            "type": "string"
+          },
+          "customer": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "phone": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "phone"
+            ]
+          },
+          "leadId": {
+            "type": "string",
+            "nullable": true
+          },
+          "firstSessionAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "sessionCount": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "quoteVersion": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "holdExpiresAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "grandTotal": {
+            "type": "string",
+            "nullable": true
+          },
+          "paidTotal": {
+            "type": "string",
+            "nullable": true
+          },
+          "rev": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "createdAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+          },
+          "currency": {
+            "type": "string"
+          },
+          "sessions": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "index": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "ACTIVE",
+                    "CANCELLED"
+                  ]
+                },
+                "spaceId": {
+                  "type": "string"
+                },
+                "spaceName": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string"
+                },
+                "slotName": {
+                  "type": "string"
+                },
+                "startsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "endsAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "hours": {
+                  "type": "string"
+                },
+                "eventTypeId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "eventTypeName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "packageName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "guests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "guaranteedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "billedGuests": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "addOns": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "addOnId": {
+                        "type": "string"
+                      },
+                      "name": {
+                        "type": "string"
+                      },
+                      "quantity": {
+                        "type": "integer",
+                        "minimum": -9007199254740991,
+                        "maximum": 9007199254740991
+                      }
+                    },
+                    "required": [
+                      "addOnId",
+                      "name",
+                      "quantity"
+                    ]
+                  }
+                },
+                "setupNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "kitchenNotes": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "subtotal": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "index",
+                "status",
+                "spaceId",
+                "spaceName",
+                "date",
+                "slotId",
+                "slotName",
+                "startsAt",
+                "endsAt",
+                "hours",
+                "eventTypeId",
+                "eventTypeName",
+                "packageId",
+                "packageName",
+                "guests",
+                "guaranteedGuests",
+                "billedGuests",
+                "addOns",
+                "setupNotes",
+                "kitchenNotes",
+                "subtotal"
+              ]
+            }
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "kind": {
+                  "type": "string",
+                  "enum": [
+                    "RENT",
+                    "PACKAGE",
+                    "ADD_ON",
+                    "ADJUSTMENT",
+                    "DISCOUNT",
+                    "TAX"
+                  ]
+                },
+                "description": {
+                  "type": "string"
+                },
+                "refType": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "refId": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "quantity": {
+                  "type": "string"
+                },
+                "unitPrice": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "amount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "taxAmount": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "grossAmount": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "sessionIndex",
+                "kind",
+                "description",
+                "refType",
+                "refId",
+                "quantity",
+                "unitPrice",
+                "amount",
+                "taxAmount",
+                "grossAmount"
+              ]
+            }
+          },
+          "totals": {
+            "type": "object",
+            "properties": {
+              "subtotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "discountTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "taxTotal": {
+                "type": "string",
+                "nullable": true
+              },
+              "grandTotal": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "subtotal",
+              "discountTotal",
+              "taxTotal",
+              "grandTotal"
+            ]
+          },
+          "taxRate": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "ratePct": {
+                "type": "string"
+              },
+              "inclusive": {
+                "type": "boolean"
+              }
+            },
+            "required": [
+              "id",
+              "name",
+              "ratePct",
+              "inclusive"
+            ],
+            "nullable": true
+          },
+          "discount": {
+            "type": "object",
+            "properties": {
+              "type": {
+                "type": "string",
+                "enum": [
+                  "PERCENT",
+                  "AMOUNT"
+                ]
+              },
+              "value": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "type",
+              "value"
+            ],
+            "nullable": true
+          },
+          "warnings": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "code": {
+                  "type": "string",
+                  "enum": [
+                    "SLOT_TAKEN",
+                    "LOCAL_RULE"
+                  ]
+                },
+                "sessionIndex": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "detail": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "code",
+                "sessionIndex",
+                "detail"
+              ]
+            }
+          },
+          "notes": {
+            "type": "string",
+            "nullable": true
+          },
+          "holdExtensions": {
+            "type": "integer",
+            "minimum": -9007199254740991,
+            "maximum": 9007199254740991
+          },
+          "confirmedAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "cancelledAt": {
+            "type": "string",
+            "format": "date-time",
+            "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+            "nullable": true
+          },
+          "cancelReason": {
+            "type": "string",
+            "nullable": true
+          },
+          "suggestedRefund": {
+            "type": "string",
+            "nullable": true
+          },
+          "cancellationPolicy": {
+            "type": "object",
+            "properties": {
+              "policyId": {
+                "type": "string",
+                "nullable": true
+              },
+              "name": {
+                "type": "string"
+              },
+              "tiers": {
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "minDaysBefore": {
+                      "type": "integer",
+                      "minimum": -9007199254740991,
+                      "maximum": 9007199254740991
+                    },
+                    "refundPct": {
+                      "type": "number"
+                    }
+                  },
+                  "required": [
+                    "minDaysBefore",
+                    "refundPct"
+                  ]
+                }
+              }
+            },
+            "required": [
+              "policyId",
+              "name",
+              "tiers"
+            ],
+            "nullable": true
+          },
+          "quotations": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "version": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991
+                },
+                "number": {
+                  "type": "string"
+                },
+                "grandTotal": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "validUntil": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+                  "nullable": true
+                },
+                "sentAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "acceptedAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                  "nullable": true
+                },
+                "pdfReady": {
+                  "type": "boolean"
+                },
+                "createdAt": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                }
+              },
+              "required": [
+                "id",
+                "version",
+                "number",
+                "grandTotal",
+                "validUntil",
+                "sentAt",
+                "acceptedAt",
+                "pdfReady",
+                "createdAt"
+              ]
+            }
+          },
+          "timeline": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "action": {
+                  "type": "string"
+                },
+                "at": {
+                  "type": "string",
+                  "format": "date-time",
+                  "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$"
+                },
+                "actorName": {
+                  "type": "string",
+                  "nullable": true
+                },
+                "reason": {
+                  "type": "string",
+                  "nullable": true
+                }
+              },
+              "required": [
+                "id",
+                "action",
+                "at",
+                "actorName",
+                "reason"
+              ]
+            }
+          },
+          "refund": {
+            "type": "object",
+            "properties": {
+              "daysBefore": {
+                "type": "integer",
+                "minimum": -9007199254740991,
+                "maximum": 9007199254740991
+              },
+              "refundPct": {
+                "type": "number"
+              },
+              "received": {
+                "type": "string",
+                "nullable": true
+              },
+              "suggested": {
+                "type": "string",
+                "nullable": true
+              }
+            },
+            "required": [
+              "daysBefore",
+              "refundPct",
+              "received",
+              "suggested"
+            ],
+            "nullable": true
+          }
+        },
+        "required": [
+          "id",
+          "number",
+          "status",
+          "venueId",
+          "venueName",
+          "customer",
+          "leadId",
+          "firstSessionAt",
+          "sessionCount",
+          "quoteVersion",
+          "holdExpiresAt",
+          "grandTotal",
+          "paidTotal",
+          "rev",
+          "createdAt",
+          "currency",
+          "sessions",
+          "lines",
+          "totals",
+          "taxRate",
+          "discount",
+          "warnings",
+          "notes",
+          "holdExtensions",
+          "confirmedAt",
+          "cancelledAt",
+          "cancelReason",
+          "suggestedRefund",
+          "cancellationPolicy",
+          "quotations",
+          "timeline",
+          "refund"
+        ]
+      },
+      "AddSessionDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "session": {
+            "type": "object",
+            "properties": {
+              "id": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$"
+              },
+              "spaceId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$"
+              },
+              "date": {
+                "type": "string",
+                "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+              },
+              "slotId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$"
+              },
+              "startTime": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "endTime": {
+                "type": "string",
+                "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+              },
+              "eventTypeId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "nullable": true
+              },
+              "packageId": {
+                "type": "string",
+                "pattern": "^[A-Za-z0-9_-]{1,128}$",
+                "nullable": true
+              },
+              "guests": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000
+              },
+              "guaranteedGuests": {
+                "type": "integer",
+                "minimum": 1,
+                "maximum": 100000,
+                "nullable": true
+              },
+              "addOns": {
+                "default": [],
+                "maxItems": 30,
+                "type": "array",
+                "items": {
+                  "type": "object",
+                  "properties": {
+                    "addOnId": {
+                      "type": "string",
+                      "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                    },
+                    "quantity": {
+                      "default": 1,
+                      "type": "integer",
+                      "minimum": 1,
+                      "maximum": 1000
+                    }
+                  },
+                  "required": [
+                    "addOnId"
+                  ]
+                }
+              },
+              "setupNotes": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              },
+              "kitchenNotes": {
+                "type": "string",
+                "maxLength": 2000,
+                "nullable": true
+              }
+            },
+            "required": [
+              "spaceId",
+              "date",
+              "slotId",
+              "guests"
+            ]
+          },
+          "requote": {
+            "type": "string",
+            "enum": [
+              "FROZEN",
+              "CURRENT"
+            ]
+          },
+          "overrideRules": {
+            "default": false,
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev",
+          "session"
+        ]
+      },
+      "UpdateSessionDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "spaceId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "date": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "slotId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$"
+          },
+          "startTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "endTime": {
+            "type": "string",
+            "pattern": "^([01]\\d|2[0-3]):[0-5]\\d$"
+          },
+          "eventTypeId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "packageId": {
+            "type": "string",
+            "pattern": "^[A-Za-z0-9_-]{1,128}$",
+            "nullable": true
+          },
+          "guests": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000
+          },
+          "guaranteedGuests": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 100000,
+            "nullable": true
+          },
+          "addOns": {
+            "maxItems": 30,
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "addOnId": {
+                  "type": "string",
+                  "pattern": "^[A-Za-z0-9_-]{1,128}$"
+                },
+                "quantity": {
+                  "default": 1,
+                  "type": "integer",
+                  "minimum": 1,
+                  "maximum": 1000
+                }
+              },
+              "required": [
+                "addOnId"
+              ]
+            }
+          },
+          "setupNotes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "kitchenNotes": {
+            "type": "string",
+            "maxLength": 2000,
+            "nullable": true
+          },
+          "requote": {
+            "type": "string",
+            "enum": [
+              "FROZEN",
+              "CURRENT"
+            ]
+          },
+          "overrideRules": {
+            "default": false,
+            "type": "boolean"
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "CancelSessionDto": {
+        "type": "object",
+        "properties": {
+          "rev": {
+            "type": "integer",
+            "minimum": 1,
+            "maximum": 9007199254740991
+          },
+          "reason": {
+            "type": "string",
+            "minLength": 3,
+            "maxLength": 500
+          }
+        },
+        "required": [
+          "rev"
+        ]
+      },
+      "AvailabilityResponseDto": {
+        "type": "object",
+        "properties": {
+          "venueId": {
+            "type": "string"
+          },
+          "from": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "to": {
+            "type": "string",
+            "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+          },
+          "timezone": {
+            "type": "string"
+          },
+          "spaces": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "isCombined": {
+                  "type": "boolean"
+                },
+                "capacitySeated": {
+                  "type": "integer",
+                  "minimum": -9007199254740991,
+                  "maximum": 9007199254740991,
+                  "nullable": true
+                },
+                "componentIds": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "isCombined",
+                "capacitySeated",
+                "componentIds"
+              ]
+            }
+          },
+          "slots": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "id": {
+                  "type": "string"
+                },
+                "name": {
+                  "type": "string"
+                },
+                "mode": {
+                  "type": "string",
+                  "enum": [
+                    "FIXED",
+                    "HOURLY",
+                    "FULL_DAY"
+                  ]
+                },
+                "startTime": {
+                  "type": "string"
+                },
+                "endTime": {
+                  "type": "string"
+                },
+                "daysOfWeek": {
+                  "type": "array",
+                  "items": {
+                    "type": "integer",
+                    "minimum": -9007199254740991,
+                    "maximum": 9007199254740991
+                  }
+                }
+              },
+              "required": [
+                "id",
+                "name",
+                "mode",
+                "startTime",
+                "endTime",
+                "daysOfWeek"
+              ]
+            }
+          },
+          "cells": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "properties": {
+                "spaceId": {
+                  "type": "string"
+                },
+                "date": {
+                  "type": "string",
+                  "pattern": "^\\d{4}-\\d{2}-\\d{2}$"
+                },
+                "slotId": {
+                  "type": "string"
+                },
+                "status": {
+                  "type": "string",
+                  "enum": [
+                    "HELD",
+                    "CONFIRMED"
+                  ]
+                },
+                "entries": {
+                  "type": "array",
+                  "items": {
+                    "type": "object",
+                    "properties": {
+                      "bookingId": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "status": {
+                        "type": "string",
+                        "enum": [
+                          "HELD",
+                          "CONFIRMED"
+                        ]
+                      },
+                      "customerName": {
+                        "type": "string"
+                      },
+                      "sessionId": {
+                        "type": "string"
+                      },
+                      "eventTypeName": {
+                        "type": "string",
+                        "nullable": true
+                      },
+                      "holdExpiresAt": {
+                        "type": "string",
+                        "format": "date-time",
+                        "pattern": "^(?:(?:\\d\\d[2468][048]|\\d\\d[13579][26]|\\d\\d0[48]|[02468][048]00|[13579][26]00)-02-29|\\d{4}-(?:(?:0[13578]|1[02])-(?:0[1-9]|[12]\\d|3[01])|(?:0[469]|11)-(?:0[1-9]|[12]\\d|30)|(?:02)-(?:0[1-9]|1\\d|2[0-8])))T(?:(?:[01]\\d|2[0-3]):[0-5]\\d:[0-5]\\d(?:\\.\\d+)?(?:Z))$",
+                        "nullable": true
+                      },
+                      "blockedBy": {
+                        "type": "string",
+                        "nullable": true
+                      }
+                    },
+                    "required": [
+                      "bookingId",
+                      "number",
+                      "status",
+                      "customerName",
+                      "sessionId",
+                      "eventTypeName",
+                      "holdExpiresAt",
+                      "blockedBy"
+                    ]
+                  }
+                }
+              },
+              "required": [
+                "spaceId",
+                "date",
+                "slotId",
+                "status",
+                "entries"
+              ]
+            }
+          }
+        },
+        "required": [
+          "venueId",
+          "from",
+          "to",
+          "timezone",
+          "spaces",
+          "slots",
+          "cells"
         ]
       }
     }

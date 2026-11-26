@@ -1,6 +1,7 @@
 import { Module } from '@nestjs/common';
 import { createSealer } from '@venueos/db';
 import { WORKER_CONFIG } from '../config/config.module';
+import { StorageModule } from '../storage/storage.module';
 import type { WorkerConfig } from '../config/config.module';
 import { EMAIL_PROVIDER, SEALER } from './email-provider';
 import type { EmailProvider } from './email-provider';
@@ -17,6 +18,7 @@ export function createEmailProvider(config: WorkerConfig): EmailProvider {
 }
 
 @Module({
+  imports: [StorageModule],
   providers: [
     { provide: EMAIL_PROVIDER, inject: [WORKER_CONFIG], useFactory: createEmailProvider },
     // Refuses to boot when a key is not 32 bytes.

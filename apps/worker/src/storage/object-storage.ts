@@ -38,4 +38,6 @@ export function assertTenantObjectKey(key: string, tenantId: string): void {
 export interface ObjectStorage {
   /** Store (or overwrite) one object. Throws `StorageError` on any failure. */
   put(key: string, body: Buffer, contentType: string): Promise<void>;
+  /** Read one object (an email attachment). Throws `StorageError` on any failure, a missing object included. */
+  get(key: string): Promise<Buffer>;
 }

@@ -22,6 +22,21 @@ export const JOB_NAMES = {
   /** One per due lead: emails the assignee once per follow-up. */
   LEADS_FOLLOW_UP_NOTIFY: 'leads.follow-up.notify',
   LEADS_FOLLOW_UP_NOTIFY_DEAD: 'leads.follow-up.notify.dead',
+  /** Every 5 minutes: finds tentative holds that ended and holds that are about to end (scanner, ids only). */
+  HOLDS_EXPIRE: 'holds.expire',
+  HOLDS_EXPIRE_DEAD: 'holds.expire.dead',
+  /** One per ended hold: sets the booking EXPIRED (the slot is free again) and emails the agent. */
+  HOLDS_EXPIRE_RUN: 'holds.expire.run',
+  HOLDS_EXPIRE_RUN_DEAD: 'holds.expire.run.dead',
+  /** One per hold about to end: emails the agent once. */
+  HOLDS_WARN_RUN: 'holds.warn.run',
+  HOLDS_WARN_RUN_DEAD: 'holds.warn.run.dead',
+  /** Hourly: finds confirmed bookings whose last session is over (scanner, ids only). */
+  BOOKINGS_COMPLETE: 'bookings.complete',
+  BOOKINGS_COMPLETE_DEAD: 'bookings.complete.dead',
+  /** One per such booking: completes it when its balance is paid. */
+  BOOKINGS_COMPLETE_RUN: 'bookings.complete.run',
+  BOOKINGS_COMPLETE_RUN_DEAD: 'bookings.complete.run.dead',
 } as const;
 export type JobName = (typeof JOB_NAMES)[keyof typeof JOB_NAMES];
 
@@ -69,6 +84,10 @@ export type EmailSendPayload = z.infer<typeof emailSendPayloadSchema>;
  */
 export const leadFollowUpNotifyPayloadSchema = z.object({ tenantId: id, leadId: id }).strict();
 export type LeadFollowUpNotifyPayload = z.infer<typeof leadFollowUpNotifyPayloadSchema>;
+
+/** Payload of `holds.expire.run`, `holds.warn.run` and `bookings.complete.run`: identifiers only. */
+export const bookingJobPayloadSchema = z.object({ tenantId: id, bookingId: id }).strict();
+export type BookingJobPayload = z.infer<typeof bookingJobPayloadSchema>;
 
 /** Values a template can print: strings, numbers, booleans, and nested objects of those. */
 export type TemplateVars = { [key: string]: string | number | boolean | TemplateVars };
@@ -118,6 +137,19 @@ export const enqueueEmailInputSchema = z.object({
       z.string().min(1).max(2000),
     )
     .optional(),
+  /**
+   * Files to attach, as S3 object KEYS (`tenants/{tenantId}/...`): the queued row keeps keys only, the worker downloads the
+   * objects when it sends. The tenant prefix is checked when the email is queued and again before the download.
+   */
+  attachments: z
+    .array(
+      z.object({
+        key: z.string().regex(/^tenants\/[A-Za-z0-9_-]{1,128}\/[A-Za-z0-9._\-/]{1,400}$/),
+        filename: z.string().regex(/^[A-Za-z0-9._ -]{1,100}$/),
+      }),
+    )
+    .max(3)
+    .optional(),
   /** Business event the message belongs to (`booking.confirmed`), for the delivery log. */
   event: z.string().max(100).optional(),
   entityType: z.string().max(50).optional(),
@@ -148,6 +180,8 @@ export const EMAIL_FAILURE_CODES = [
   'PROVIDER_UNAVAILABLE',
   /** The provider refused the message. Retried like every non-permanent failure. */
   'PROVIDER_REJECTED',
+  /** A file to attach could not be read from the store (not there yet, or the store is down). Retried. */
+  'ATTACHMENT_UNAVAILABLE',
   /** Anything else. Retried. */
   'UNEXPECTED',
 ] as const;
@@ -166,7 +200,7 @@ export const PERMANENT_EMAIL_FAILURE_CODES: readonly EmailFailureCode[] = [
  * `kind` is any well-formed name; the worker answers an unregistered one with the permanent code
  * `UNKNOWN_KIND` (so a rolled-back deploy cannot wedge the queue). `PDF_KINDS` lists the kinds that ship.
  */
-export const PDF_KINDS = ['sample'] as const;
+export const PDF_KINDS = ['sample', 'quotation'] as const;
 export const pdfRenderPayloadSchema = z
   .object({ tenantId: id, kind: z.string().regex(/^[a-z][a-z0-9-]{0,39}$/), entityId: id })
   .strict();

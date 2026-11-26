@@ -75,10 +75,11 @@ export function useLeads(options: {
   });
 }
 
-export function useLead(id: string) {
+export function useLead(id: string, enabled = true) {
   return useQuery({
     queryKey: leadKeys.detail(id),
     queryFn: () => unwrap(api.GET('/v1/leads/{id}', { params: { path: { id } } })),
+    enabled,
   });
 }
 

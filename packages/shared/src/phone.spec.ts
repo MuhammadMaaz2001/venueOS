@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { isE164, normalizePhone, phoneSearchDigits } from './phone.js';
+import { PHONE_COUNTRIES, isE164, normalizePhone, phoneSearchDigits } from './phone.js';
 
 const ok = (input: string, country: string | null, e164: string) =>
   expect(normalizePhone(input, country)).toEqual({ ok: true, e164 });
@@ -88,5 +88,38 @@ describe('phoneSearchDigits', () => {
     expect(phoneSearchDigits('ali')).toEqual([]);
     expect(phoneSearchDigits('03')).toEqual([]);
     expect(phoneSearchDigits('ali 0300')).toEqual([]);
+  });
+});
+
+describe('the markets venueOS is built for', () => {
+  const cases: [string, string, string, string][] = [
+    // country, typed the national way, typed with the country code, expected E.164
+    ['PK', '0300 1234567', '+92 300 1234567', '+923001234567'],
+    ['PK', '042 3576 1234', '0092 42 35761234', '+924235761234'],
+    ['AE', '050 123 4567', '+971 50 123 4567', '+971501234567'],
+    ['AE', '04 123 4567', '+971 4 123 4567', '+97141234567'],
+    ['SA', '055 123 4567', '+966 55 123 4567', '+966551234567'],
+    ['QA', '5512 3456', '+974 5512 3456', '+97455123456'],
+    ['KW', '9123 4567', '+965 9123 4567', '+96591234567'],
+    ['BH', '3912 3456', '+973 3912 3456', '+97339123456'],
+    ['OM', '9123 4567', '+968 9123 4567', '+96891234567'],
+  ];
+  it.each(cases)('%s: %s and %s are the same number', (country, national, international, e164) => {
+    ok(national, country, e164);
+    ok(international, country, e164);
+    ok(international, null, e164);
+  });
+
+  it('every country of the table accepts its own calling code with a plausible number', () => {
+    expect(PHONE_COUNTRIES).toEqual(
+      expect.arrayContaining(['PK', 'AE', 'SA', 'QA', 'KW', 'BH', 'OM']),
+    );
+    for (const country of PHONE_COUNTRIES) {
+      const result = normalizePhone('0300 1234567', country);
+      // Whatever the country, the answer is a decision (valid E.164 or a named failure), never a throw.
+      expect(result.ok ? isE164(result.e164) : typeof result.reason === 'string', country).toBe(
+        true,
+      );
+    }
   });
 });

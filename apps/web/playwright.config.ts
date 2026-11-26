@@ -1,13 +1,17 @@
 import path from 'node:path';
 import { defineConfig, devices } from '@playwright/test';
+import { WEB_URL, assertVenueOsOrFree } from './e2e/support/stack';
 
-// End-to-end tests of the real stack: Next.js (web :3000), the API (:4000), the worker (sends the emails) and
-// the docker Postgres + Mailpit (`docker compose up -d postgres mailpit`). `pnpm dev` of the repository root
-// starts the three apps; a stack that is already running is reused.
+// End-to-end tests of the real stack: Next.js (web, WEB_PORT, default 3000), the API (PORT of apps/api/.env, default 4000),
+// the worker (sends the emails) and the docker Postgres + Mailpit (`docker compose up -d postgres mailpit`). `pnpm dev` of
+// the repository root starts the three apps; a stack that is already running is reused, but only after it answered like
+// venueOS (another project may own the port: then the run stops with a message instead of testing it). The addresses come
+// from the environment, then the local .env files (e2e/support/stack.ts); CI keeps 3000 / 4000.
 //
 //   pnpm --filter @venueos/web e2e                 the journeys (English)
 //   pnpm --filter @venueos/web e2e:screenshots     the report screenshots (login, shell, staff; desktop/360 px)
-const BASE_URL = process.env.E2E_BASE_URL ?? 'http://localhost:3000';
+const BASE_URL = WEB_URL;
+assertVenueOsOrFree();
 
 export default defineConfig({
   testDir: './e2e',

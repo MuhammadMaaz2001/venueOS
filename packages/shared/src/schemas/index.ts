@@ -8,3 +8,5 @@ export * from './catalogue.js';
 export * from './pricing.js';
 export * from './customers.js';
 export * from './leads.js';
+export * from './bookings.js';
+export * from './quotations.js';

@@ -92,7 +92,8 @@ describe('enqueueEmail', () => {
       [5, 30, true, 'email.send.dead'],
     );
     const raw = JSON.stringify(job);
-    for (const secret of ['ali.khan', 'Ali Khan', 'Royal Hall', 'BK-1']) assert.ok(!raw.includes(secret));
+    for (const secret of ['ali.khan', 'Ali Khan', 'Royal Hall', 'BK-1'])
+      assert.ok(!raw.includes(secret));
 
     const rows = await tenantDb.tx({ tenantId: 't1' }, (tx) =>
       tx.messageLog.findMany({ where: { messageKey } }),
@@ -105,7 +106,10 @@ describe('enqueueEmail', () => {
     assert.equal(row.template, 'sample.hello');
     assert.equal(row.locale, 'en');
     assert.deepEqual(row.templateVars, input.vars);
-    assert.deepEqual([row.event, row.entityType, row.entityId], ['booking.confirmed', 'booking', 'bk1']);
+    assert.deepEqual(
+      [row.event, row.entityType, row.entityId],
+      ['booking.confirmed', 'booking', 'bk1'],
+    );
     assert.equal(row.isFinal, false);
   });
 
@@ -169,9 +173,12 @@ describe('enqueueEmail', () => {
 describe('queues of the worker jobs (migration worker_queues_p0_6b)', () => {
   const queueRows = async () =>
     (
-      await jobsClient.query<{ name: string; policy: string; dead_letter: string | null; retry_limit: number }>(
-        'SELECT name, policy, dead_letter, retry_limit FROM pgboss.queue ORDER BY name',
-      )
+      await jobsClient.query<{
+        name: string;
+        policy: string;
+        dead_letter: string | null;
+        retry_limit: number;
+      }>('SELECT name, policy, dead_letter, retry_limit FROM pgboss.queue ORDER BY name')
     ).rows;
 
   test('every job has its queue and a dead-letter queue that is never retried', async () => {
@@ -206,7 +213,12 @@ describe('queues of the worker jobs (migration worker_queues_p0_6b)', () => {
     // so is a rollback: no job survives it
     await assert.rejects(
       tenantDb.tx({ tenantId: 't1' }, async (tx) => {
-        await queue.send(tx, 'pdf.render', { ...payload, entityId: 'ent-2' }, { singletonKey: 'sample:ent-2' });
+        await queue.send(
+          tx,
+          'pdf.render',
+          { ...payload, entityId: 'ent-2' },
+          { singletonKey: 'sample:ent-2' },
+        );
         throw new Error('rolled back');
       }),
       /rolled back/,
@@ -216,14 +228,19 @@ describe('queues of the worker jobs (migration worker_queues_p0_6b)', () => {
 });
 
 describe('enqueueEmail with secret variables', () => {
-  const sealer = createSealer({ active: 'k1', keys: { k1: Buffer.alloc(32, 7).toString('base64') } });
+  const sealer = createSealer({
+    active: 'k1',
+    keys: { k1: Buffer.alloc(32, 7).toString('base64') },
+  });
   const secret = 'https://app.example.test/verify-email?token=SECRET-TOKEN-123';
 
   test('stores them sealed (never in plain text) and opens them only for the same row', async () => {
     const { messageKey } = await tenantDb.tx({ tenantId: 't1' }, (tx) =>
       enqueueEmail(queue, tx, 't1', { ...input, secretVars: { verifyUrl: secret } }, { sealer }),
     );
-    const [row] = await tenantDb.tx({ tenantId: 't1' }, (tx) => tx.messageLog.findMany({ where: { messageKey } }));
+    const [row] = await tenantDb.tx({ tenantId: 't1' }, (tx) =>
+      tx.messageLog.findMany({ where: { messageKey } }),
+    );
     const stored = row?.templateVars as Record<string, unknown>;
     assert.equal(stored.name, 'Ali Khan'); // plain variables stay plain
     assert.equal(typeof stored.__sealed, 'string');
@@ -277,9 +294,14 @@ describe('JobQueue.send', () => {
     const beforeJobs = (await jobRows()).length;
     await assert.rejects(
       tenantDb.tx({ tenantId: 't1' }, (tx) =>
-        queue.send(tx, 'email.send', { tenantId: 't1', messageKey: 'm1', to: 'a@b.test' } as never, {
-          singletonKey: 'm1',
-        }),
+        queue.send(
+          tx,
+          'email.send',
+          { tenantId: 't1', messageKey: 'm1', to: 'a@b.test' } as never,
+          {
+            singletonKey: 'm1',
+          },
+        ),
       ),
     );
     assert.equal((await jobRows()).length, beforeJobs);
@@ -305,7 +327,12 @@ describe('JobQueue.send', () => {
       retry: { retryDelaySeconds: 1, retryDelayMaxSeconds: 1, retryBackoff: false, retryLimit: 2 },
     });
     await tenantDb.tx({ tenantId: 't1' }, (tx) =>
-      fast.send(tx, 'email.send', { tenantId: 't1', messageKey: 'fast-1' }, { singletonKey: 'fast-1' }),
+      fast.send(
+        tx,
+        'email.send',
+        { tenantId: 't1', messageKey: 'fast-1' },
+        { singletonKey: 'fast-1' },
+      ),
     );
     await fast.close();
     const job = (await jobRows()).find((j) => j.singleton_key === 'fast-1')!;
@@ -315,7 +342,9 @@ describe('JobQueue.send', () => {
 
 describe('pg-boss schema', () => {
   test('the installed library expects the schema version the migration installed', async () => {
-    const { rows } = await jobsClient.query<{ version: number }>('SELECT version FROM pgboss.version');
+    const { rows } = await jobsClient.query<{ version: number }>(
+      'SELECT version FROM pgboss.version',
+    );
     assert.deepEqual(
       rows.map((r) => r.version),
       [expectedPgBossSchemaVersion()],
@@ -355,12 +384,23 @@ describe('pg-boss schema', () => {
       dead_letter: `${name}.dead`,
     });
     // email.send (P0-6a), then pdf.render, auth.purge and ops.dead-letter-check (P0-6b), then the lead follow-up
-    // scanner and its per-lead job (module 5)
+    // scanner and its per-lead job (module 5), then the hold scanner, the completion scanner and their per-booking
+    // jobs (modules 6-8)
     assert.deepEqual(rows, [
       live('auth.purge', 5, 3600),
       dead('auth.purge.dead'),
+      live('bookings.complete', 5, 3600),
+      dead('bookings.complete.dead'),
+      live('bookings.complete.run', 5, 3600),
+      dead('bookings.complete.run.dead'),
       live('email.send', 5, 3600),
       dead('email.send.dead'),
+      live('holds.expire', 5, 3600),
+      dead('holds.expire.dead'),
+      live('holds.expire.run', 5, 3600),
+      dead('holds.expire.run.dead'),
+      live('holds.warn.run', 5, 3600),
+      dead('holds.warn.run.dead'),
       live('leads.follow-up', 5, 3600),
       dead('leads.follow-up.dead'),
       live('leads.follow-up.notify', 5, 3600),

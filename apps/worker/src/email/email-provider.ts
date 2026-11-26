@@ -12,6 +12,8 @@ export interface OutgoingEmail {
   subject: string;
   html: string;
   text: string;
+  /** Files to attach, already downloaded by the job. */
+  attachments?: { filename: string; content: Buffer; contentType: string }[];
 }
 
 export interface SendResult {

@@ -1,3 +1,5 @@
+import { WEB_URL, escapeRegExp } from './stack';
+
 /** Reading the emails the worker sent, from Mailpit's HTTP API (docker compose: SMTP :1025, HTTP :8025). */
 const MAILPIT = process.env.MAILPIT_API_URL ?? 'http://localhost:8025';
 
@@ -13,7 +15,7 @@ async function json<T>(path: string): Promise<T> {
 
 /**
  * The first link matching `pattern` in an email to `to`, waiting for the worker to send it. `pattern` must
- * match the whole URL, e.g. /http:\/\/localhost:3000\/verify-email\?token=[\w-]+/.
+ * match the whole URL (see `LINK`).
  */
 export async function linkFromMail(
   to: string,
@@ -38,14 +40,54 @@ export async function linkFromMail(
   );
 }
 
+/** The links in the emails start with APP_ORIGIN of the API and worker, which is the web address under test. */
+const link = (route: string): RegExp =>
+  new RegExp(`${escapeRegExp(WEB_URL)}/${route}\\?token=[\\w-]+`);
+
 export const LINK = {
-  verify: /http:\/\/localhost:3000\/verify-email\?token=[\w-]+/,
-  invite: /http:\/\/localhost:3000\/accept-invite\?token=[\w-]+/,
-  reset: /http:\/\/localhost:3000\/reset-password\?token=[\w-]+/,
+  verify: link('verify-email'),
+  invite: link('accept-invite'),
+  reset: link('reset-password'),
 } as const;
 
 /** A fresh address per run: the database keeps users of earlier runs. */
 export function uniqueEmail(prefix: string): string {
   const stamp = `${Date.now().toString(36)}${Math.random().toString(36).slice(2, 7)}`;
   return `e2e-${prefix}-${stamp}@example.test`;
+}
+
+export interface MailWithAttachments {
+  subject: string;
+  attachments: { fileName: string; contentType: string; size: number }[];
+}
+
+/** The first email to `to` that has an attachment (the quotation PDF), waiting for the worker to send it. */
+export async function mailWithAttachment(
+  to: string,
+  timeoutMs = 90_000,
+): Promise<MailWithAttachments> {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    const found = await json<{ messages?: MailpitMessage[] }>(
+      `/api/v1/search?query=${encodeURIComponent(`to:${to}`)}`,
+    );
+    for (const message of found.messages ?? []) {
+      const full = await json<{
+        Subject?: string;
+        Attachments?: { FileName: string; ContentType: string; Size: number }[];
+      }>(`/api/v1/message/${message.ID}`);
+      if ((full.Attachments ?? []).length > 0) {
+        return {
+          subject: full.Subject ?? '',
+          attachments: (full.Attachments ?? []).map((a) => ({
+            fileName: a.FileName,
+            contentType: a.ContentType,
+            size: a.Size,
+          })),
+        };
+      }
+    }
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error(`No email with an attachment to ${to} within ${timeoutMs} ms`);
 }

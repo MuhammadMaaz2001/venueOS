@@ -118,3 +118,24 @@ export class RateLimitedError extends AppError {
     super(429, 'RATE_LIMITED', message);
   }
 }
+
+/** The discount is more than the caller's role may give (docs/04 section 2). */
+export class DiscountLimitError extends AppError {
+  constructor(message = 'This discount is higher than your role allows.', details?: unknown) {
+    super(403, 'DISCOUNT_LIMIT', message, details);
+  }
+}
+
+/** Confirming needs the advance (docs/05 section 2) and the cleared receipts do not cover it yet. */
+export class AdvanceRequiredError extends AppError {
+  constructor(message = 'The required advance has not been received yet.', details?: unknown) {
+    super(422, 'ADVANCE_REQUIRED', message, details);
+  }
+}
+
+/** A venue rule (latest end time, maximum guests) is broken (docs/05 section 1). */
+export class LocalRuleError extends AppError {
+  constructor(message = 'A rule of this venue prevents this.', details?: unknown) {
+    super(422, 'LOCAL_RULE', message, details);
+  }
+}
